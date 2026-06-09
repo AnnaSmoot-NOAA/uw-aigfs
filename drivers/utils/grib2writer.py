@@ -193,6 +193,7 @@ class Grib2Writer:
             cmd = [SETEVENTSH, f"{lead:03d}"]
             print(f"Running shell subprocess {cmd}")
             subprocess.run(cmd, check=True)
+        done_signal = False
         if done_signal:
             # API for ecflow_client --force=set ${ECF_NAME}:release_f${fhour}
             pass

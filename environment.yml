@@ -1,18 +1,13 @@
-name: condaenv
+name: uw-aigfs
 channels:
   - conda-forge
+  - ufs-community
 dependencies:
-  - python==3.11
-  - dm-tree
-  - netcdf4
-  - xarray
-  - cartopy
-  - jupyterlab
-  - boto3
-  - nceplibs-g2c
-  - grib2io
-  - pip
-  - uwtools
+  - python=3.14.*
+  - grib2io=3.7.*
+  - netcdf4=1.7.*
+  - pip=26.1.*
+  - uwtools=2.17.*
+  - xarray=2026.4.*
   - pip:
     - git+https://github.com/noaa-emc/graphcast@aea0678cfbd7e866e4a1d364b456861d0a03954b
-    - flax
