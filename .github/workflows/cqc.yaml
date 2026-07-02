@@ -1,0 +1,24 @@
+name: Code Quality Checks
+on:
+  pull_request:
+    branches:
+      - '**'
+  push:
+    branches:
+      - '**'
+  workflow_dispatch:
+    branches:
+      - '**'
+
+jobs:
+  code-quality-checks:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Prepare Environment
+        run: make devenv
+      - name: Code-Quality Check
+        run: .github/scripts/cq.sh
+      - name: Format Check
+        run: .github/scripts/format.sh

@@ -1,0 +1,22 @@
+#!/bin/bash -e
+
+# Functions:
+
+install_conda () {
+  test -d $CONDA_DIR && return
+  echo "=> Installing conda"
+  (
+    os=$(uname)
+    test $os == Darwin && os=MacOSX
+    hardware=$(uname -m)
+    installer=Miniforge3-$os-$hardware.sh
+    version=26.1.1-3
+    curl -sSLO https://github.com/conda-forge/miniforge/releases/download/$version/$installer
+    bash $installer -bfp $CONDA_DIR
+    rm -v $installer
+  )
+}
+
+echo "=> Building"
+install_conda
+echo "=> Ready"

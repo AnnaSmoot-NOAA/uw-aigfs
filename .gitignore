@@ -1,3 +1,4 @@
+conda/
 *.swp
 .coverage
 __pycache__

@@ -1,10 +1,10 @@
-name: uw-aigfs
+name: aigfs
 channels:
   - conda-forge
   - ufs-community
 dependencies:
   - python=3.14.*
-  - grib2io=3.7.*
+  - grib2io=2.7.*
   - netcdf4=1.7.*
   - pip=26.1.*
   - uwtools=2.17.*
