@@ -6,9 +6,10 @@
 # WCOSS2 username (or export USER and confirm your shell expands it consistently).
 #
 # GFS data note: WCOSS2 ops GFS files live at
-#   /lfs/h1/ops/prod/com/gfs/gfs.YYYYMMDD/HH/atmos/gfs.tHHz.pgrb2.0p25.fFFF
-# user.gfs_data holds the COMROOT base; files_to_hardlink paths include the
+#   /lfs/h1/ops/prod/com/gfs/v16.3/gfs.YYYYMMDD/HH/atmos/gfs.tHHz.pgrb2.0p25.fFFF
+# user.gfs_data holds the versioned COMROOT base; files_to_hardlink paths include the
 # gfs.YYYYMMDD/HH/atmos/ subdirectory nesting to match the ops structure.
+# Both v16.2 and v16.3 exist on WCOSS2; v16.3 is the current operational version.
 #
 # Weights note: platform.pretrained_model_path resolves to user.aigfs_app/fix.
 # The fix/ directory (~150 GB) must be staged in the repo clone before the first run.
@@ -16,8 +17,7 @@
 user:
   experiment_dir: /lfs/h2/emc/stmp/YOUR_USER/aigfs/run
   aigfs_app: /lfs/h2/emc/noscrub/YOUR_USER/aigfs
-  # TODO (Task 5): align with ops GFS path structure (see note above)
-  gfs_data: /lfs/h1/ops/prod/com/gfs
+  gfs_data: /lfs/h1/ops/prod/com/gfs/v16.3
   cycle_freq: !timedelta 6
   first_cycle: !datetime 2025-10-21T00
   last_cycle: !datetime 2025-10-21T00
