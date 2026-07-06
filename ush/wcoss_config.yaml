@@ -1,0 +1,112 @@
+# WCOSS2-specific config overlay for uw-aigfs.
+# Fork of ush/default_config.yaml — do NOT edit default_config.yaml for WCOSS2 changes;
+# that file is kept intact for parallel Ursa/RDHPCS development.
+#
+# Before running on WCOSS2, replace every occurrence of YOUR_USER with your actual
+# WCOSS2 username (or export USER and confirm your shell expands it consistently).
+#
+# GFS data note: WCOSS2 ops GFS files live at
+#   /lfs/h1/ops/prod/com/gfs/gfs.YYYYMMDD/HH/atmos/gfs.tHHz.pgrb2.0p25.fFFF
+# user.gfs_data holds the COMROOT base; files_to_hardlink paths include the
+# gfs.YYYYMMDD/HH/atmos/ subdirectory nesting to match the ops structure.
+#
+# Weights note: platform.pretrained_model_path resolves to user.aigfs_app/fix.
+# The fix/ directory (~150 GB) must be staged in the repo clone before the first run.
+
+user:
+  experiment_dir: /lfs/h2/emc/stmp/YOUR_USER/aigfs/run
+  aigfs_app: /lfs/h2/emc/noscrub/YOUR_USER/aigfs
+  # TODO (Task 5): align with ops GFS path structure (see note above)
+  gfs_data: /lfs/h1/ops/prod/com/gfs
+  cycle_freq: !timedelta 6
+  first_cycle: !datetime 2025-10-21T00
+  last_cycle: !datetime 2025-10-21T00
+  platform: wcoss2
+
+platform:
+  account: AIGFS-DEV
+  # Weights and normalization stats live under fix/ in the repo clone.
+  # Stage the fix/ directory (150 GB) before the first run.
+  pretrained_model_path: '{{ user.aigfs_app }}/fix'
+  scheduler: pbs
+
+timevars:
+  valid_time: "{{ (cycle + leadtime).strftime('%Y-%m-%d_%H:%M:%S') }}"
+  yyyymmdd: '{{ cycle.strftime("%Y%m%d") }}'
+  yyyymmddhh: '{{ cycle.strftime("%Y%m%d%H") }}'
+  cyc: '{{ cycle.strftime("%H") }}'
+  fff: '{{ "%03d" % (leadtime.total_seconds() // 3600) }}'
+  m2_cyc: '{{ (cycle - 2*user.cycle_freq).strftime("%H") }}'
+  m2_yyyymmdd: '{{ (cycle - 2*user.cycle_freq).strftime("%Y%m%d") }}'
+  m1_cyc: '{{ (cycle - user.cycle_freq).strftime("%H") }}'
+  m1_yyyymmdd: '{{ (cycle - user.cycle_freq).strftime("%Y%m%d") }}'
+
+prep:
+  aigfs_ics:
+    execution:
+      batchargs:
+        debug: True
+        memory: 10GB
+        nodes: 1
+        tasks_per_node: 1
+        walltime: 00:30:00
+        rundir: '{{ user.aigfs_app }}'
+      jobcmd: uw execute --module drivers/generate_ics.py --classname GenICS --task run -c {{ user.experiment_dir }}/config.yaml --cycle {{ cycle.strftime('%Y-%m-%d_%H:%M:%S') }} --key-path prep
+      envcmds:
+        - module load wflow_wcoss
+        - module load wgrib2
+      executable: uw execute --module drivers/generate_ics.py --classname GenICS --task provisioned_rundir -c {{ user.experiment_dir }}/config.yaml --cycle {{ cycle.strftime('%Y-%m-%d_%H:%M:%S') }} --key-path prep
+    files_to_hardlink:
+      data/gfs.t{{ timevars.m2_cyc }}z.pgrb2.0p25.f006: '{{ user.gfs_data }}/gfs.{{ timevars.m2_yyyymmdd }}/{{ timevars.m2_cyc }}/atmos/gfs.t{{ timevars.m2_cyc }}z.pgrb2.0p25.f006'
+      data/gfs.t{{ timevars.m1_cyc }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/gfs.{{ timevars.m1_yyyymmdd }}/{{ timevars.m1_cyc }}/atmos/gfs.t{{ timevars.m1_cyc }}z.pgrb2.0p25.f000'
+      data/gfs.t{{ timevars.m1_cyc }}z.pgrb2.0p25.f006: '{{ user.gfs_data }}/gfs.{{ timevars.m1_yyyymmdd }}/{{ timevars.m1_cyc }}/atmos/gfs.t{{ timevars.m1_cyc }}z.pgrb2.0p25.f006'
+      data/gfs.t{{ timevars.cyc }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/gfs.{{ timevars.yyyymmdd }}/{{ timevars.cyc }}/atmos/gfs.t{{ timevars.cyc }}z.pgrb2.0p25.f000'
+    rundir: '{{ user.experiment_dir }}/{{ cycle.strftime("%Y%m%d%H") }}/prep'
+    variable_extraction_yaml: '{{ user.aigfs_app }}/parm/wgrib2_data_to_process.yml'
+  platform:
+    account: '{{ platform.account }}'
+    scheduler: '{{ platform.scheduler }}'
+
+forecast:
+  graphcast_model:
+    execution:
+      batchargs:
+        debug: True
+        memory: 150GB
+        nodes: 1
+        tasks_per_node: 128
+        walltime: 01:30:00
+      jobcmd: "run graphcast"
+      envcmds:
+        - module load wflow_wcoss
+      executable: uw execute --module drivers/run_graphcast.py --classname GraphCastModel --task predictions -c {{ user.experiment_dir }}/config.yaml --cycle {{ cycle }} --key-path forecast
+    forecast_freq: 6
+    forecast_length: 120
+    ics_path: '{{ prep.aigfs_ics.rundir }}/aigfs.t{{ timevars.cyc }}z.ic.nc'
+    json_path: '{{ platform.pretrained_model_path }}/tables'
+    diffs_stddev_path: '{{ platform.pretrained_model_path }}/stats/diffs_stddev_by_level.nc'
+    model_weights_path: '{{ platform.pretrained_model_path }}/params/GCGFSv2_finetuned_GDAS-ERA5_0p25_13pl_mesh2to6_tp_output_only.npz'
+    mean_path: '{{ platform.pretrained_model_path }}/stats/mean_by_level.nc'
+    stddev_path: '{{ platform.pretrained_model_path }}/stats/stddev_by_level.nc'
+    rundir: '{{ user.experiment_dir }}/{{ cycle.strftime("%Y%m%d%H") }}/forecast'
+  platform:
+    account: '{{ platform.account }}'
+    scheduler: '{{ platform.scheduler }}'
+
+post:
+  aigfs_post:
+    execution:
+      batchargs:
+        debug: True
+        memory: 4GB
+        nodes: 1
+        tasks_per_node: 1
+        walltime: 00:05:00
+      envcmds:
+        - module load wgrib2
+      jobcmd: oh hi job
+      executable: hello world
+    rundir: '{{ user.experiment_dir }}/{{ cycle.strftime("%Y%m%d%H") }}/post_{{ timevars.fff }}'
+  platform:
+    account: '{{ platform.account }}'
+    scheduler: '{{ platform.scheduler }}'
