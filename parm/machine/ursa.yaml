@@ -1,0 +1,25 @@
+platform:
+  account: zrtrr
+  scheduler: slurm
+  pretrained_model_path: /scratch3/BMC/wrfruc/cholt/aigfs/fix/gc_weights
+
+user:
+  experiment_dir: /scratch3/BMC/wrfruc/cholt/aigfs/run3
+  aigfs_app: /scratch3/BMC/wrfruc/cholt/aigfs/aigfs/
+  gfs_data: /scratch3/BMC/wrfruc/cholt/aigfs/sample_data
+  platform: ursa
+
+prep:
+  aigfs_ics:
+    execution:
+      envcmds:
+        - source /scratch3/BMC/wrfruc/cholt/aigfs/etc/profile.d/conda.sh
+        - conda activate aigfs
+        - module load wgrib2
+
+forecast:
+  graphcast_model:
+    execution:
+      envcmds:
+        - source /scratch3/BMC/wrfruc/cholt/aigfs/etc/profile.d/conda.sh
+        - conda activate aigfs
