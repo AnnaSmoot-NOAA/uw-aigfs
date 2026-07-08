@@ -1,0 +1,23 @@
+#%Module1.0
+##
+## wflow_wcoss — loads the runtime environment for uw-aigfs on WCOSS2
+## Loads system modules and activates the aigfs venv.
+## No conda, no ecflow.
+##
+
+proc ModulesHelp { } {
+    puts stderr "Loads the uw-aigfs workflow environment on WCOSS2."
+    puts stderr "Activates intel, wgrib2, libjpeg-turbo, and the aigfs venv."
+}
+
+module-whatis "uw-aigfs WCOSS2 workflow environment"
+
+# System modules (versions from aigfs_nrt versions/run.ver)
+module load intel/19.1.3.304
+module load wgrib2/2.0.8
+module load libjpeg-turbo/2.1.0
+
+# Activate the aigfs venv (no conda)
+if { [module-info mode load] } {
+    puts stdout "source /lfs/h1/ops/prod/packages/aigfs.v1.0.4/venv/bin/activate ;"
+}
