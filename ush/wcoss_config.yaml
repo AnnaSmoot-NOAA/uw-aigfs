@@ -21,14 +21,11 @@ user:
   cycle_freq: !timedelta 6
   first_cycle: !datetime 2025-10-21T00
   last_cycle: !datetime 2025-10-21T00
-  platform: wcoss2
 
 platform:
-  account: AIGFS-DEV
   # Weights and normalization stats live under fix/ in the repo clone.
   # Stage the fix/ directory (150 GB) before the first run.
   pretrained_model_path: '{{ user.aigfs_app }}/fix'
-  scheduler: pbs
 
 timevars:
   valid_time: "{{ (cycle + leadtime).strftime('%Y-%m-%d_%H:%M:%S') }}"
@@ -54,7 +51,6 @@ prep:
       jobcmd: uw execute --module drivers/generate_ics.py --classname GenICS --task run -c {{ user.experiment_dir }}/config.yaml --cycle {{ cycle.strftime('%Y-%m-%d_%H:%M:%S') }} --key-path prep
       envcmds:
         - module load wflow_wcoss
-        - module load wgrib2
       executable: uw execute --module drivers/generate_ics.py --classname GenICS --task provisioned_rundir -c {{ user.experiment_dir }}/config.yaml --cycle {{ cycle.strftime('%Y-%m-%d_%H:%M:%S') }} --key-path prep
     files_to_hardlink:
       data/gfs.t{{ timevars.m2_cyc }}z.pgrb2.0p25.f006: '{{ user.gfs_data }}/gfs.{{ timevars.m2_yyyymmdd }}/{{ timevars.m2_cyc }}/atmos/gfs.t{{ timevars.m2_cyc }}z.pgrb2.0p25.f006'
@@ -103,7 +99,7 @@ post:
         tasks_per_node: 1
         walltime: 00:05:00
       envcmds:
-        - module load wgrib2
+        - module load wflow_wcoss
       jobcmd: oh hi job
       executable: hello world
     rundir: '{{ user.experiment_dir }}/{{ cycle.strftime("%Y%m%d%H") }}/post_{{ timevars.fff }}'

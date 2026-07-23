@@ -18,6 +18,18 @@ module load wgrib2/2.0.8
 module load libjpeg-turbo/2.1.0
 
 # Activate the aigfs venv (no conda)
+# TODO: Fix venv activation — the puts stdout approach below is a BUG.
+# Printing to stdout does NOT modify the caller's shell environment in all
+# module implementations. Replace with prepend-path / setenv once the GDIT
+# venv path and manifest are confirmed:
+#
+#   set VENV_PATH /path/to/aigfs/venv   ;# TODO: obtain correct GDIT path
+#   prepend-path PATH        ${VENV_PATH}/bin
+#   setenv       VIRTUAL_ENV ${VENV_PATH}
+#
+# TODO: Confirm with GDIT which system modules the venv was built against
+# before finalising the module load lines above (intel, libjpeg-turbo may
+# not be required — pending GDIT module manifest).
 if { [module-info mode load] } {
     puts stdout "source /lfs/h1/ops/prod/packages/aigfs.v1.0.4/venv/bin/activate ;"
 }

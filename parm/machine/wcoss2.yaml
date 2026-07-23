@@ -1,13 +1,6 @@
 platform:
-  account: AIGFS-DEV
   scheduler: pbs
-  pretrained_model_path: /lfs/h1/ops/prod/packages/aigfs.v1.0.4/venv
-
-user:
-  experiment_dir: /lfs/h2/emc/stmp/YOUR_USER/aigfs/run
-  aigfs_app: /lfs/h2/emc/noscrub/YOUR_USER/aigfs
-  gfs_data: /lfs/h1/ops/prod/com/gfs/v16.3
-  platform: wcoss2
+  pretrained_model_path: '{{ user.aigfs_app }}/fix'
 
 prep:
   aigfs_ics:
