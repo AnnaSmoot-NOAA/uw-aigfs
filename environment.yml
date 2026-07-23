@@ -7,7 +7,7 @@ dependencies:
   - grib2io=2.7.*
   - netcdf4=1.7.*
   - pip=26.1.*
-  - uwtools=2.17.*
+  - uwtools=2.18.*
   - xarray=2026.4.*
   - pip:
     - git+https://github.com/noaa-emc/graphcast@aea0678cfbd7e866e4a1d364b456861d0a03954b

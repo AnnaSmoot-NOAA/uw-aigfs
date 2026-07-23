@@ -1,47 +1,68 @@
 ecflow:
-  scheduler: "{{ platform.scheduler }}"
-  suites_{{ ec.type }}:
-    expand:
-      type: [prod]
-    family_primary:
-      families_{{ ec.synop }}:
-        expand:
-          synop: !list '[{% for h in range(0, 23, 23) %}"{{ "%02d" % h }}",{% endfor %} ]'
-        family_aigfs:
-          vars:
-            PROJ: AIGFS
-            PACKAGEHOME: /scratch3/BMC/wrfruc/cholt/aigfs/aigfs/ecf
-            EVAL: "YES"
-          family_v1.0:
-            family_forecast:
-              task_jaigfs_prep:
-                script: &script
-                  account: myacct
-                  pre_includes:
-                    - head.h
-                    - envir-1.h
-                  post_includes:
-                    - tail.h
-                  manual: "Prepares AIGFS ICS from GFS."
-                  execution: !dict "{{ prep.aigfs_ics.execution}}"
-                  rundir: "{{ prep.aigfs_ics.rundir }}"
-              task_jaigfs_forecast:
-                trigger: jaigfs_prep == complete
-                events: !list '[{% for h in range(0, 13, 6) %}"{{ "release_f%03d" % h }}",{% endfor %} ]'
-                script:
-                  <<: *script
-                  manual: "Runs AIGFS forecast."
-                  execution: !dict "{{ forecast.graphcast_model.execution}}"
-                  rundir: "{{ forecast.graphcast_model.rundir }}"
-              family_post:
-                tasks_{{ ec.synop }}Z_post_f{{ ec.fhr }}:
-                  expand:
-                    fhr: !list '[{% for h in range(0, 13, 6) %}"{{ "%03d" % h }}",{% endfor %} ]'
-                  trigger: "../jaigfs_forecast:release_f{{ ec.fhr }}"
-                  script:
-                    <<: *script
-                    manual: "Runs AIGFS post for {{ ec.fhr }}."
-                    execution: !dict "{{ post.aigfs_post.execution}}"
-                    rundir: "{{ post.aigfs_post.rundir }}"
-                  vars:
-                    FHR: "{{ ec.fhr }}"
+  suitedef:
+    scheduler: "{{ platform.scheduler }}"
+    vars:
+      ECF_INCLUDE: "{{ user.aigfs_app }}/include"
+      AIGFS_APP: "{{ user.aigfs_home }}"
+      EXPERIMENT_CONFIG: "{{user.experiment_dir}}/experiment.yaml"
+      PLATFORM: "{{ user.platform }}"
+    suite_retro:
+      family_datetimes:
+        repeat_datetime:
+          variable: CYCLE
+          start: '{{ user.first_cycle.strftime("%Y%m%dT%H%M%S") }}'
+          end: '{{ user.last_cycle.strftime("%Y%m%dT%H%M%S") }}'
+          step: '{% set f = user.cycle_freq.total_seconds() %}{{ "%02d:%02d:%02d" % (f // 3600, (f % 3600) / 60, f % 60 ) }}'
+        family_forecast:
+          task_jaigfs_prep:
+            script: &script
+              includes:
+                entry:
+                - head.h
+                - envir-1.h
+                exit:
+                - tail.h
+              manual: "Prepares AIGFS ICS from GFS."
+              batchargs: !dict "{{ prep.aigfs_ics.execution.batchargs }}"
+              body: |
+                source %AIGFS_APP%/load_wflow_modules.sh %PLATFORM%
+                uw execute \
+                  --module %AIGFS_APP%/drivers/generate_ics.py \
+                  --classname GenICS \
+                  --task run \
+                  --config %EXPERIMENT_CONFIG% \
+                  --cycle $ISOCYCLE \
+                  --key-path prep
+          task_jaigfs_forecast:
+            trigger: jaigfs_prep == complete
+            events: !list '[{% for h in range(0, forecast.graphcast_model.forecast_length + 1, forecast.graphcast_model.forecast_freq) %}{{ "release_f%03d" % h }},{% endfor %} ]'
+            script:
+              <<: *script
+              manual: "Runs AIGFS forecast."
+              batchargs: !dict "{{ forecast.graphcast_model.execution.batchargs }}"
+              body: |
+                source %AIGFS_APP%/load_wflow_modules.sh %PLATFORM%
+                uw execute \
+                  --module %AIGFS_APP%/drivers/run_graphcast.py \
+                  --classname GraphCastModel \
+                  --task run \
+                  --config %EXPERIMENT_CONFIG% \
+                  --cycle $ISOCYCLE \
+                  --key-path forecast
+          family_post:
+            tasks_post_{{ ec.fhr }}:
+              expand:
+                fhr: !list '[{% for h in range(0, forecast.graphcast_model.forecast_length + 1, forecast.graphcast_model.forecast_freq) %}{{ "f%03d" % h }},{% endfor %} ]'
+              trigger: "../jaigfs_forecast:release_{{ ec.fhr }}"
+              script:
+                <<: *script
+                manual: "Runs AIGFS post for {{ ec.fhr }}."
+                batchargs: !dict "{{ post.aigfs_post.execution.batchargs }}"
+                body: |
+                  source %AIGFS_APP%/load_wflow_modules.sh %PLATFORM%
+                  module load wgrib2
+                  export FH=%FHR%
+                  export INPUTDIR={{ forecast.graphcast_model.rundir }}
+                  %AIGFS_APP%/scripts/run_post.sh
+              vars:
+                FHR: "{{ ec.fhr }}"
