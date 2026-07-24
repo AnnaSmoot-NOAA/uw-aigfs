@@ -1,3 +1,2 @@
 platform:
   scheduler: slurm
-  pretrained_model_path: YOUR_PRETRAINED_MODEL_PATH

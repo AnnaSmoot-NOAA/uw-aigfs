@@ -1,6 +1,5 @@
 platform:
   scheduler: pbs
-  pretrained_model_path: '{{ user.aigfs_app }}/fix'
 
 prep:
   aigfs_ics:
