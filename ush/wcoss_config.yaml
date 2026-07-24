@@ -18,14 +18,6 @@ user:
   experiment_dir: /lfs/h2/emc/stmp/YOUR_USER/aigfs/run
   aigfs_app: /lfs/h2/emc/noscrub/YOUR_USER/aigfs
   gfs_data: /lfs/h1/ops/prod/com/gfs/v16.3
-  cycle_freq: !timedelta 6
-  first_cycle: !datetime 2025-10-21T00
-  last_cycle: !datetime 2025-10-21T00
-
-platform:
-  # Weights and normalization stats live under fix/ in the repo clone.
-  # Stage the fix/ directory (150 GB) before the first run.
-  pretrained_model_path: '{{ user.aigfs_app }}/fix'
 
 timevars:
   valid_time: "{{ (cycle + leadtime).strftime('%Y-%m-%d_%H:%M:%S') }}"

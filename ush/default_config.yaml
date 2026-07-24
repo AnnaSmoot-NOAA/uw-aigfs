@@ -1,15 +1,10 @@
 user:
-  experiment_dir: /scratch3/BMC/wrfruc/cholt/aigfs/run3
-  aigfs_app: /scratch3/BMC/wrfruc/cholt/aigfs/aigfs/
-  gfs_data: /scratch3/BMC/wrfruc/cholt/aigfs/sample_data
+  experiment_dir: YOUR_EXPERIMENT_DIR
+  aigfs_app: YOUR_AIGFS_APP
+  gfs_data: YOUR_GFS_DATA
   cycle_freq: !timedelta 6
   first_cycle: !datetime 2025-10-21T00
   last_cycle: !datetime 2025-10-21T00
-  platform: ursa
-platform:
-  account: zrtrr
-  pretrained_model_path: /scratch3/BMC/wrfruc/cholt/aigfs/fix/gc_weights
-  scheduler: slurm
 timevars:
   valid_time: "{{ (cycle + leadtime).strftime('%Y-%m-%d_%H:%M:%S') }}"
   yyyymmdd: '{{ cycle.strftime("%Y%m%d") }}'
@@ -32,7 +27,7 @@ prep:
         rundir: '{{ user.aigfs_app }}'
       jobcmd: uw execute --module drivers/generate_ics.py --classname GenICS --task run -c {{ user.experiment_dir }}/config.yaml --cycle {{ cycle.strftime('%Y-%m-%d_%H:%M:%S') }} --key-path prep
       envcmds:
-        - source /scratch3/BMC/wrfruc/cholt/aigfs/etc/profile.d/conda.sh
+        - source {{ user.aigfs_app }}/etc/profile.d/conda.sh
         - conda activate aigfs
         - module load wgrib2
       executable: uw execute --module drivers/generate_ics.py --classname GenICS --task provisioned_rundir -c {{ user.experiment_dir }}/config.yaml --cycle {{ cycle.strftime('%Y-%m-%d_%H:%M:%S') }} --key-path prep
@@ -57,7 +52,7 @@ forecast:
         walltime: 01:30:00
       jobcmd: "run graphcast"
       envcmds:
-        - source /scratch3/BMC/wrfruc/cholt/aigfs/etc/profile.d/conda.sh
+        - source {{ user.aigfs_app }}/etc/profile.d/conda.sh
         - conda activate aigfs
       executable: uw execute --module drivers/run_graphcast.py --classname GraphCastModel --task predictions -c {{ user.experiment_dir }}/config.yaml --cycle {{ cycle }} --key-path forecast
     forecast_freq: 6
@@ -82,7 +77,8 @@ post:
         tasks_per_node: 1
         walltime: 00:05:00
       envcmds:
-        - module load wgrib2
+        - source {{ user.aigfs_app }}/etc/profile.d/conda.sh
+        - conda activate aigfs
       jobcmd: oh hi job
       executable: hello world
     rundir: '{{ user.experiment_dir }}/{{ cycle.strftime("%Y%m%d%H") }}/post_{{ timevars.fff }}'

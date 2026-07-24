@@ -1,21 +1,3 @@
 platform:
   scheduler: slurm
-  pretrained_model_path: /scratch3/BMC/wrfruc/cholt/aigfs/fix/gc_weights
-
-user:
-  platform: ursa
-
-prep:
-  aigfs_ics:
-    execution:
-      envcmds:
-        - source /scratch3/BMC/wrfruc/cholt/aigfs/etc/profile.d/conda.sh
-        - conda activate aigfs
-        - module load wgrib2
-
-forecast:
-  graphcast_model:
-    execution:
-      envcmds:
-        - source /scratch3/BMC/wrfruc/cholt/aigfs/etc/profile.d/conda.sh
-        - conda activate aigfs
+  pretrained_model_path: YOUR_PRETRAINED_MODEL_PATH
