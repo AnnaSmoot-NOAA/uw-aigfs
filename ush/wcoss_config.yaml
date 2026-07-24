@@ -1,0 +1,30 @@
+# WCOSS2-specific config overlay for uw-aigfs.
+# Addresses issue #22: establishes GFS near-RT data access path on WCOSS2.
+#
+# WCOSS2 operational GFS files live at:
+#   /lfs/h1/ops/prod/com/gfs/v16.3/gfs.YYYYMMDD/HH/atmos/gfs.tHHz.pgrb2.0p25.fFFF
+#
+# The default_config.yaml files_to_hardlink paths use a flat layout:
+#   {gfs_data}/{YYYYMMDD}/gfs.t{HH}z...
+# WCOSS2 uses subdirectory nesting:
+#   {gfs_data}/gfs.{YYYYMMDD}/{HH}/atmos/gfs.t{HH}z...
+# This overlay corrects that mismatch.
+#
+# Path and version confirmed against aigfs_nrt/versions/run.ver (COMPATH + gfs_ver).
+# Both v16.2 and v16.3 exist on WCOSS2; v16.3 is the current operational version.
+#
+# TODO: Confirm data retention window covers m2 cycle (12 hours back) under
+# high-load or purge conditions — not yet explicitly verified with WCOSS2 admin.
+
+user:
+  experiment_dir: /lfs/h2/emc/stmp/YOUR_USER/aigfs/run
+  aigfs_app: /lfs/h2/emc/noscrub/YOUR_USER/aigfs
+  gfs_data: /lfs/h1/ops/prod/com/gfs/v16.3
+
+prep:
+  aigfs_ics:
+    files_to_hardlink:
+      data/gfs.t{{ timevars.m2_cyc }}z.pgrb2.0p25.f006: '{{ user.gfs_data }}/gfs.{{ timevars.m2_yyyymmdd }}/{{ timevars.m2_cyc }}/atmos/gfs.t{{ timevars.m2_cyc }}z.pgrb2.0p25.f006'
+      data/gfs.t{{ timevars.m1_cyc }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/gfs.{{ timevars.m1_yyyymmdd }}/{{ timevars.m1_cyc }}/atmos/gfs.t{{ timevars.m1_cyc }}z.pgrb2.0p25.f000'
+      data/gfs.t{{ timevars.m1_cyc }}z.pgrb2.0p25.f006: '{{ user.gfs_data }}/gfs.{{ timevars.m1_yyyymmdd }}/{{ timevars.m1_cyc }}/atmos/gfs.t{{ timevars.m1_cyc }}z.pgrb2.0p25.f006'
+      data/gfs.t{{ timevars.cyc }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/gfs.{{ timevars.yyyymmdd }}/{{ timevars.cyc }}/atmos/gfs.t{{ timevars.cyc }}z.pgrb2.0p25.f000'
