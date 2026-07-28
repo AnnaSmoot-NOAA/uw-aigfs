@@ -13,6 +13,10 @@
 #
 # Weights note: platform.pretrained_model_path resolves to user.aigfs_app/fix.
 # The fix/ directory (~150 GB) must be staged in the repo clone before the first run.
+#
+# Data retention confirmed 2026-07-28: oldest available directory is gfs.20260710
+# (18 days of retention). The m2 cycle requires only 12 hours back — well within
+# the retention window under normal and high-load conditions.
 
 user:
   experiment_dir: /lfs/h2/emc/stmp/YOUR_USER/aigfs/run
