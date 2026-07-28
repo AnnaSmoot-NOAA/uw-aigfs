@@ -3,7 +3,7 @@ ecflow:
     scheduler: "{{ platform.scheduler }}"
     vars:
       ECF_INCLUDE: "{{ user.aigfs_app }}/include"
-      AIGFS_APP: "{{ user.aigfs_home }}"
+      AIGFS_APP: "{{ user.aigfs_app }}"
       EXPERIMENT_CONFIG: "{{user.experiment_dir}}/experiment.yaml"
       PLATFORM: "{{ user.platform }}"
     suite_retro:
