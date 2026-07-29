@@ -2,8 +2,8 @@
 # Fork of ush/default_config.yaml — do NOT edit default_config.yaml for WCOSS2 changes;
 # that file is kept intact for parallel Ursa/RDHPCS development.
 #
-# Before running on WCOSS2, replace every occurrence of YOUR_USER with your actual
-# WCOSS2 username (or export USER and confirm your shell expands it consistently).
+# User paths use {{ 'USER' | env }} to resolve the USER environment variable at
+# runtime — no manual substitution needed.
 #
 # GFS data note: WCOSS2 ops GFS files live at
 #   /lfs/h1/ops/prod/com/gfs/v16.3/gfs.YYYYMMDD/HH/atmos/gfs.tHHz.pgrb2.0p25.fFFF
@@ -13,8 +13,20 @@
 #
 # Weights note: platform.pretrained_model_path resolves to user.aigfs_app/fix.
 # The fix/ directory (~150 GB) must be staged in the repo clone before the first run.
+#
+# Data retention confirmed 2026-07-28: oldest available directory is gfs.20260710
+# (18 days of retention). The m2 cycle requires only 12 hours back — well within
+# the retention window under normal and high-load conditions.
 
 user:
-  experiment_dir: /lfs/h2/emc/stmp/YOUR_USER/aigfs/run
-  aigfs_app: /lfs/h2/emc/noscrub/YOUR_USER/aigfs
+  experiment_dir: /lfs/h2/emc/stmp/{{ 'USER' | env }}/aigfs/run
+  aigfs_app: /lfs/h2/emc/noscrub/{{ 'USER' | env }}/aigfs
   gfs_data: /lfs/h1/ops/prod/com/gfs/v16.3
+
+prep:
+  aigfs_ics:
+    files_to_hardlink:
+      data/gfs.t{{ timevars.m2_cyc }}z.pgrb2.0p25.f006: '{{ user.gfs_data }}/gfs.{{ timevars.m2_yyyymmdd }}/{{ timevars.m2_cyc }}/atmos/gfs.t{{ timevars.m2_cyc }}z.pgrb2.0p25.f006'
+      data/gfs.t{{ timevars.m1_cyc }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/gfs.{{ timevars.m1_yyyymmdd }}/{{ timevars.m1_cyc }}/atmos/gfs.t{{ timevars.m1_cyc }}z.pgrb2.0p25.f000'
+      data/gfs.t{{ timevars.m1_cyc }}z.pgrb2.0p25.f006: '{{ user.gfs_data }}/gfs.{{ timevars.m1_yyyymmdd }}/{{ timevars.m1_cyc }}/atmos/gfs.t{{ timevars.m1_cyc }}z.pgrb2.0p25.f006'
+      data/gfs.t{{ timevars.cyc }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/gfs.{{ timevars.yyyymmdd }}/{{ timevars.cyc }}/atmos/gfs.t{{ timevars.cyc }}z.pgrb2.0p25.f000'
