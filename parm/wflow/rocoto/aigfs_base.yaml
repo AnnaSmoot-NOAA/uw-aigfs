@@ -11,15 +11,17 @@ workflow:
   entities:
     EXPERIMENT_CONFIG: "{{user.experiment_dir}}/experiment.yaml"
     LOGDIR: "{{user.experiment_dir}}/log"
-    AIGFS_APP: "{{ user.aigfs_app }}"
+    AIGFS_APP: "{{ user.app_home }}"
     PLATFORM: "{{ user.platform }}"
   tasks:
     task_prep:
       account: "{{ platform.account }}"
+      attrs:
+        maxtries: 3
       command:
         cyclestr:
           value: source &AIGFS_APP;/load_wflow_modules.sh &PLATFORM; && uw execute
-            --module &AIGFS_APP/drivers/generate_ics.py
+            --module &AIGFS_APP;/drivers/generate_ics.py
             --classname GenICS
             --task run
             --config &EXPERIMENT_CONFIG;
@@ -33,10 +35,12 @@ workflow:
       walltime: "{{ prep.aigfs_ics.execution.batchargs.walltime }}"
     task_forecast:
       account: "{{ platform.account }}"
+      attrs:
+        maxtries: 3
       command:
         cyclestr:
           value: source &AIGFS_APP;/load_wflow_modules.sh &PLATFORM; && uw execute
-            --module &AIGFS_APP/drivers/run_graphcast.py
+            --module &AIGFS_APP;/drivers/run_graphcast.py
             --classname GraphCastModel
             --task run
             --config &EXPERIMENT_CONFIG;
@@ -48,21 +52,37 @@ workflow:
       nodes: "{{ forecast.graphcast_model.execution.batchargs.nodes }}:ppn={{ forecast.graphcast_model.execution.batchargs.tasks_per_node }}"
       memory: "{{ forecast.graphcast_model.execution.batchargs.memory }}"
       walltime: "{{ forecast.graphcast_model.execution.batchargs.walltime }}"
+      dependency:
+        taskdep:
+          attrs:
+            task: prep
     metatask_post:
       var:
         fhr: "{% for h in range(0, forecast.graphcast_model.forecast_length + 1, forecast.graphcast_model.forecast_freq) %}{{ ' %03d' % h }}{% endfor %}"
         nextfhr: "{% for h in range(forecast.graphcast_model.forecast_freq, forecast.graphcast_model.forecast_length + forecast.graphcast_model.forecast_freq + 1, forecast.graphcast_model.forecast_freq) %}{{ ' %03d' % h }}{% endfor %}"
       task_post_#fhr#:
         account: "{{ platform.account }}"
+        attrs:
+          maxtries: 3
         command:
           cyclestr:
-            value: echo HELLO
+            value: "source &AIGFS_APP;/load_wflow_modules.sh &PLATFORM; &&
+              uw execute
+              --module &AIGFS_APP;/drivers/post.py
+              --classname AIGFSPost
+              --task run
+              --config &EXPERIMENT_CONFIG;
+              --cycle @Y-@m-@dT@H
+              --key-path post
+              --leadtime #fhr#"
         join:
          cyclestr:
            value: '&LOGDIR;/{{ jobname }}_@Y@m@d@H.log'
-        nodes: "{{ post.execution.batchargs.nodes }}:ppn={{ post.execution.batchargs.tasks_per_node }}"
-        memory: "{{ post.execution.batchargs.memory }}"
-        walltime: "{{ post.execution.batchargs.walltime }}"
+        envars:
+          FHR: "#fhr#"
+        nodes: "{{ post.aigfs_post.execution.batchargs.nodes }}:ppn={{ post.aigfs_post.execution.batchargs.tasks_per_node }}"
+        memory: "{{ post.aigfs_post.execution.batchargs.memory }}"
+        walltime: "{{ post.aigfs_post.execution.batchargs.walltime }}"
         dependency:
           or:
             and:

@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 
-import datetime
 import json
+import logging
 import os
 import subprocess
+from datetime import datetime, timedelta
+from pathlib import Path
 from time import time
 
 import grib2io
 import numpy as np
 import pandas as pd
 import xarray as xr
+from uwtools.api.logging import use_uwtools_logger
 
 SECTION3 = np.array(
     [
@@ -42,28 +45,31 @@ SECTION3 = np.array(
 
 
 class Grib2Writer:
-    def __init__(self, start_date, case_name="aigfs", json_path=None):
+    def __init__(
+        self, start_date: datetime, case_name: str = "aigfs", json_path: Path | None = None
+    ) -> None:
         self.case_name = case_name
 
         if self.case_name == "aigfs":
-            table_file = f"{json_path}/tables_aigfs.json"
+            table_file = json_path / "tables_aigfs.json"
         elif self.case_name.startswith("aige"):
-            table_file = f"{json_path}/tables_aigefs.json"
+            table_file = json_path / "tables_aigefs.json"
         else:
-            raise ValueError(f"name {self.case_name} is not supported!")
+            msg = f"name {self.case_name} is not supported!"
+            raise ValueError(msg)
 
-        with open(table_file, "r") as f:
+        with table_file.open() as f:
             self.attrs = json.load(f)
         self.start_date = start_date
 
-    def create_grib2_message(self, var, da, lead, level=None):
+    def create_grib2_message(self, var: str, lead: int, level: int | None = None):
         # Set duration. NOTE: the duration attr exists for all Grib2Message objects.
         # For Grib2Messages that are instantaneous, the duration is just 0.
-        duration = datetime.timedelta(hours=0)
+        duration = timedelta(hours=0)
         if var == "total_precipitation_6hr":
-            duration = datetime.timedelta(hours=6)
+            duration = timedelta(hours=6)
         elif var == "total_precipitation_cumsum":
-            duration = datetime.timedelta(hours=lead)
+            duration = timedelta(hours=lead)
 
         # Create GRIB2 message.
         msg = grib2io.Grib2Message(
@@ -97,19 +103,20 @@ class Grib2Writer:
             elif level >= 50000 and level <= 100000:
                 msg.decScaleFactor = 8
             else:
-                raise ValueError(f"level {level} Pa is not included in this model!")
+                msg = f"level {level} Pa is not included in this model!"
+                raise ValueError(msg)
 
         # Set GRIB2 attributes unique to each iteration.
         msg.refDate = self.start_date
         msg.duration = duration
         msg.unitOfForecastTime = 1  # Hour
-        msg.leadTime = datetime.timedelta(hours=lead)
+        msg.leadTime = timedelta(hours=lead)
         if level is not None:
             msg.scaledValueOfFirstFixedSurface = level
 
         return msg
 
-    def save_grib2(self, xarray_ds, outdir):
+    def save_grib2(self, xarray_ds: xr.Dataset, outdir: Path):
         prefix = "aigefs" if self.case_name.startswith("aige") else "aigfs"
 
         # Convert geopotential to geopotential height.
@@ -121,7 +128,8 @@ class Grib2Writer:
                 xarray_ds["total_precipitation_6hr"].clip(min=0) * 1000
             )
 
-        # Drop total_precipitation_cumsum for AIGEFS. Otherwise update unit to (kg/m^2) and set min to zero
+        # Drop total_precipitation_cumsum for AIGEFS. Otherwise update unit to (kg/m^2) and set min
+        # to zero.
         if "total_precipitation_cumsum" in xarray_ds:
             if self.case_name.startswith("aige"):
                 xarray_ds = xarray_ds.drop_vars("total_precipitation_cumsum")
@@ -143,25 +151,20 @@ class Grib2Writer:
 
         # Set output GRIB2 file.
         cycle = self.start_date.hour
-        lead = int(xarray_ds.time.dt.total_seconds() // 3600)
-        outfile_sfc = os.path.join(
-            outdir, f"{prefix}.t{cycle:02d}z.sfc.f{lead:03d}.grib2"
-        )
-        outfile_pres = os.path.join(
-            outdir, f"{prefix}.t{cycle:02d}z.pres.f{lead:03d}.grib2"
-        )
+        lead = int((xarray_ds.time.dt.total_seconds() // 3600).values[0])  # noqa: PD011 FIXME w/ unit tests
+        outfile_sfc = outdir / f"{prefix}.t{cycle:02d}z.sfc.f{lead:03d}.grib2"
+        outfile_pres = outdir / f"{prefix}.t{cycle:02d}z.pres.f{lead:03d}.grib2"
 
-        # Delete the old file.
+        # Delete the old files.
         for outfile in [outfile_sfc, outfile_pres]:
-            if os.path.isfile(outfile):
-                os.remove(outfile)
+            outfile.unlink(missing_ok=True)
 
         # Open GRIB2 file.
         grib2_out_sfc = grib2io.open(outfile_sfc, mode="w")
-        print(f" Opening GRIB2 File for surface variables: {outfile_sfc}")
+        logging.info(" Opening GRIB2 File for surface variables: %s", outfile_sfc)
 
         grib2_out_pres = grib2io.open(outfile_pres, mode="w")
-        print(f" Opening GRIB2 File for pressure level variables: {outfile_pres}")
+        logging.info(" Opening GRIB2 File for pressure level variables: %s", outfile_pres)
 
         # Iterate over the variable name keys in JSON file.
         for var in sorted(xarray_ds.data_vars):
@@ -169,18 +172,18 @@ class Grib2Writer:
             da = xarray_ds[var]
 
             # Iterate over level...
-            if "level" in da.coords.keys():
+            if "level" in da.coords:
                 for level in da.coords["level"]:
-                    msg = self.create_grib2_message(var, da, lead, level=level)
-                    msg.data = da.sel(level=level).isel(time=0).values
+                    msg = self.create_grib2_message(var, lead, level=level)
+                    msg.data = da.sel(level=level).isel(time=0).values  # noqa: PD011 FIXME w/ unit tests
                     msg.pack()
-                    print(f"\t{msg}")
+                    logging.info("  %s", msg)
                     grib2_out_pres.write(msg)
             else:
-                msg = self.create_grib2_message(var, da, lead)
-                msg.data = da.isel(time=0).values
+                msg = self.create_grib2_message(var, lead)
+                msg.data = da.isel(time=0).values  # noqa: PD011 FIXME w/ unit tests
                 msg.pack()
-                print(f"\t{msg}")
+                logging.info("  %s", msg)
                 grib2_out_sfc.write(msg)
 
         # Close GRIB2 file
@@ -189,9 +192,9 @@ class Grib2Writer:
 
         # Release post job to create index files and copy files to COM
         if os.environ.get("SENDECF", "NO") != "NO":
-            SETEVENTSH = os.environ.get("SETEVENTSH")
-            cmd = [SETEVENTSH, f"{lead:03d}"]
-            print(f"Running shell subprocess {cmd}")
+            seteventsh = os.environ.get("SETEVENTSH")
+            cmd = [seteventsh, f"{lead:03d}"]
+            logging.info("Running shell subprocess %s", cmd)
             subprocess.run(cmd, check=True)
         done_signal = False
         if done_signal:
@@ -200,6 +203,7 @@ class Grib2Writer:
 
 
 if __name__ == "__main__":
+    use_uwtools_logger()
     table_file = "tables.json"
 
     start_date = pd.to_datetime("2025-07-30 06:00:00")
@@ -207,9 +211,9 @@ if __name__ == "__main__":
     g2prefix = "aigec00"
 
     t0 = time()
-    outdir = "./"
-    os.makedirs(outdir, exist_ok=True)
+    outdir = Path("./")
+    outdir.mkdir(parents=True, exist_ok=True)
     converter = Grib2Writer(start_date)
     converter.save_grib2(ds, g2prefix, outdir)
 
-    print(f"It took {(time() - t0) / 60} mins")
+    logging.info("It took %s mins", (time() - t0) / 60)

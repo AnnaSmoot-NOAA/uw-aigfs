@@ -2,6 +2,41 @@
   "properties": {
     "aigfs_ics": {
       "additionalProperties": false,
+      "anyOf": [
+        {
+          "properties": {
+            "files_to_copy": {
+              "minProperties": 1,
+              "patternProperties": {
+                "^data/": {}
+              },
+              "type": "object"
+            }
+          }
+        },
+        {
+          "properties": {
+            "files_to_hardlinke": {
+              "minProperties": 1,
+              "patternProperties": {
+                "^data/": {}
+              },
+              "type": "object"
+            }
+          }
+        },
+        {
+          "properties": {
+            "files_to_link": {
+              "minProperties": 1,
+              "patternProperties": {
+                "^data/": {}
+              },
+              "type": "object"
+            }
+          }
+        }
+      ],
       "properties": {
         "execution": {
           "$ref": "urn:uwtools:execution-parallel"
@@ -26,41 +61,6 @@
         "execution",
         "rundir",
         "variable_extraction_yaml"
-      ],
-      "anyOf": [
-        {
-          "properties": {
-            "files_to_copy": {
-              "type": "object",
-              "patternProperties": {
-                "^data/": {}
-              },
-              "minProperties": 1
-            }
-          }
-        },
-        {
-          "properties": {
-            "files_to_hardlinke": {
-              "type": "object",
-              "patternProperties": {
-                "^data/": {}
-              },
-              "minProperties": 1
-            }
-          }
-        },
-        {
-          "properties": {
-            "files_to_link": {
-              "type": "object",
-              "patternProperties": {
-                "^data/": {}
-              },
-              "minProperties": 1
-            }
-          }
-        }
       ],
       "type": "object"
     }

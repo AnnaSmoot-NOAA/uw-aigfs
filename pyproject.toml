@@ -1,0 +1,45 @@
+[tool.pytest.ini_options]
+filterwarnings = [
+  "ignore:jsonschema.RefResolver is deprecated:DeprecationWarning" # from uwtools
+]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+  "ANN001",  # missing-type-function-argument
+  "ANN201",  # missing-return-type-class-method
+  "ANN202",  # missing-return-type-private-function
+  "ANN205",  # missing-return-type-static-method
+  "C901",    # complex-structure
+  "COM812",  # missing-trailing-comma
+  "CPY001",  # missing-copyright-notice
+  "D100",    # undocumented-public-module
+  "D101",    # undocumented-public-class
+  "D102",    # undocumented-public-method
+  "D103",    # undocumented-public-function
+  "D104",    # undocumented-public-package
+  "D107",    # undocumented-public-init
+  "D200",    # unnecessary-multiline-docstring
+  "D203",    # incorrect-blank-line-before-class
+  "D212",    # multi-line-summary-first-line
+  "D401",    # non-imperative-mood
+  "INP001",  # implicit-namespace-package
+  "LOG015",  # root-logger-call
+  "PLR0913", # too-many-arguments
+  "PLR0917", # too-many-positional-arguments
+  "PLR2004", # magic-value-comparison
+  "S101",    # assert
+  "S603",    # subprocess-without-shell-equals-true
+  "UP031",   # printf-string-formatting
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = [
+  "ANN002",  # missing-type-args
+  "ANN003",  # missing-type-kwargs
+  "PT013",   # pytest-incorrect-pytest-import
+  "SLF001",  # private-member-access
+]

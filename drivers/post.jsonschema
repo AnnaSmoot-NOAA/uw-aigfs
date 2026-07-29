@@ -1,0 +1,36 @@
+{
+  "properties": {
+    "aigfs_post": {
+      "additionalProperties": false,
+      "properties": {
+        "deliver_to": {
+          "type": "string"
+        },
+        "execution": {
+          "$ref": "urn:uwtools:execution-serial"
+        },
+        "inputfiles": {
+          "minProperties": 2,
+          "type": "array"
+        },
+        "outputdir": {
+          "type": "string"
+        },
+        "rundir": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "execution",
+        "inputfiles",
+        "outputdir",
+        "rundir"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "aigfs_post"
+  ],
+  "type": "object"
+}

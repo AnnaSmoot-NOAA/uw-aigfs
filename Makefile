@@ -1,9 +1,9 @@
+ACTIVATE   = . $(INSTALLDIR)/etc/profile.d/conda.sh && conda activate
 DEVPKGS    = $(shell cat devpkgs)
 ENVNAME    = aigfs
 ENVPATH    = $(shell ls $(CONDA_PREFIX)/envs/$(ENVNAME) 2>/dev/null)
-TARGETS    = conda devenv env format lint rmenv test unittest
 INSTALLDIR = conda
-ACTIVATE   = . $(INSTALLDIR)/etc/profile.d/conda.sh && conda activate
+TARGETS    = conda devenv env format lint rmenv test unittest
 
 .PHONY: $(TARGETS)
 
@@ -23,7 +23,7 @@ format:
 	@./format
 
 lint:
-	ruff check drivers
+	ruff check .
 
 rmenv:
 	$(if $(ENVPATH),conda env remove -y -n $(ENVNAME))

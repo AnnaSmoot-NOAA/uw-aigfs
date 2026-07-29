@@ -1,9 +1,0 @@
-ecf_vars:
-  ECF_ROOT: /scratch3/BMC/wrfruc/cholt/aigfs/ecflow_ursa
-  ECF_LOGHOST: uecflow01
-  ECF_PORT: 12152
-  ECF_INCLUDE: "{{ ecf_vars.ECF_ROOT }}/include"
-  ECF_OUT: /scratch3/BMC/wrfruc/cholt/aigfs/ecf_output
-  ECF_KILL_CMD: "{{ ecf_vars.ECF_ROOT }}/scripts/killecfjob %ECF_NAME% %ECF_JOBOUT% %ECF_JOB%"
-  ECF_JOB_CMD: "mkdir -p $(dirname  %ECF_JOBOUT%) && {{ ecf_vars.ECF_ROOT }}/scripts/ecfrunjob %ECF_HOME%/../ush/job_vars.yaml %ECF_JOB%"
-  ECF_TRIES: 1
