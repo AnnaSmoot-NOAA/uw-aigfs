@@ -1,6 +1,7 @@
 jq==1.8.*
 make==4.4.*
 mypy==2.2.*
+pdoc==15.*
 pytest==9.1.*
 pytest-cov==7.1.*
 ruff==0.16.*

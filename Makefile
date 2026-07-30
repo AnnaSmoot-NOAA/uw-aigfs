@@ -3,7 +3,7 @@ DEVPKGS    = $(shell cat devpkgs)
 ENVNAME    = aigfs
 ENVPATH    = $(shell ls $(CONDA_PREFIX)/envs/$(ENVNAME) 2>/dev/null)
 INSTALLDIR = conda
-TARGETS    = conda devenv env format lint rmenv test unittest
+TARGETS    = conda devenv docs env format lint rmenv test unittest
 
 .PHONY: $(TARGETS)
 
@@ -15,6 +15,9 @@ conda:
 
 devenv: env
 	$(ACTIVATE) && mamba install -y -n $(ENVNAME) $(DEVPKGS)
+
+docs:
+	$(ACTIVATE) $(ENVNAME) && pdoc --output-dir docs/api drivers
 
 env: conda
 	$(ACTIVATE) && mamba env create -y -f environment.yml
