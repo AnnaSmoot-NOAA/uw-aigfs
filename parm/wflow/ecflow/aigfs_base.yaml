@@ -18,10 +18,10 @@ ecflow:
             script: &script
               includes:
                 entry:
-                - head.h
-                - envir-1.h
+                  - head.h
+                  - envir-1.h
                 exit:
-                - tail.h
+                  - tail.h
               manual: "Prepares AIGFS ICS from GFS."
               batchargs: !dict "{{ prep.aigfs_ics.execution.batchargs }}"
               body: |

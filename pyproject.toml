@@ -1,3 +1,24 @@
+[tool.coverage.report]
+fail_under = 100
+omit = [
+  "drivers/post.py",
+  "drivers/run_graphcast.py",
+  "drivers/utils/grib2writer.py",
+  "drivers/utils/tasks.py",
+  "ush/generate_experiment.py",
+  "ush/validation.py",
+]
+show_missing = true
+skip_covered = true
+
+[tool.coverage.run]
+branch = true
+
+[tool.mypy]
+check_untyped_defs = true
+pretty = true
+warn_return_any = true
+
 [tool.pytest.ini_options]
 filterwarnings = [
   "ignore:jsonschema.RefResolver is deprecated:DeprecationWarning" # from uwtools
@@ -33,11 +54,12 @@ ignore = [
   "PLR2004", # magic-value-comparison
   "S101",    # assert
   "S603",    # subprocess-without-shell-equals-true
+  "TC006",   # runtime-cast-value
   "UP031",   # printf-string-formatting
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = [
+"{conftest.py,**/*_test.py}" = [
   "ANN002",  # missing-type-args
   "ANN003",  # missing-type-kwargs
   "PT013",   # pytest-incorrect-pytest-import

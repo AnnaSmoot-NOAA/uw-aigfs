@@ -159,33 +159,33 @@ Use the _Conversation_ tab of your PR to ask for help with any difficulties you 
 
 ```
 uw-aigfs/
-├── conda/                  # Managed conda installation (created by make env/devenv)
-├── docs/                   # User and contributor documentation
-├── drivers/                # uwtools driver classes for each workflow stage
-│   ├── generate_ics.py     # GenICS: ICS preparation driver
-│   ├── run_graphcast.py    # GraphCastModel: forecast inference driver
-│   ├── post.py             # AIGFSPost: post-processing driver
-│   └── utils/              # Shared driver utilities (GRIB2 writing, task helpers)
-├── modulefiles/            # Environment modulefiles (WCOSS2)
+├── conda/                     # Managed conda installation (created by make env/devenv)
+├── docs/                      # User and contributor documentation
+├── drivers/                   # uwtools driver classes for each workflow stage
+│   ├── generate_ics.py        # GenICS: ICS preparation driver
+│   ├── run_graphcast.py       # GraphCastModel: forecast inference driver
+│   ├── post.py                # AIGFSPost: post-processing driver
+│   └── utils/                 # Shared driver utilities (GRIB2 writing, task helpers)
+├── modulefiles/               # Environment modulefiles (WCOSS2)
 ├── parm/
-│   ├── machines/           # Per-platform YAML overrides (e.g., ursa.yaml)
+│   ├── machines/              # Per-platform YAML overrides (e.g., ursa.yaml)
 │   ├── wflow/
-│   │   └── rocoto/         # Rocoto workflow YAML template (aigfs_base.yaml)
-│   └── wgrib2_data_to_process.yml  # Variables and levels to extract from GFS GRIB2
+│   │   └── rocoto/            # Rocoto workflow YAML template (aigfs_base.yaml)
+│   └── wgrib2_data.yaml       # Variables and levels to extract from GFS GRIB2
 ├── scripts/
-│   └── run_post.sh         # Helper script for post-processing
-├── setup                   # Miniforge installer script (called by make conda)
-├── tests/                  # Unit tests (pytest)
-│   └── drivers/            # Tests for driver modules
+│   └── run_post.sh            # Helper script for post-processing
+├── setup                      # Miniforge installer script (called by make conda)
+├── tests/                     # Unit tests (pytest)
+│   └── drivers/               # Tests for driver modules
 ├── ush/
-│   ├── default_config.yaml # Baseline experiment configuration
-│   ├── generate_experiment.py  # Experiment setup CLI
-│   └── validation.py       # Pydantic config validation
-├── devpkgs                 # List of additional developer package dependencies
-├── environment.yml         # Conda environment definition
-├── load_wflow_modules.sh   # Platform environment activation script
-├── Makefile                # Developer convenience targets
-└── pyproject.toml          # Tool configuration (ruff, pytest)
+│   ├── default_config.yaml    # Baseline experiment configuration
+│   ├── generate_experiment.py # Experiment setup CLI
+│   └── validation.py          # Pydantic config validation
+├── devpkgs                    # List of additional developer package dependencies
+├── environment.yml            # Conda environment definition
+├── load_wflow_modules.sh      # Platform environment activation script
+├── Makefile                   # Developer convenience targets
+└── pyproject.toml             # Tool configuration (ruff, pytest)
 ```
 
 ### Key Concepts

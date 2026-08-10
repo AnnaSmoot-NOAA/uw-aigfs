@@ -214,7 +214,7 @@ The `task_prep` ***Rocoto*** task runs `drivers/generate_ics.py` (driver class `
 1. Hard-links GFS GRIB2 files from `user.gfs_data` into the cycle's `prep/data/` subdirectory. The files required are:
    - Two timesteps from the previous two cycles (for temporal interpolation)
    - The analysis and short-range forecast from the current cycle
-2. Runs `wgrib2` commands (defined by `parm/wgrib2_data_to_process.yml`) to extract meteorological variables at the required pressure levels into individual netCDF files.
+2. Runs `wgrib2` commands (defined by `parm/wgrib2_data.yaml`) to extract meteorological variables at the required pressure levels into individual netCDF files.
 3. Merges the extracted netCDF files into a single initial-conditions file:
 
    ```

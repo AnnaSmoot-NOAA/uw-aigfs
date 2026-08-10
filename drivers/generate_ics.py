@@ -24,7 +24,7 @@ class GenICS(DriverCycleBased, FileStager):
     # Tasks
 
     @collection
-    def provisioned_rundir(self):
+    def provisioned_rundir(self):  # pragma: no cover
         """
         Run directory provisioned with all required content.
         """
@@ -38,12 +38,12 @@ class GenICS(DriverCycleBased, FileStager):
         yield required
 
     @task
-    def merged_netcdf_files(self):
+    def merged_netcdf_files(self):  # pragma: no cover
         """
-        Open the intermediate netcdf files, process the data and write the result in a single file.
+        Open the intermediate netCDF files, process the data and write the result in a single file.
         """
         path = self.rundir / f"aigfs.t{self.cycle.strftime('%H')}z.ic.nc"
-        yield f"Merged NetCDF file {path}"
+        yield f"Merged netCDF file {path}"
         yield Asset(path, path.is_file)
         yield self.wgrib2_tasks()
 
@@ -147,7 +147,7 @@ class GenICS(DriverCycleBased, FileStager):
         for sect in ("files_to_copy", "files_to_hardlink", "files_to_link"):
             rel_paths = self.config.get(sect, [])
             for path in rel_paths:
-                if path.startswith("data"):
+                if path.startswith("data"):  # pragma: no cover
                     files.add(self.rundir / path)
         wgrib2_commands = []
         file_pattern = r"\w*\.t(\d{2})z(\.\w*)"
@@ -158,12 +158,12 @@ class GenICS(DriverCycleBased, FileStager):
                 level = var_config["levels"][0]
                 for grib_file in matching_files:
                     if (load_once := var_config.get("load_once")) is False:
-                        continue
+                        continue  # pragma: no cover
                     logging.info("loading %s", variable)
                     hour_match = re.match(file_pattern, grib_file.name)
                     if hour_match:
                         hour = hour_match.groups()[0]
-                    else:
+                    else:  # pragma: no cover
                         msg = "Files don't have names expected by this driver!"
                         raise ValueError(msg)
                     if load_once is True:

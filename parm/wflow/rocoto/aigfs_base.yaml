@@ -28,8 +28,8 @@ workflow:
             --cycle @Y-@m-@dT@H
             --key-path prep
       join:
-       cyclestr:
-         value: '&LOGDIR;/{{ jobname }}_@Y@m@d@H.log'
+        cyclestr:
+          value: '&LOGDIR;/{{ jobname }}_@Y@m@d@H.log'
       memory: "{{ prep.aigfs_ics.execution.batchargs.memory }}"
       nodes: "{{ prep.aigfs_ics.execution.batchargs.nodes }}:ppn={{ prep.aigfs_ics.execution.batchargs.tasks_per_node }}"
       walltime: "{{ prep.aigfs_ics.execution.batchargs.walltime }}"
@@ -47,8 +47,8 @@ workflow:
             --cycle @Y-@m-@dT@H
             --key-path forecast
       join:
-       cyclestr:
-         value: '&LOGDIR;/{{ jobname }}_@Y@m@d@H.log'
+        cyclestr:
+          value: '&LOGDIR;/{{ jobname }}_@Y@m@d@H.log'
       nodes: "{{ forecast.graphcast_model.execution.batchargs.nodes }}:ppn={{ forecast.graphcast_model.execution.batchargs.tasks_per_node }}"
       memory: "{{ forecast.graphcast_model.execution.batchargs.memory }}"
       walltime: "{{ forecast.graphcast_model.execution.batchargs.walltime }}"
@@ -76,8 +76,8 @@ workflow:
               --key-path post
               --leadtime #fhr#"
         join:
-         cyclestr:
-           value: '&LOGDIR;/{{ jobname }}_@Y@m@d@H.log'
+          cyclestr:
+            value: '&LOGDIR;/{{ jobname }}_@Y@m@d@H.log'
         envars:
           FHR: "#fhr#"
         nodes: "{{ post.aigfs_post.execution.batchargs.nodes }}:ppn={{ post.aigfs_post.execution.batchargs.tasks_per_node }}"

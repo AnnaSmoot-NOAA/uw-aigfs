@@ -1,37 +1,36 @@
-ACTIVATE   = . $(INSTALLDIR)/etc/profile.d/conda.sh && conda activate
-DEVPKGS    = $(shell cat devpkgs)
-ENVNAME    = aigfs
-ENVPATH    = $(shell ls $(CONDA_PREFIX)/envs/$(ENVNAME) 2>/dev/null)
-INSTALLDIR = conda
-TARGETS    = conda devenv docs env format lint rmenv test unittest
+SHELL   := $(shell which bash)
+TARGETS := bootstrap devenv docs env format lint rmenv test typecheck unittest
 
 .PHONY: $(TARGETS)
 
 all:
 	$(error Valid targets are: $(TARGETS))
 
-conda:
-	CONDA_DIR=$(INSTALLDIR) ./setup
+bootstrap:
+	@bin/run bootstrap
 
-devenv: env
-	$(ACTIVATE) && mamba install -y -n $(ENVNAME) $(DEVPKGS)
+devenv:
+	@DEVMODE=1 bin/run makeenv
 
 docs:
-	$(ACTIVATE) $(ENVNAME) && pdoc --output-dir docs/api drivers
+	@bin/run makedocs
 
-env: conda
-	$(ACTIVATE) && mamba env create -y -f environment.yml
+env:
+	@bin/run makeenv
 
 format:
-	@./format
+	@bin/run format
 
 lint:
-	ruff check .
+	@bin/run lint
 
 rmenv:
-	$(if $(ENVPATH),conda env remove -y -n $(ENVNAME))
+	@bin/run rmenv
 
-test: lint unittest
+test: lint typecheck unittest
+
+typecheck:
+	@bin/run typecheck
 
 unittest:
-	pytest --cov tests
+	@bin/run unittest

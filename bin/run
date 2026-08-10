@@ -1,0 +1,182 @@
+#!/bin/bash
+
+set -aeuo pipefail
+
+# Export CONDADIR to specify alternate conda install path.
+# Export DEVMODE to install development packages.
+
+# Tools:
+
+bootstrap() {
+  local condadir env rootdir
+  condadir=$(condadir)
+  env=$(env)
+  rootdir=$(rootdir)
+  if [[ -d $condadir ]]; then
+    msg Using existing conda: $condadir
+  else
+    msg Installing conda to $condadir
+    (
+      os=$(uname)
+      test $os == Darwin && os=MacOSX
+      machine=$(uname -m)
+      installer=Miniforge3-$os-$machine.sh
+      version=26.3.2-3
+      curl -sSLO https://github.com/conda-forge/miniforge/releases/download/$version/$installer
+      bash $installer -bfp $condadir
+      rm -v $installer
+      activate base
+      conda install --quiet --yes ansible=14.2.*
+    )
+    msg Installed conda to $condadir
+  fi
+}
+
+makedocs() {
+  local outdir rootdir
+  rootdir=$(rootdir)
+  outdir=$rootdir/docs/api
+  activate $(env)
+  msg Building documentation in $outdir
+  pdoc --output-dir $outdir $rootdir/drivers
+  conda deactivate
+  msg Built documentation in $outdir
+}
+
+makeenv() {
+  local condadir env
+  condadir=$(condadir)
+  env=$(env)
+  bootstrap
+  activate base
+  PIP_VERBOSE=1
+  XDG_CACHE_HOME=$(condadir)/cache
+  export PIP_VERBOSE XDG_CACHE_HOME
+  if [[ -d $condadir/envs/$env ]]; then
+    msg Using existing environment $env
+  else
+    msg Creating environment $env
+    conda env create --file $(envyaml) --quiet --yes
+    msg Created environment $env
+  fi
+  if [[ -v DEVMODE ]]; then
+    msg Installing dev packages into environment $env
+    conda env update --file $(dirname $(envyaml))/devpkgs.yaml --name $env --quiet
+    msg Installed dev packages into environment $env
+  fi
+  unset PIP_VERBOSE XDG_CACHE_HOME
+}
+
+format() {
+  activate $(env)
+  msg Formatting JSON
+  for f in $(jsfiles); do
+    jq -S . $f >$f.new || (echo "    in $f" && rm $f.new && false)
+    if cmp --quiet $f.new $f; then
+      rm $f.new
+    else
+      mv $f.new $f
+    fi
+  done
+  msg Formatting shell code
+  shfmt --indent 2 --write $(shfiles)
+  msg Formatting Python code
+  ruff format $(pyfiles)
+  msg Sorting Python imports
+  ruff check --select I --fix $(pyfiles)
+  conda deactivate
+}
+
+jsfiles() {
+  find $(rootdir) -path $(condadir) -prune -o -type f -name "*.json*" -print
+}
+
+lint() {
+  activate $(env)
+  msg Linting YAML
+  yamllint --no-warnings $(yamlfiles)
+  msg Linting shell code
+  shellcheck --format=gcc --severity=info --shell=bash $(shfiles)
+  msg Linting Python code
+  ruff check $(pyfiles)
+  conda deactivate
+}
+
+msg() {
+  echo "=> $*"
+}
+
+pyfiles() {
+  find $(rootdir) -path $(condadir) -prune -o -type f -name "*.py" -print
+}
+
+rmenv() {
+  local env
+  env=$(env)
+  activate base
+  msg Removing environment $env
+  conda env remove --name $env --yes
+  msg Removed environment $env
+}
+
+shfiles() {
+  find $(rootdir) -path $(condadir) -prune -o -type f -print | while read -r x; do
+    file $x | grep -q "Bourne-Again shell script" && echo $x
+  done | sort
+}
+
+typecheck() {
+  activate $(env)
+  msg Typechecking Python code
+  MYPYPATH=$(rootdir)/drivers mypy $(pyfiles)
+  conda deactivate
+}
+
+unittest() {
+  activate $(env)
+  msg Running Python unit tests
+  pytest --cov=drivers --cov=ush --cov-report=term-missing --ignore=conda/ .
+  conda deactivate
+}
+
+# Helpers:
+
+activate() {
+  local env
+  env=$1
+  . $(condadir)/etc/profile.d/conda.sh
+  CONDARC=$(rootdir)/.condarc
+  export CONDARC
+  conda activate $env
+}
+
+condadir() {
+  echo ${CONDADIR:-$(rootdir)/conda}
+}
+
+env() {
+  sed -n '/^name:.*/ s/^name: *//p' $(envyaml)
+}
+
+envyaml() {
+  echo $(rootdir)/envs/environment.yaml
+}
+
+fromroot() {
+  printf "$(rootdir)/%s " $@
+}
+
+rootdir() {
+  git rev-parse --show-toplevel
+}
+
+yamlfiles() {
+  find $(rootdir) -path $(condadir) -prune -o -type f -name "*.yaml" -print
+}
+
+# Main entrypoint:
+
+test $# -eq 0 && echo "usage: $(basename $0) tool [args ...]" && exit 1
+tool=$1
+shift
+$tool $@

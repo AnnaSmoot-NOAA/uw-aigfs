@@ -36,7 +36,7 @@ prep:
       data/gfs.t{{ timevars.m1_cyc }}z.pgrb2.0p25.f006: '{{ user.gfs_data }}/{{ timevars.m1_yyyymmdd }}/gfs.t{{ timevars.m1_cyc}}z.pgrb2.0p25.f006'
       data/gfs.t{{ timevars.cyc }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/{{ timevars.yyyymmdd }}/gfs.t{{ timevars.cyc }}z.pgrb2.0p25.f000'
     rundir: '{{ user.experiment_dir }}/{{ cycle.strftime("%Y%m%d%H") }}/prep'
-    variable_extraction_yaml: '{{ user.app_home }}/parm/wgrib2_data_to_process.yml'
+    variable_extraction_yaml: '{{ user.app_home }}/parm/wgrib2_data.yaml'
   platform:
     account: '{{ platform.account }}'
     scheduler: '{{ platform.scheduler }}'

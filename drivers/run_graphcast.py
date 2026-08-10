@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import dataclasses
 import logging
-import sys
 from datetime import timedelta
 from functools import partial
 from pathlib import Path
@@ -16,7 +15,8 @@ import jax
 import numpy as np
 import pandas as pd
 import xarray as xr
-from graphcast import (
+from graphcast import (  # type: ignore[import-untyped]
+    CheckPoint,
     autoregressive,
     casting,
     checkpoint,
@@ -28,10 +28,8 @@ from graphcast import (
 from iotaa import Asset, collection, task
 from uwtools.drivers.driver import DriverCycleBased
 
-sys.path.append(str(Path(__file__).parent))
-
-from utils import grib2writer
-from utils.tasks import file
+from .utils.grib2writer import Grib2Writer
+from .utils.tasks import file
 
 jax.config.update("jax_platforms", "cpu")
 
@@ -42,8 +40,8 @@ class GraphCastModel(DriverCycleBased):
         """
         GraphCast predictions.
         """
-        path = self.rundir / "aigfs.done"
         yield "GraphCast predictions"
+        path = self.rundir / "aigfs.done"
         yield Asset(path, path.is_file)
         ics = self.initial_conditions()
         itfs = self.inputs_targets_forcings()
@@ -51,7 +49,7 @@ class GraphCastModel(DriverCycleBased):
         norm_stats = self.load_normalization_stats()
         yield [ics, itfs, model_weights, norm_stats]
         ds = _clean_ics(ics.ref)
-        converter = grib2writer.Grib2Writer(
+        converter = Grib2Writer(
             start_date=pd.to_datetime(ds.datetime.values[0][-1]),  # noqa: PD011 FIXME w/ unit tests
             case_name="aigfs",
             json_path=Path(self.config["json_path"]),
@@ -93,9 +91,7 @@ class GraphCastModel(DriverCycleBased):
         Run directory provisioned with all required content.
         """
         yield self.taskname("provisioned run directory")
-        yield [
-            self.runscript(),
-        ]
+        yield [self.runscript()]
 
     # Helper functions
 
@@ -115,8 +111,8 @@ class GraphCastModel(DriverCycleBased):
         """
         Load the initial conditions for the model.
         """
-        ds = xr.Dataset()
         yield "initial conditions"
+        ds = xr.Dataset()
         yield Asset(ds, lambda: bool(ds))
         ics_path = self.config["ics_path"]
         yield file(ics_path)
@@ -133,13 +129,13 @@ class GraphCastModel(DriverCycleBased):
         """
         The input for GraphCast.
         """
-        fcst_length = self.config["forecast_length"]
-        fcst_freq = self.config["forecast_freq"]
-        data = []
         yield "inputs, targets, and forcings"
-        yield Asset(data, lambda: bool(data))
+        datasets: list[xr.Dataset] = []
+        yield Asset(datasets, lambda: bool(datasets))
         yield self.initial_conditions()
-        data.extend(
+        fcst_freq = self.config["forecast_freq"]
+        fcst_length = self.config["forecast_length"]
+        datasets.extend(
             data_utils.extract_inputs_targets_forcings(
                 self.initial_conditions().ref,
                 target_lead_times=slice(f"{fcst_freq}h", f"{fcst_length}h"),
@@ -152,10 +148,10 @@ class GraphCastModel(DriverCycleBased):
         """
         Load the pre-trained model weights.
         """
-        model_weights_path = Path(self.config["model_weights_path"])
-        weights = []
         yield "model weights"
+        weights: list[CheckPoint] = []
         yield Asset(weights, lambda: bool(weights))
+        model_weights_path = Path(self.config["model_weights_path"])
         yield file(model_weights_path)
         with model_weights_path.open("rb") as f:
             weights.append(checkpoint.load(f, graphcast.CheckPoint))
@@ -165,8 +161,8 @@ class GraphCastModel(DriverCycleBased):
         """
         Load and return the stats files contents.
         """
-        datasets = []
         yield "normalization stats"
+        datasets: list[xr.Dataset] = []
         yield Asset(datasets, lambda: bool(datasets))
         diffs_stddev_path = self.config["diffs_stddev_path"]
         mean_path = self.config["mean_path"]

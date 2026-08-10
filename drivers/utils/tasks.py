@@ -2,13 +2,14 @@
 Reusable tasks for the AIGFS drivers.
 """
 
+from collections.abc import Iterator
 from pathlib import Path
 
 from iotaa import Asset, external
 
 
 @external
-def file(path: Path | str):
+def file(path: Path | str) -> Iterator:
     """
     An existing file.
 

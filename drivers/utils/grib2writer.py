@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from time import time
 
-import grib2io
+import grib2io  # type: ignore[import-untyped]
 import numpy as np
 import pandas as pd
 import xarray as xr
@@ -49,20 +49,22 @@ class Grib2Writer:
         self, start_date: datetime, case_name: str = "aigfs", json_path: Path | None = None
     ) -> None:
         self.case_name = case_name
-
         if self.case_name == "aigfs":
+            assert json_path
             table_file = json_path / "tables_aigfs.json"
         elif self.case_name.startswith("aige"):
+            assert json_path
             table_file = json_path / "tables_aigefs.json"
         else:
             msg = f"name {self.case_name} is not supported!"
             raise ValueError(msg)
-
         with table_file.open() as f:
             self.attrs = json.load(f)
         self.start_date = start_date
 
-    def create_grib2_message(self, var: str, lead: int, level: int | None = None):
+    def create_grib2_message(
+        self, var: str, lead: int, level: int | None = None
+    ) -> grib2io.Grib2Message:
         # Set duration. NOTE: the duration attr exists for all Grib2Message objects.
         # For Grib2Messages that are instantaneous, the duration is just 0.
         duration = timedelta(hours=0)
@@ -96,6 +98,7 @@ class Grib2Writer:
         # update decScaleFactor for specific humidity
         # 12 for [5000, 10000]Pa, 10 for [15000, ..., 40000]Pa, 8 for [50000, ..., 100000]Pa
         if var == "specific_humidity":
+            assert level is not None
             if level >= 5000 and level <= 10000:
                 msg.decScaleFactor = 12
             elif level >= 15000 and level <= 40000:
@@ -116,7 +119,7 @@ class Grib2Writer:
 
         return msg
 
-    def save_grib2(self, xarray_ds: xr.Dataset, outdir: Path):
+    def save_grib2(self, xarray_ds: xr.Dataset, outdir: Path) -> None:
         prefix = "aigefs" if self.case_name.startswith("aige") else "aigfs"
 
         # Convert geopotential to geopotential height.
@@ -192,7 +195,7 @@ class Grib2Writer:
 
         # Release post job to create index files and copy files to COM
         if os.environ.get("SENDECF", "NO") != "NO":
-            seteventsh = os.environ.get("SETEVENTSH")
+            seteventsh = os.environ["SETEVENTSH"]
             cmd = [seteventsh, f"{lead:03d}"]
             logging.info("Running shell subprocess %s", cmd)
             subprocess.run(cmd, check=True)
@@ -205,15 +208,11 @@ class Grib2Writer:
 if __name__ == "__main__":
     use_uwtools_logger()
     table_file = "tables.json"
-
     start_date = pd.to_datetime("2025-07-30 06:00:00")
     ds = xr.open_dataset("forecasts_levels-13_steps-64.nc")
-    g2prefix = "aigec00"
-
     t0 = time()
     outdir = Path("./")
     outdir.mkdir(parents=True, exist_ok=True)
     converter = Grib2Writer(start_date)
-    converter.save_grib2(ds, g2prefix, outdir)
-
+    converter.save_grib2(ds, outdir)
     logging.info("It took %s mins", (time() - t0) / 60)

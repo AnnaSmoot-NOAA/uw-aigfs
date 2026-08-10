@@ -88,7 +88,7 @@ class AIGFSPost(DriverCycleLeadtimeBased):
         """
         Returns a description of the file(s) created when this component runs.
         """
-        return {"idx": self._idx2grib.keys()}
+        return {"idx": [Path(x) for x in self._idx2grib]}
 
     # Private helper methods
 
