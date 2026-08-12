@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -euo pipefail
-
 # Export CONDADIR to specify alternate conda install path.
 
 run=$(readlink -f $(dirname ${BASH_SOURCE[0]}))/run

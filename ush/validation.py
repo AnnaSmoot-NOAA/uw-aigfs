@@ -1,16 +1,19 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta  # noqa: TC003
-from pathlib import Path  # noqa: TC003
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, model_validator
+
+if TYPE_CHECKING:
+    from datetime import datetime, timedelta
+    from pathlib import Path
 
 
 class Config(BaseModel):
     user: User
 
 
-class User(BaseModel):
+class User(BaseModel):  # pragma: no cover
     cycle_freq: timedelta
     experiment_dir: Path
     first_cycle: datetime
@@ -25,5 +28,5 @@ class User(BaseModel):
         return self
 
 
-def validate(config: dict) -> Config:
+def validate(config: dict) -> Config:  # pragma: no cover
     return Config(**config)

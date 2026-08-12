@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import argparse
 import logging
@@ -16,7 +16,7 @@ from .validation import Config, validate
 APP_HOME = Path(__file__).parent.parent.resolve()
 
 
-def generate_experiment_files(
+def generate_experiment_files(  # pragma: no cover
     experiment_config: YAMLConfig,
     experiment_file: Path,
     wflow_manager: str = "rocoto",
@@ -37,7 +37,7 @@ def generate_experiment_files(
         sys.exit(1)
 
 
-def main() -> None:
+def main() -> None:  # pragma: no cover
     """
     Stage the workflow manager artifacts and experiment YAML in the experiment directory.
     """
@@ -49,7 +49,7 @@ def main() -> None:
     generate_experiment_files(experiment_config, experiment_file)
 
 
-def parse_args() -> list[Path]:
+def parse_args() -> list[Path]:  # pragma: no cover
     """
     Parse command-line arguments.
     """
@@ -64,7 +64,7 @@ def parse_args() -> list[Path]:
     return cast(list[Path], parser.parse_args().user_config_files)
 
 
-def prepare_configs(user_config_files: list[Path]) -> YAMLConfig:
+def prepare_configs(user_config_files: list[Path]) -> YAMLConfig:  # pragma: no cover
     """
     Combine base, user, and platform configs into one experiment config.
     """
@@ -85,7 +85,7 @@ def prepare_configs(user_config_files: list[Path]) -> YAMLConfig:
     return cast(YAMLConfig, experiment_config)
 
 
-def setup_experiment_directory(validated: Config) -> tuple[Path, Path]:
+def setup_experiment_directory(validated: Config) -> tuple[Path, Path]:  # pragma: no cover
     """
     Create the experiment directory and write experiment.yaml.
     """

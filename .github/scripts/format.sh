@@ -1,12 +1,11 @@
 #!/bin/bash
 
-set -eu
-source conda/etc/profile.d/conda.sh
-conda activate aigfs
-set -x
+set -eu -o pipefail
+. bin/activate
 make format
 if [[ -n "$(git status --porcelain)" ]]; then
   git --no-pager diff
-  echo "UNFORMATTED CODE DETECTED"
+  echo UNFORMATTED CODE DETECTED
   exit 1
 fi
+echo ALL GOOD

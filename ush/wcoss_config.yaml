@@ -19,14 +19,13 @@
 # the retention window under normal and high-load conditions.
 
 user:
-  experiment_dir: /lfs/h2/emc/stmp/{{ 'USER' | env }}/aigfs/run
   aigfs_app: /lfs/h2/emc/noscrub/{{ 'USER' | env }}/aigfs
+  experiment_dir: /lfs/h2/emc/stmp/{{ 'USER' | env }}/aigfs/run
   gfs_data: /lfs/h1/ops/prod/com/gfs/v16.3
-
 prep:
   aigfs_ics:
     files_to_hardlink:
-      data/gfs.t{{ timevars.m2_cyc }}z.pgrb2.0p25.f006: '{{ user.gfs_data }}/gfs.{{ timevars.m2_yyyymmdd }}/{{ timevars.m2_cyc }}/atmos/gfs.t{{ timevars.m2_cyc }}z.pgrb2.0p25.f006'
+      data/gfs.t{{ timevars.cyc }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/gfs.{{ timevars.yyyymmdd }}/{{ timevars.cyc }}/atmos/gfs.t{{ timevars.cyc }}z.pgrb2.0p25.f000'
       data/gfs.t{{ timevars.m1_cyc }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/gfs.{{ timevars.m1_yyyymmdd }}/{{ timevars.m1_cyc }}/atmos/gfs.t{{ timevars.m1_cyc }}z.pgrb2.0p25.f000'
       data/gfs.t{{ timevars.m1_cyc }}z.pgrb2.0p25.f006: '{{ user.gfs_data }}/gfs.{{ timevars.m1_yyyymmdd }}/{{ timevars.m1_cyc }}/atmos/gfs.t{{ timevars.m1_cyc }}z.pgrb2.0p25.f006'
-      data/gfs.t{{ timevars.cyc }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/gfs.{{ timevars.yyyymmdd }}/{{ timevars.cyc }}/atmos/gfs.t{{ timevars.cyc }}z.pgrb2.0p25.f000'
+      data/gfs.t{{ timevars.m2_cyc }}z.pgrb2.0p25.f006: '{{ user.gfs_data }}/gfs.{{ timevars.m2_yyyymmdd }}/{{ timevars.m2_cyc }}/atmos/gfs.t{{ timevars.m2_cyc }}z.pgrb2.0p25.f006'

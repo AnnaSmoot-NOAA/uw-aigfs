@@ -1,21 +1,21 @@
 user:
-  experiment_dir: YOUR_EXPERIMENT_DIR
-  gfs_data: YOUR_GFS_DATA
   cycle_freq: !timedelta 6
+  experiment_dir: YOUR_EXPERIMENT_DIR
   first_cycle: !datetime 2025-10-21T00
+  gfs_data: YOUR_GFS_DATA
   last_cycle: !datetime 2025-10-21T00
 platform:
   pretrained_model_path: '{{ user.aigfs_app }}/fix'
 timevars:
+  cyc: '{{ cycle.strftime("%H") }}'
+  fff: '{{ "%03d" % (leadtime.total_seconds() // 3600) }}'
+  m1_cyc: '{{ (cycle - user.cycle_freq).strftime("%H") }}'
+  m1_yyyymmdd: '{{ (cycle - user.cycle_freq).strftime("%Y%m%d") }}'
+  m2_cyc: '{{ (cycle - 2*user.cycle_freq).strftime("%H") }}'
+  m2_yyyymmdd: '{{ (cycle - 2*user.cycle_freq).strftime("%Y%m%d") }}'
   valid_time: "{{ (cycle + leadtime).strftime('%Y-%m-%d_%H:%M:%S') }}"
   yyyymmdd: '{{ cycle.strftime("%Y%m%d") }}'
   yyyymmddhh: '{{ cycle.strftime("%Y%m%d%H") }}'
-  cyc: '{{ cycle.strftime("%H") }}'
-  fff: '{{ "%03d" % (leadtime.total_seconds() // 3600) }}'
-  m2_cyc: '{{ (cycle - 2*user.cycle_freq).strftime("%H") }}'
-  m2_yyyymmdd: '{{ (cycle - 2*user.cycle_freq).strftime("%Y%m%d") }}'
-  m1_cyc: '{{ (cycle - user.cycle_freq).strftime("%H") }}'
-  m1_yyyymmdd: '{{ (cycle - user.cycle_freq).strftime("%Y%m%d") }}'
 prep:
   aigfs_ics:
     execution:
@@ -23,25 +23,26 @@ prep:
         debug: True
         memory: 10GB
         nodes: 1
+        rundir: '{{ user.app_home }}'
         tasks_per_node: 1
         walltime: 00:30:00
-        rundir: '{{ user.app_home }}'
       envcmds:
         - source {{ user.app_home }}/load_wflow_modules.sh {{ user.platform }}
         - module load wgrib2
-      executable: uw execute --module {{ user.app_home }}/drivers/generate_ics.py --classname GenICS --task merged_netcdf_files -c {{ user.experiment_dir }}/experiment.yaml --cycle {{ cycle.strftime('%Y-%m-%d_%H:%M:%S') }} --key-path prep
+      executable: uw execute --module {{ user.app_home }}/drivers/generate_ics.py --classname AIGFSICs --task merged_netcdf_files -c {{ user.experiment_dir }}/experiment.yaml --cycle {{ cycle.strftime('%Y-%m-%d_%H:%M:%S') }} --key-path prep
     files_to_hardlink:
-      data/gfs.t{{ timevars.m2_cyc }}z.pgrb2.0p25.f006: '{{ user.gfs_data }}/{{ timevars.m2_yyyymmdd }}/gfs.t{{ timevars.m2_cyc }}z.pgrb2.0p25.f006'
+      data/gfs.t{{ timevars.cyc }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/{{ timevars.yyyymmdd }}/gfs.t{{ timevars.cyc }}z.pgrb2.0p25.f000'
       data/gfs.t{{ timevars.m1_cyc }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/{{ timevars.m1_yyyymmdd }}/gfs.t{{ timevars.m1_cyc}}z.pgrb2.0p25.f000'
       data/gfs.t{{ timevars.m1_cyc }}z.pgrb2.0p25.f006: '{{ user.gfs_data }}/{{ timevars.m1_yyyymmdd }}/gfs.t{{ timevars.m1_cyc}}z.pgrb2.0p25.f006'
-      data/gfs.t{{ timevars.cyc }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/{{ timevars.yyyymmdd }}/gfs.t{{ timevars.cyc }}z.pgrb2.0p25.f000'
+      data/gfs.t{{ timevars.m2_cyc }}z.pgrb2.0p25.f006: '{{ user.gfs_data }}/{{ timevars.m2_yyyymmdd }}/gfs.t{{ timevars.m2_cyc }}z.pgrb2.0p25.f006'
     rundir: '{{ user.experiment_dir }}/{{ cycle.strftime("%Y%m%d%H") }}/prep'
     variable_extraction_yaml: '{{ user.app_home }}/parm/wgrib2_data.yaml'
   platform:
     account: '{{ platform.account }}'
     scheduler: '{{ platform.scheduler }}'
 forecast:
-  graphcast_model:
+  aigfs_inference:
+    diffs_stddev_path: '{{ platform.pretrained_model_path }}/stats/diffs_stddev_by_level.nc'
     execution:
       batchargs:
         debug: True
@@ -52,16 +53,15 @@ forecast:
       envcmds:
         - source {{ user.app_home }}/load_wflow_modules.sh {{ user.platform }}
         - set -x
-      executable: uw execute --module {{ user.app_home }}/drivers/run_graphcast.py --classname GraphCastModel --task predictions -c {{ user.experiment_dir }}/experiment.yaml --cycle {{ cycle.strftime('%Y-%m-%d_%H:%M:%S') }} --key-path forecast
+      executable: uw execute --module {{ user.app_home }}/drivers/run_graphcast.py --classname AIGFSInference --task predictions -c {{ user.experiment_dir }}/experiment.yaml --cycle {{ cycle.strftime('%Y-%m-%d_%H:%M:%S') }} --key-path forecast
     forecast_freq: 6
     forecast_length: 120
     ics_path: '{{ prep.aigfs_ics.rundir }}/aigfs.t{{ timevars.cyc }}z.ic.nc'
     json_path: '{{ platform.pretrained_model_path }}/tables'
-    diffs_stddev_path: '{{ platform.pretrained_model_path }}/stats/diffs_stddev_by_level.nc'
-    model_weights_path: '{{ platform.pretrained_model_path }}/params/GCGFSv2_finetuned - GDAS - ERA5 - resolution 0.25 - pressure levels 13 - mesh 2to6 - precipitation output only.npz'
     mean_path: '{{ platform.pretrained_model_path }}/stats/mean_by_level.nc'
-    stddev_path: '{{ platform.pretrained_model_path }}/stats/stddev_by_level.nc'
+    model_weights_path: '{{ platform.pretrained_model_path }}/params/GCGFSv2_finetuned - GDAS - ERA5 - resolution 0.25 - pressure levels 13 - mesh 2to6 - precipitation output only.npz'
     rundir: '{{ user.experiment_dir }}/{{ cycle.strftime("%Y%m%d%H") }}/forecast'
+    stddev_path: '{{ platform.pretrained_model_path }}/stats/stddev_by_level.nc'
   platform:
     account: '{{ platform.account }}'
     scheduler: '{{ platform.scheduler }}'
@@ -78,10 +78,10 @@ post:
         - source {{ user.app_home }}/load_wflow_modules.sh {{ user.platform }}
         - module load wgrib2
       executable: uw execute --module {{ user.app_home }}/drivers/post.py --classname AIGFSPost --task delivery -c {{ user.experiment_dir }}/experiment.yaml --cycle {{ cycle.strftime('%Y-%m-%d_%H:%M:%S') }} --key-path post --leadtime $FHR
-    deliver_to: "{{ forecast.graphcast_model.rundir }}"
+    deliver_to: "{{ forecast.aigfs_inference.rundir }}"
     inputfiles:
-      - '{{ forecast.graphcast_model.rundir }}/aigfs.t{{ timevars.cyc }}z.sfc.f{{ timevars.fff }}.grib2'
-      - '{{ forecast.graphcast_model.rundir }}/aigfs.t{{ timevars.cyc }}z.pres.f{{ timevars.fff }}.grib2'
+      - '{{ forecast.aigfs_inference.rundir }}/aigfs.t{{ timevars.cyc }}z.sfc.f{{ timevars.fff }}.grib2'
+      - '{{ forecast.aigfs_inference.rundir }}/aigfs.t{{ timevars.cyc }}z.pres.f{{ timevars.fff }}.grib2'
     outputdir: '{{ post.aigfs_post.rundir }}'
     rundir: '{{ user.experiment_dir }}/{{ timevars.yyyymmddhh }}/post_{{ timevars.fff }}'
   platform:

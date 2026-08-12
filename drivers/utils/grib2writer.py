@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import json
 import logging
@@ -47,7 +47,7 @@ SECTION3 = np.array(
 class Grib2Writer:
     def __init__(
         self, start_date: datetime, case_name: str = "aigfs", json_path: Path | None = None
-    ) -> None:
+    ) -> None:  # pragma: no cover
         self.case_name = case_name
         if self.case_name == "aigfs":
             assert json_path
@@ -64,7 +64,7 @@ class Grib2Writer:
 
     def create_grib2_message(
         self, var: str, lead: int, level: int | None = None
-    ) -> grib2io.Grib2Message:
+    ) -> grib2io.Grib2Message:  # pragma: no cover
         # Set duration. NOTE: the duration attr exists for all Grib2Message objects.
         # For Grib2Messages that are instantaneous, the duration is just 0.
         duration = timedelta(hours=0)
@@ -119,7 +119,7 @@ class Grib2Writer:
 
         return msg
 
-    def save_grib2(self, xarray_ds: xr.Dataset, outdir: Path) -> None:
+    def save_grib2(self, xarray_ds: xr.Dataset, outdir: Path) -> None:  # pragma: no cover
         prefix = "aigefs" if self.case_name.startswith("aige") else "aigfs"
 
         # Convert geopotential to geopotential height.
@@ -205,9 +205,8 @@ class Grib2Writer:
             pass
 
 
-if __name__ == "__main__":
+def main():  # pragma: no cover
     use_uwtools_logger()
-    table_file = "tables.json"
     start_date = pd.to_datetime("2025-07-30 06:00:00")
     ds = xr.open_dataset("forecasts_levels-13_steps-64.nc")
     t0 = time()
@@ -216,3 +215,7 @@ if __name__ == "__main__":
     converter = Grib2Writer(start_date)
     converter.save_grib2(ds, outdir)
     logging.info("It took %s mins", (time() - t0) / 60)
+
+
+if __name__ == "__main__":  # pragma: no cover
+    main()

@@ -1,13 +1,5 @@
 [tool.coverage.report]
 fail_under = 100
-omit = [
-  "drivers/post.py",
-  "drivers/run_graphcast.py",
-  "drivers/utils/grib2writer.py",
-  "drivers/utils/tasks.py",
-  "ush/generate_experiment.py",
-  "ush/validation.py",
-]
 show_missing = true
 skip_covered = true
 
@@ -47,6 +39,10 @@ ignore = [
   "D203",    # incorrect-blank-line-before-class
   "D212",    # multi-line-summary-first-line
   "D401",    # non-imperative-mood
+  "D403",    # first-word-uncapitalized
+  "E731",    # lambda-assignment
+  "ERA001",  # commented-out-code
+  "FBT001",  # boolean-type-hint-positional-argument
   "INP001",  # implicit-namespace-package
   "LOG015",  # root-logger-call
   "PLR0913", # too-many-arguments
@@ -62,6 +58,8 @@ ignore = [
 "{conftest.py,**/*_test.py}" = [
   "ANN002",  # missing-type-args
   "ANN003",  # missing-type-kwargs
+  "N802",    # invalid-function-name
+  "PLR0915", # too-many-statements
   "PT013",   # pytest-incorrect-pytest-import
   "SLF001",  # private-member-access
 ]

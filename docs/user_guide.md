@@ -110,7 +110,7 @@ Supported values for `<platform>`:
 | `forecast` | ***GraphCast*** model inference: model weights, normalization stats, and forecast parameters |
 | `post` | Post-processing: GRIB2 index generation and file delivery |
 
-The `platform` block supplies scheduler and account settings. A machine-specific YAML in `parm/machines/` (e.g., `parm/machines/ursa.yaml`) is automatically merged based on the value of `user.platform`.
+The `platform` block supplies scheduler and account settings. A machine-specific YAML in `parm/machine/` (e.g., `parm/machine/ursa.yaml`) is automatically merged based on the value of `user.platform`.
 
 ### User Config YAML
 
@@ -135,7 +135,7 @@ platform:
 
 ```yaml
 forecast:
-  graphcast_model:
+  aigfs_inference:
     forecast_length: 240   # hours; default is 120
     forecast_freq: 6       # output frequency in hours; default is 6
 ```
@@ -166,7 +166,7 @@ With the environment activated (see [Setting Up the Environment](#setting-up-the
 python ush/generate_experiment.py [additional.yaml ...] user.yaml
 ```
 
-Multiple YAML files may be provided; later files take precedence over earlier ones. The generator automatically merges `ush/default_config.yaml` and the appropriate machine YAML (`parm/machines/<platform>.yaml`) before applying your user configs.
+Multiple YAML files may be provided; later files take precedence over earlier ones. The generator automatically merges `ush/default_config.yaml` and the appropriate machine YAML (`parm/machine/<platform>.yaml`) before applying your user configs.
 
 The following files are written to `user.experiment_dir`:
 
@@ -209,7 +209,7 @@ The ***uwtools*** package provides a tool to help iterate through the entire wor
 
 ### Prep: Initial Conditions Generation
 
-The `task_prep` ***Rocoto*** task runs `drivers/generate_ics.py` (driver class `GenICS`). It:
+The `task_prep` ***Rocoto*** task runs `drivers/generate_ics.py` (driver class `AIGFSICs`). It:
 
 1. Hard-links GFS GRIB2 files from `user.gfs_data` into the cycle's `prep/data/` subdirectory. The files required are:
    - Two timesteps from the previous two cycles (for temporal interpolation)
@@ -225,12 +225,12 @@ The `task_prep` ***Rocoto*** task runs `drivers/generate_ics.py` (driver class `
 
 ### Forecast: GraphCast Inference
 
-The `task_forecast` ***Rocoto*** task runs `drivers/run_graphcast.py` (driver class `GraphCastModel`). It depends on `task_prep` completing successfully. The task:
+The `task_forecast` ***Rocoto*** task runs `drivers/run_graphcast.py` (driver class `AIGFSInference`). It depends on `task_prep` completing successfully. The task:
 
 1. Loads the initial-conditions netCDF file produced by the prep step.
 2. Loads the pre-trained ***GraphCast*** model weights (`.npz`) from `platform.pretrained_model_path`.
 3. Loads the normalization statistics (`diffs_stddev_by_level.nc`, `mean_by_level.nc`, `stddev_by_level.nc`).
-4. Runs autoregressive ***GraphCast*** inference for `forecast.graphcast_model.forecast_length` hours at `forecast.graphcast_model.forecast_freq`-hour intervals.
+4. Runs autoregressive ***GraphCast*** inference for `forecast.aigfs_inference.forecast_length` hours at `forecast.aigfs_inference.forecast_freq`-hour intervals.
 5. Writes GRIB2 output files to:
 
    ```

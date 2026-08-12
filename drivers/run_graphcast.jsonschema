@@ -1,6 +1,6 @@
 {
   "properties": {
-    "graphcast_model": {
+    "aigfs_inference": {
       "additionalProperties": false,
       "properties": {
         "diffs_stddev_path": {
@@ -49,7 +49,7 @@
     }
   },
   "required": [
-    "graphcast_model"
+    "aigfs_inference"
   ],
   "type": "object"
 }

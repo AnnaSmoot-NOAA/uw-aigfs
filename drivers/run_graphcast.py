@@ -1,8 +1,6 @@
 """
-A driver for Graphcast Inference.
+A driver for AIGFS inference.
 """
-
-from __future__ import annotations
 
 import dataclasses
 import logging
@@ -16,7 +14,6 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from graphcast import (  # type: ignore[import-untyped]
-    CheckPoint,
     autoregressive,
     casting,
     checkpoint,
@@ -34,9 +31,76 @@ from .utils.tasks import file
 jax.config.update("jax_platforms", "cpu")
 
 
-class GraphCastModel(DriverCycleBased):
+class AIGFSInference(DriverCycleBased):
+    # Public tasks
+
     @task
-    def predictions(self):
+    def initial_conditions(self):  # pragma: no cover
+        """
+        Load the initial conditions for the model.
+        """
+        yield "initial conditions"
+        ds = xr.Dataset()
+        yield Asset(ds, lambda: bool(ds))
+        ics_path = self.config["ics_path"]
+        yield file(ics_path)
+        fcst_length = self.config["forecast_length"]
+        fcst_freq = self.config["forecast_freq"]
+        src = xr.load_dataset(ics_path)
+        fcst_steps = fcst_length // fcst_freq
+        src = _adjust_time(src, fcst_steps)
+        ds.update(src)
+        ds.attrs.update(src.attrs)
+
+    @task
+    def inputs_targets_forcings(self):  # pragma: no cover
+        """
+        The input for GraphCast.
+        """
+        yield "inputs, targets, and forcings"
+        datasets: list[xr.Dataset] = []
+        yield Asset(datasets, lambda: bool(datasets))
+        yield self.initial_conditions()
+        fcst_freq = self.config["forecast_freq"]
+        fcst_length = self.config["forecast_length"]
+        datasets.extend(
+            data_utils.extract_inputs_targets_forcings(
+                self.initial_conditions().ref,
+                target_lead_times=slice(f"{fcst_freq}h", f"{fcst_length}h"),
+                **dataclasses.asdict(self.model_weights().ref[0].task_config),
+            )
+        )
+
+    @task
+    def load_normalization_stats(self):  # pragma: no cover
+        """
+        Load and return the stats files contents.
+        """
+        yield "normalization stats"
+        datasets: list[xr.Dataset] = []
+        yield Asset(datasets, lambda: bool(datasets))
+        diffs_stddev_path = self.config["diffs_stddev_path"]
+        mean_path = self.config["mean_path"]
+        stddev_path = self.config["stddev_path"]
+        paths = (diffs_stddev_path, mean_path, stddev_path)
+        yield [file(p) for p in paths]
+        datasets.extend([xr.load_dataset(p) for p in paths])
+
+    @task
+    def model_weights(self):  # pragma: no cover
+        """
+        Load the pre-trained model weights.
+        """
+        yield "model weights"
+        weights: list[graphcast.CheckPoint] = []
+        yield Asset(weights, lambda: bool(weights))
+        model_weights_path = Path(self.config["model_weights_path"])
+        yield file(model_weights_path)
+        with model_weights_path.open("rb") as f:
+            weights.append(checkpoint.load(f, graphcast.CheckPoint))
+
+    @task
+    def predictions(self):  # pragma: no cover
         """
         GraphCast predictions.
         """
@@ -56,7 +120,6 @@ class GraphCastModel(DriverCycleBased):
         )
         inputs, targets, forcings = itfs.ref
         diffs_stddev, mean, stddev = norm_stats.ref
-
         with_configs = partial(
             run_forward.apply,
             model_config=model_weights.ref[0].model_config,
@@ -65,12 +128,7 @@ class GraphCastModel(DriverCycleBased):
             mean=mean,
             stddev=stddev,
         )
-        with_params = partial(
-            jax.jit(with_configs),
-            params=model_weights.ref[0].params,
-            state={},
-        )
-
+        with_params = partial(jax.jit(with_configs), params=model_weights.ref[0].params, state={})
         model = self.drop_state(with_params)
         self.rundir.mkdir(parents=True, exist_ok=True)
         converter.save_grib2(ds, self.rundir)
@@ -86,137 +144,60 @@ class GraphCastModel(DriverCycleBased):
         path.touch()
 
     @collection
-    def provisioned_rundir(self):
+    def provisioned_rundir(self):  # pragma: no cover
         """
         Run directory provisioned with all required content.
         """
         yield self.taskname("provisioned run directory")
         yield [self.runscript()]
 
-    # Helper functions
+    # Public helper methods
 
     @classmethod
     def driver_name(cls) -> str:
         """
         Returns the name of this driver.
         """
-        return "graphcast_model"
+        return "aigfs_inference"
 
     @staticmethod
-    def drop_state(fn):
+    def drop_state(fn):  # pragma: no cover
         return lambda **kw: fn(**kw)[0]
 
-    @task
-    def initial_conditions(self):
-        """
-        Load the initial conditions for the model.
-        """
-        yield "initial conditions"
-        ds = xr.Dataset()
-        yield Asset(ds, lambda: bool(ds))
-        ics_path = self.config["ics_path"]
-        yield file(ics_path)
-        fcst_length = self.config["forecast_length"]
-        fcst_freq = self.config["forecast_freq"]
-        src = xr.load_dataset(ics_path)
-        fcst_steps = fcst_length // fcst_freq
-        src = _adjust_time(src, fcst_steps)
-        ds.update(src)
-        ds.attrs.update(src.attrs)
 
-    @task
-    def inputs_targets_forcings(self):
-        """
-        The input for GraphCast.
-        """
-        yield "inputs, targets, and forcings"
-        datasets: list[xr.Dataset] = []
-        yield Asset(datasets, lambda: bool(datasets))
-        yield self.initial_conditions()
-        fcst_freq = self.config["forecast_freq"]
-        fcst_length = self.config["forecast_length"]
-        datasets.extend(
-            data_utils.extract_inputs_targets_forcings(
-                self.initial_conditions().ref,
-                target_lead_times=slice(f"{fcst_freq}h", f"{fcst_length}h"),
-                **dataclasses.asdict(self.model_weights().ref[0].task_config),
-            )
-        )
-
-    @task
-    def model_weights(self):
-        """
-        Load the pre-trained model weights.
-        """
-        yield "model weights"
-        weights: list[CheckPoint] = []
-        yield Asset(weights, lambda: bool(weights))
-        model_weights_path = Path(self.config["model_weights_path"])
-        yield file(model_weights_path)
-        with model_weights_path.open("rb") as f:
-            weights.append(checkpoint.load(f, graphcast.CheckPoint))
-
-    @task
-    def load_normalization_stats(self):
-        """
-        Load and return the stats files contents.
-        """
-        yield "normalization stats"
-        datasets: list[xr.Dataset] = []
-        yield Asset(datasets, lambda: bool(datasets))
-        diffs_stddev_path = self.config["diffs_stddev_path"]
-        mean_path = self.config["mean_path"]
-        stddev_path = self.config["stddev_path"]
-        paths = (diffs_stddev_path, mean_path, stddev_path)
-        yield [file(p) for p in paths]
-        datasets.extend([xr.load_dataset(p) for p in paths])
+# Public functions
 
 
-def construct_wrapped_graphcast(model_config, task_config, diffs_stddev, mean, stddev):
+def construct_wrapped_graphcast(
+    model_config, task_config, diffs_stddev, mean, stddev
+):  # pragma: no cover
     """Constructs and wraps the GraphCast Predictor."""
     # Deeper one-step predictor.
     predictor = graphcast.GraphCast(model_config, task_config)
-
     # Modify inputs/outputs to `graphcast.GraphCast` to handle conversion to
     # from/to float32 to/from BFloat16.
     predictor = casting.Bfloat16Cast(predictor)
-
     # Modify inputs/outputs to `casting.Bfloat16Cast` so the casting to/from
     # BFloat16 happens after applying normalization to the inputs/targets.
     predictor = normalization.InputsAndResiduals(
-        predictor,
-        diffs_stddev_by_level=diffs_stddev,
-        mean_by_level=mean,
-        stddev_by_level=stddev,
+        predictor, diffs_stddev_by_level=diffs_stddev, mean_by_level=mean, stddev_by_level=stddev
     )
-
     # Wraps everything so the one-step model can produce trajectories.
-    return autoregressive.Predictor(
-        predictor,
-        gradient_checkpointing=True,
-    )
+    return autoregressive.Predictor(predictor, gradient_checkpointing=True)
 
 
 @hk.transform_with_state
 def run_forward(
-    model_config,
-    task_config,
-    inputs,
-    targets_template,
-    forcings,
-    diffs_stddev,
-    mean,
-    stddev,
-):
+    model_config, task_config, inputs, targets_template, forcings, diffs_stddev, mean, stddev
+):  # pragma: no cover
     predictor = construct_wrapped_graphcast(model_config, task_config, diffs_stddev, mean, stddev)
-    return predictor(
-        inputs,
-        targets_template=targets_template,
-        forcings=forcings,
-    )
+    return predictor(inputs, targets_template=targets_template, forcings=forcings)
 
 
-def _adjust_time(ds, fcst_steps):
+# Private functions
+
+
+def _adjust_time(ds, fcst_steps):  # pragma: no cover
     if (fcst_steps + 2 - len(ds["time"])) > 0:
         logging.info("Updating dataset to account for forecast length.")
         new_times = np.asarray([timedelta(hours=6) * f for f in range(fcst_steps + 2)]).astype(
@@ -229,7 +210,7 @@ def _adjust_time(ds, fcst_steps):
     return ds
 
 
-def _clean_ics(ds):
+def _clean_ics(ds):  # pragma: no cover
     ds = ds.drop_vars(["geopotential_at_surface", "land_sea_mask", "total_precipitation_6hr"])
     for var in ds.data_vars:
         if "long_name" in ds[var].attrs:
@@ -237,6 +218,3 @@ def _clean_ics(ds):
     ds = ds.isel(time=slice(1, 2))
     ds["time"] = ds["time"] - pd.Timedelta(hours=6)
     return ds
-
-
-# The next several functions were taken from https://medium.com/data-science/graphcast-how-to-get-things-done-f2fd5630c5fb

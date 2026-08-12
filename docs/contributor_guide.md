@@ -162,13 +162,13 @@ uw-aigfs/
 ├── conda/                     # Managed conda installation (created by make env/devenv)
 ├── docs/                      # User and contributor documentation
 ├── drivers/                   # uwtools driver classes for each workflow stage
-│   ├── generate_ics.py        # GenICS: ICS preparation driver
-│   ├── run_graphcast.py       # GraphCastModel: forecast inference driver
+│   ├── generate_ics.py        # AIGFSICs: ICS preparation driver
+│   ├── run_graphcast.py       # AIGFSInference: forecast inference driver
 │   ├── post.py                # AIGFSPost: post-processing driver
 │   └── utils/                 # Shared driver utilities (GRIB2 writing, task helpers)
 ├── modulefiles/               # Environment modulefiles (WCOSS2)
 ├── parm/
-│   ├── machines/              # Per-platform YAML overrides (e.g., ursa.yaml)
+│   ├── machine/               # Per-platform YAML overrides (e.g., ursa.yaml)
 │   ├── wflow/
 │   │   └── rocoto/            # Rocoto workflow YAML template (aigfs_base.yaml)
 │   └── wgrib2_data.yaml       # Variables and levels to extract from GFS GRIB2

@@ -22,7 +22,7 @@ workflow:
         cyclestr:
           value: source &AIGFS_APP;/load_wflow_modules.sh &PLATFORM; && uw execute
             --module &AIGFS_APP;/drivers/generate_ics.py
-            --classname GenICS
+            --classname AIGFSICs
             --task run
             --config &EXPERIMENT_CONFIG;
             --cycle @Y-@m-@dT@H
@@ -41,7 +41,7 @@ workflow:
         cyclestr:
           value: source &AIGFS_APP;/load_wflow_modules.sh &PLATFORM; && uw execute
             --module &AIGFS_APP;/drivers/run_graphcast.py
-            --classname GraphCastModel
+            --classname AIGFSInference
             --task run
             --config &EXPERIMENT_CONFIG;
             --cycle @Y-@m-@dT@H
@@ -49,17 +49,17 @@ workflow:
       join:
         cyclestr:
           value: '&LOGDIR;/{{ jobname }}_@Y@m@d@H.log'
-      nodes: "{{ forecast.graphcast_model.execution.batchargs.nodes }}:ppn={{ forecast.graphcast_model.execution.batchargs.tasks_per_node }}"
-      memory: "{{ forecast.graphcast_model.execution.batchargs.memory }}"
-      walltime: "{{ forecast.graphcast_model.execution.batchargs.walltime }}"
+      nodes: "{{ forecast.aigfs_inference.execution.batchargs.nodes }}:ppn={{ forecast.aigfs_inference.execution.batchargs.tasks_per_node }}"
+      memory: "{{ forecast.aigfs_inference.execution.batchargs.memory }}"
+      walltime: "{{ forecast.aigfs_inference.execution.batchargs.walltime }}"
       dependency:
         taskdep:
           attrs:
             task: prep
     metatask_post:
       var:
-        fhr: "{% for h in range(0, forecast.graphcast_model.forecast_length + 1, forecast.graphcast_model.forecast_freq) %}{{ ' %03d' % h }}{% endfor %}"
-        nextfhr: "{% for h in range(forecast.graphcast_model.forecast_freq, forecast.graphcast_model.forecast_length + forecast.graphcast_model.forecast_freq + 1, forecast.graphcast_model.forecast_freq) %}{{ ' %03d' % h }}{% endfor %}"
+        fhr: "{% for h in range(0, forecast.aigfs_inference.forecast_length + 1, forecast.aigfs_inference.forecast_freq) %}{{ ' %03d' % h }}{% endfor %}"
+        nextfhr: "{% for h in range(forecast.aigfs_inference.forecast_freq, forecast.aigfs_inference.forecast_length + forecast.aigfs_inference.forecast_freq + 1, forecast.aigfs_inference.forecast_freq) %}{{ ' %03d' % h }}{% endfor %}"
       task_post_#fhr#:
         account: "{{ platform.account }}"
         attrs:

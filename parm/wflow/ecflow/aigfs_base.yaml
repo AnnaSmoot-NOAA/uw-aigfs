@@ -28,23 +28,23 @@ ecflow:
                 source %AIGFS_APP%/load_wflow_modules.sh %PLATFORM%
                 uw execute \
                   --module %AIGFS_APP%/drivers/generate_ics.py \
-                  --classname GenICS \
+                  --classname AIGFSICs \
                   --task run \
                   --config %EXPERIMENT_CONFIG% \
                   --cycle $ISOCYCLE \
                   --key-path prep
           task_jaigfs_forecast:
             trigger: jaigfs_prep == complete
-            events: !list '[{% for h in range(0, forecast.graphcast_model.forecast_length + 1, forecast.graphcast_model.forecast_freq) %}{{ "release_f%03d" % h }},{% endfor %} ]'
+            events: !list '[{% for h in range(0, forecast.aigfs_inference.forecast_length + 1, forecast.aigfs_inference.forecast_freq) %}{{ "release_f%03d" % h }},{% endfor %} ]'
             script:
               <<: *script
               manual: "Runs AIGFS forecast."
-              batchargs: !dict "{{ forecast.graphcast_model.execution.batchargs }}"
+              batchargs: !dict "{{ forecast.aigfs_inference.execution.batchargs }}"
               body: |
                 source %AIGFS_APP%/load_wflow_modules.sh %PLATFORM%
                 uw execute \
                   --module %AIGFS_APP%/drivers/run_graphcast.py \
-                  --classname GraphCastModel \
+                  --classname AIGFSInference \
                   --task run \
                   --config %EXPERIMENT_CONFIG% \
                   --cycle $ISOCYCLE \
@@ -52,7 +52,7 @@ ecflow:
           family_post:
             tasks_post_{{ ec.fhr }}:
               expand:
-                fhr: !list '[{% for h in range(0, forecast.graphcast_model.forecast_length + 1, forecast.graphcast_model.forecast_freq) %}{{ "f%03d" % h }},{% endfor %} ]'
+                fhr: !list '[{% for h in range(0, forecast.aigfs_inference.forecast_length + 1, forecast.aigfs_inference.forecast_freq) %}{{ "f%03d" % h }},{% endfor %} ]'
               trigger: "../jaigfs_forecast:release_{{ ec.fhr }}"
               script:
                 <<: *script
@@ -62,7 +62,7 @@ ecflow:
                   source %AIGFS_APP%/load_wflow_modules.sh %PLATFORM%
                   module load wgrib2
                   export FH=%FHR%
-                  export INPUTDIR={{ forecast.graphcast_model.rundir }}
+                  export INPUTDIR={{ forecast.aigfs_inference.rundir }}
                   %AIGFS_APP%/scripts/run_post.sh
               vars:
                 FHR: "{{ ec.fhr }}"

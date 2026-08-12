@@ -9,7 +9,6 @@ on:
   workflow_dispatch:
     branches:
       - '**'
-
 jobs:
   code-quality-checks:
     name: Code Quality Checks
@@ -19,6 +18,6 @@ jobs:
       - name: Prepare Environment
         run: make devenv
       - name: Code-Quality Check
-        run: .github/scripts/cq.sh
+        run: .github/scripts/cqc.sh
       - name: Format Check
         run: .github/scripts/format.sh

@@ -1,24 +1,21 @@
 platform:
   scheduler: pbs
-
 prep:
   aigfs_ics:
     execution:
       envcmds:
         - module load wflow_wcoss
     files_to_hardlink:
-      data/gfs.t{{ timevars.m2_cyc }}z.pgrb2.0p25.f006: '{{ user.gfs_data }}/gfs.{{ timevars.m2_yyyymmdd }}/{{ timevars.m2_cyc }}/atmos/gfs.t{{ timevars.m2_cyc }}z.pgrb2.0p25.f006'
+      data/gfs.t{{ timevars.cyc }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/gfs.{{ timevars.yyyymmdd }}/{{ timevars.cyc }}/atmos/gfs.t{{ timevars.cyc }}z.pgrb2.0p25.f000'
       data/gfs.t{{ timevars.m1_cyc }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/gfs.{{ timevars.m1_yyyymmdd }}/{{ timevars.m1_cyc }}/atmos/gfs.t{{ timevars.m1_cyc }}z.pgrb2.0p25.f000'
       data/gfs.t{{ timevars.m1_cyc }}z.pgrb2.0p25.f006: '{{ user.gfs_data }}/gfs.{{ timevars.m1_yyyymmdd }}/{{ timevars.m1_cyc }}/atmos/gfs.t{{ timevars.m1_cyc }}z.pgrb2.0p25.f006'
-      data/gfs.t{{ timevars.cyc }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/gfs.{{ timevars.yyyymmdd }}/{{ timevars.cyc }}/atmos/gfs.t{{ timevars.cyc }}z.pgrb2.0p25.f000'
-
+      data/gfs.t{{ timevars.m2_cyc }}z.pgrb2.0p25.f006: '{{ user.gfs_data }}/gfs.{{ timevars.m2_yyyymmdd }}/{{ timevars.m2_cyc }}/atmos/gfs.t{{ timevars.m2_cyc }}z.pgrb2.0p25.f006'
 forecast:
-  graphcast_model:
+  aigfs_inference:
     execution:
       envcmds:
         - module load wflow_wcoss
     model_weights_path: '{{ platform.pretrained_model_path }}/params/GCGFSv2_finetuned_GDAS-ERA5_0p25_13pl_mesh2to6_tp_output_only.npz'
-
 post:
   aigfs_post:
     execution:
