@@ -100,7 +100,7 @@ Supported values for `<platform>`:
 
 ### Default Configuration
 
-`ush/default_config.yaml` contains the baseline settings for all workflow stages. It is organized into top-level blocks that correspond to the workflow stages and follow the [uwtools YAML](https://uwtools.readthedocs.io/en/main/sections/user_guide/yaml/components/index.html) conventions:
+`parm/default_config.yaml` contains the baseline settings for all workflow stages. It is organized into top-level blocks that correspond to the workflow stages and follow the [uwtools YAML](https://uwtools.readthedocs.io/en/main/sections/user_guide/yaml/components/index.html) conventions:
 
 | Block | Purpose |
 |---|---|
@@ -166,7 +166,7 @@ With the environment activated (see [Setting Up the Environment](#setting-up-the
 python ush/generate_experiment.py [additional.yaml ...] user.yaml
 ```
 
-Multiple YAML files may be provided; later files take precedence over earlier ones. The generator automatically merges `ush/default_config.yaml` and the appropriate machine YAML (`parm/machine/<platform>.yaml`) before applying your user configs.
+Multiple YAML files may be provided; later files take precedence over earlier ones. The generator automatically merges `parm/default_config.yaml` and the appropriate machine YAML (`parm/machine/<platform>.yaml`) before applying your user configs.
 
 The following files are written to `user.experiment_dir`:
 
@@ -209,7 +209,7 @@ The ***uwtools*** package provides a tool to help iterate through the entire wor
 
 ### Prep: Initial Conditions Generation
 
-The `task_prep` ***Rocoto*** task runs `drivers/generate_ics.py` (driver class `AIGFSICs`). It:
+The `task_prep` ***Rocoto*** task runs `drivers/aigfs_ics.py` (driver class `AIGFSICs`). It:
 
 1. Hard-links GFS GRIB2 files from `user.gfs_data` into the cycle's `prep/data/` subdirectory. The files required are:
    - Two timesteps from the previous two cycles (for temporal interpolation)
@@ -225,7 +225,7 @@ The `task_prep` ***Rocoto*** task runs `drivers/generate_ics.py` (driver class `
 
 ### Forecast: GraphCast Inference
 
-The `task_forecast` ***Rocoto*** task runs `drivers/run_graphcast.py` (driver class `AIGFSInference`). It depends on `task_prep` completing successfully. The task:
+The `task_forecast` ***Rocoto*** task runs `drivers/aigfs_inference.py` (driver class `AIGFSInference`). It depends on `task_prep` completing successfully. The task:
 
 1. Loads the initial-conditions netCDF file produced by the prep step.
 2. Loads the pre-trained ***GraphCast*** model weights (`.npz`) from `platform.pretrained_model_path`.
@@ -244,7 +244,7 @@ The forecast job requires significant memory (default: 150 GB) due to the size o
 
 ### Post-Processing
 
-The `metatask_post` ***Rocoto*** metatask fans out into one `task_post_<FFF>` job per forecast lead time. Each post job runs `drivers/post.py` (driver class `AIGFSPost`). It:
+The `metatask_post` ***Rocoto*** metatask fans out into one `task_post_<FFF>` job per forecast lead time. Each post job runs `drivers/aigfs_post.py` (driver class `AIGFSPost`). It:
 
 1. Waits for the corresponding GRIB2 surface and pressure-level files to exist in the forecast directory (or for `task_forecast` to complete, whichever happens first).
 2. Generates a `wgrib2` inventory index (`.idx`) file for each GRIB2 file.

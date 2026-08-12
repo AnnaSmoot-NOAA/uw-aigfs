@@ -3,7 +3,7 @@ from pathlib import Path
 
 from pytest import fixture
 
-from . import run_graphcast
+from . import aigfs_inference
 
 # Fixtures
 
@@ -33,10 +33,10 @@ def cycle():
 
 @fixture
 def driverobj(config, cycle):
-    return run_graphcast.AIGFSInference(
+    return aigfs_inference.AIGFSInference(
         config=config,
         cycle=cycle,
-        schema_file=Path(__file__).parent / "run_graphcast.jsonschema",
+        schema_file=Path(__file__).parent / "aigfs_inference.jsonschema",
     )
 
 

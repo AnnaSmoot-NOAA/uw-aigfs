@@ -10,7 +10,7 @@ import xarray as xr
 from iotaa import Asset, external, task
 from pytest import fixture, mark, raises
 
-from . import generate_ics
+from . import aigfs_ics
 
 # Fixtures
 
@@ -51,11 +51,11 @@ def cycle():
 
 @fixture
 def driverobj(config, cycle):
-    return generate_ics.AIGFSICs(
+    return aigfs_ics.AIGFSICs(
         config=config,
         cycle=cycle,
         batch=True,
-        schema_file=Path(__file__).parent / "generate_ics.jsonschema",
+        schema_file=Path(__file__).parent / "aigfs_ics.jsonschema",
     )
 
 

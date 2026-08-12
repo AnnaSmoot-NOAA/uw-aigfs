@@ -29,7 +29,7 @@ prep:
       envcmds:
         - source {{ user.app_home }}/load_wflow_modules.sh {{ user.platform }}
         - module load wgrib2
-      executable: uw execute --module {{ user.app_home }}/drivers/generate_ics.py --classname AIGFSICs --task merged_netcdf_files -c {{ user.experiment_dir }}/experiment.yaml --cycle {{ cycle.strftime('%Y-%m-%d_%H:%M:%S') }} --key-path prep
+      executable: uw execute --module {{ user.app_home }}/drivers/aigfs_ics.py --classname AIGFSICs --task merged_netcdf_files -c {{ user.experiment_dir }}/experiment.yaml --cycle {{ cycle.strftime('%Y-%m-%d_%H:%M:%S') }} --key-path prep
     files_to_hardlink:
       data/gfs.t{{ timevars.cyc }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/{{ timevars.yyyymmdd }}/gfs.t{{ timevars.cyc }}z.pgrb2.0p25.f000'
       data/gfs.t{{ timevars.m1_cyc }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/{{ timevars.m1_yyyymmdd }}/gfs.t{{ timevars.m1_cyc}}z.pgrb2.0p25.f000'
@@ -53,7 +53,7 @@ forecast:
       envcmds:
         - source {{ user.app_home }}/load_wflow_modules.sh {{ user.platform }}
         - set -x
-      executable: uw execute --module {{ user.app_home }}/drivers/run_graphcast.py --classname AIGFSInference --task predictions -c {{ user.experiment_dir }}/experiment.yaml --cycle {{ cycle.strftime('%Y-%m-%d_%H:%M:%S') }} --key-path forecast
+      executable: uw execute --module {{ user.app_home }}/drivers/aigfs_inference.py --classname AIGFSInference --task predictions -c {{ user.experiment_dir }}/experiment.yaml --cycle {{ cycle.strftime('%Y-%m-%d_%H:%M:%S') }} --key-path forecast
     forecast_freq: 6
     forecast_length: 120
     ics_path: '{{ prep.aigfs_ics.rundir }}/aigfs.t{{ timevars.cyc }}z.ic.nc'
@@ -77,7 +77,7 @@ post:
       envcmds:
         - source {{ user.app_home }}/load_wflow_modules.sh {{ user.platform }}
         - module load wgrib2
-      executable: uw execute --module {{ user.app_home }}/drivers/post.py --classname AIGFSPost --task delivery -c {{ user.experiment_dir }}/experiment.yaml --cycle {{ cycle.strftime('%Y-%m-%d_%H:%M:%S') }} --key-path post --leadtime $FHR
+      executable: uw execute --module {{ user.app_home }}/drivers/aigfs_post.py --classname AIGFSPost --task delivery -c {{ user.experiment_dir }}/experiment.yaml --cycle {{ cycle.strftime('%Y-%m-%d_%H:%M:%S') }} --key-path post --leadtime $FHR
     deliver_to: "{{ forecast.aigfs_inference.rundir }}"
     inputfiles:
       - '{{ forecast.aigfs_inference.rundir }}/aigfs.t{{ timevars.cyc }}z.sfc.f{{ timevars.fff }}.grib2'

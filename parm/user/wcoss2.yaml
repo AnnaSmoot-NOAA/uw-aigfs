@@ -1,5 +1,5 @@
 # WCOSS2-specific config overlay for uw-aigfs.
-# Fork of ush/default_config.yaml — do NOT edit default_config.yaml for WCOSS2 changes;
+# Fork of parm/default_config.yaml — do NOT edit default_config.yaml for WCOSS2 changes;
 # that file is kept intact for parallel Ursa/RDHPCS development.
 #
 # User paths use {{ 'USER' | env }} to resolve the USER environment variable at
@@ -22,10 +22,3 @@ user:
   aigfs_app: /lfs/h2/emc/noscrub/{{ 'USER' | env }}/aigfs
   experiment_dir: /lfs/h2/emc/stmp/{{ 'USER' | env }}/aigfs/run
   gfs_data: /lfs/h1/ops/prod/com/gfs/v16.3
-prep:
-  aigfs_ics:
-    files_to_hardlink:
-      data/gfs.t{{ timevars.cyc }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/gfs.{{ timevars.yyyymmdd }}/{{ timevars.cyc }}/atmos/gfs.t{{ timevars.cyc }}z.pgrb2.0p25.f000'
-      data/gfs.t{{ timevars.m1_cyc }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/gfs.{{ timevars.m1_yyyymmdd }}/{{ timevars.m1_cyc }}/atmos/gfs.t{{ timevars.m1_cyc }}z.pgrb2.0p25.f000'
-      data/gfs.t{{ timevars.m1_cyc }}z.pgrb2.0p25.f006: '{{ user.gfs_data }}/gfs.{{ timevars.m1_yyyymmdd }}/{{ timevars.m1_cyc }}/atmos/gfs.t{{ timevars.m1_cyc }}z.pgrb2.0p25.f006'
-      data/gfs.t{{ timevars.m2_cyc }}z.pgrb2.0p25.f006: '{{ user.gfs_data }}/gfs.{{ timevars.m2_yyyymmdd }}/{{ timevars.m2_cyc }}/atmos/gfs.t{{ timevars.m2_cyc }}z.pgrb2.0p25.f006'

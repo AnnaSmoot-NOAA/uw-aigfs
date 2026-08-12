@@ -6,7 +6,7 @@ from unittest.mock import Mock, patch
 from iotaa import Asset, Node, external, task
 from pytest import fixture
 
-from . import post
+from . import aigfs_post
 
 # Fixtures
 
@@ -34,11 +34,11 @@ def cycle():
 
 @fixture
 def driverobj(config, cycle):
-    return post.AIGFSPost(
+    return aigfs_post.AIGFSPost(
         config=config,
         cycle=cycle,
         leadtime=timedelta(hours=6),
-        schema_file=Path(__file__).parent / "post.jsonschema",
+        schema_file=Path(__file__).parent / "aigfs_post.jsonschema",
     )
 
 
@@ -107,7 +107,7 @@ def test_drivers_AIGFSPost__idx(driverobj, logcap, touch):
     assert not path.exists()
     with (
         patch.object(driverobj, "_gribfile", Mock(wraps=mock__gribfile)) as _gribfile,
-        patch.object(post, "run_shell_cmd") as run_shell_cmd,
+        patch.object(aigfs_post, "run_shell_cmd") as run_shell_cmd,
     ):
         run_shell_cmd.side_effect = lambda *_args, **_kwargs: touch(path)
         node = driverobj._idx(path)
