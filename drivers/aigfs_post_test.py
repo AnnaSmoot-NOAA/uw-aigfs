@@ -183,3 +183,52 @@ def test_drivers_AIGFSPost__idx2grib(driverobj):
         do / "aigfs.t00z.sfc.f006.grib2.idx": di / "aigfs.t00z.sfc.f006.grib2",
         do / "aigfs.t00z.pres.f006.grib2.idx": di / "aigfs.t00z.pres.f006.grib2",
     }
+
+
+# Schema tests
+
+
+def test_drivers_aigfs_post_schema(config, logcap, tmp_path, validator, with_set):
+    ok = validator(aigfs_post, tmp_path)
+    # Valid config passes:
+    assert ok(config)
+    # Top-level aigfs_post key is required:
+    assert not ok({})
+    assert "'aigfs_post' is a required property" in logcap.text
+    logcap.clear()
+    # Expecting an object:
+    assert not ok(with_set(config, [], "aigfs_post"))
+    assert "is not of type 'object'" in logcap.text
+    logcap.clear()
+
+
+def test_drivers_aigfs_post_schema_content(config, logcap, tmp_path, validator, with_del, with_set):
+    ok = validator(aigfs_post, tmp_path, "properties", "aigfs_post")
+    cfg = config["aigfs_post"]
+    # Required:
+    for key in ("execution", "inputfiles", "outputdir", "rundir"):
+        assert not ok(with_del(cfg, key))
+        assert f"'{key}' is a required property" in logcap.text
+        logcap.clear()
+    # Optional:
+    assert ok(with_del(cfg, "deliver_to"))
+    # No additional properties:
+    assert not ok(with_set(cfg, "bar", "foo"))
+    assert "Additional properties are not allowed" in logcap.text
+    logcap.clear()
+    # Expecting a string:
+    for key in ("deliver_to", "outputdir", "rundir"):
+        assert not ok(with_set(cfg, 42, key))
+        assert "is not of type 'string'" in logcap.text
+        logcap.clear()
+    # Expecting an array:
+    assert not ok(with_set(cfg, "bad", "inputfiles"))
+    assert "is not of type 'array'" in logcap.text
+    logcap.clear()
+    # Expecting an array with at least 2 strings:
+    assert not ok(with_set(cfg, ["foo"], "inputfiles"))
+    assert "is too short" in logcap.text
+    logcap.clear()
+    assert not ok(with_set(cfg, [1, 2, 3], "inputfiles"))
+    assert "1 is not of type 'string'" in logcap.text
+    logcap.clear()

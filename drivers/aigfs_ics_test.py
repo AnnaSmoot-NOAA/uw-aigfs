@@ -26,8 +26,8 @@ def config(tmp_path):
                 "data/a.t00z.pgrb2.0p25.f006": str(tmp_path / "fh6.grib2"),
                 "foo/bar": "/baz/quz",
             },
-            "variable_extraction_yaml": str(tmp_path / "vars.yaml"),
             "rundir": str(tmp_path / "prep"),
+            "variable_extraction_yaml": str(tmp_path / "vars.yaml"),
         }
     }
 
@@ -284,3 +284,44 @@ def test_drivers_AIGFSICs__ncfiles_to_cmds__bad_grib_filenames(varkit):
     config[key.replace("t00z", "z00t")] = config[key]
     with raises(ValueError, match="GRIB files don't have names expected by this driver!"):
         assert driverobj._ncfiles_to_cmds
+
+
+# Schema tests
+
+
+def test_drivers_aigfs_ics_schema(config, logcap, tmp_path, validator, with_del, with_set):
+    ok = validator(aigfs_ics, tmp_path)
+    # Valid config passes:
+    assert ok(config)
+    # Top-level aigfs_ics key is required:
+    assert not ok({})
+    assert "'aigfs_ics' is a required property" in logcap.text
+    logcap.clear()
+    # Expecting an object:
+    assert not ok(with_set(config, [], "aigfs_ics"))
+    assert "is not of type 'object'" in logcap.text
+    logcap.clear()
+    # files_to_link is not required (but one of files_to_* must satisfy anyOf):
+    cfg_no_link = with_del(config, "aigfs_ics", "files_to_link")
+    # Without any files_to_* the anyOf still passes (it just checks pattern if present):
+    assert ok(with_set(cfg_no_link, {"data/x": "/y"}, "aigfs_ics", "files_to_copy"))
+    assert ok(with_set(cfg_no_link, {"data/x": "/y"}, "aigfs_ics", "files_to_hardlink"))
+
+
+def test_drivers_aigfs_ics_schema_content(config, logcap, tmp_path, validator, with_del, with_set):
+    ok = validator(aigfs_ics, tmp_path, "properties", "aigfs_ics")
+    cfg = config["aigfs_ics"]
+    # Required:
+    for key in ("execution", "rundir", "variable_extraction_yaml"):
+        assert not ok(with_del(cfg, key))
+        assert f"'{key}' is a required property" in logcap.text
+        logcap.clear()
+    # No additional properties:
+    assert not ok(with_set(cfg, "bar", "foo"))
+    assert "Additional properties are not allowed" in logcap.text
+    logcap.clear()
+    # Expecting a string:
+    for key in ("rundir", "variable_extraction_yaml"):
+        assert not ok(with_set(cfg, 42, key))
+        assert "is not of type 'string'" in logcap.text
+        logcap.clear()

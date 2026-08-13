@@ -10,7 +10,10 @@
           "$ref": "urn:uwtools:execution-serial"
         },
         "inputfiles": {
-          "minProperties": 2,
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2,
           "type": "array"
         },
         "outputdir": {

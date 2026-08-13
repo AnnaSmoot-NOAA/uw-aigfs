@@ -59,6 +59,7 @@ ignore = [
 "{conftest.py,**/*_test.py}" = [
   "ANN002",  # missing-type-args
   "ANN003",  # missing-type-kwargs
+  "ANN401",  # any-type
   "N802",    # invalid-function-name
   "PLR0915", # too-many-statements
   "PT013",   # pytest-incorrect-pytest-import
