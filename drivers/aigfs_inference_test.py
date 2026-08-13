@@ -1,4 +1,3 @@
-from collections.abc import Iterator
 from itertools import product
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -110,7 +109,7 @@ def weights(config, model_config, task_config):
 @fixture
 def mock_mws(weights):
     @task
-    def _mock_mws() -> Iterator:
+    def _mock_mws():
         yield "mock model_weights"
         ref: list[graphcast.CheckPoint] = []
         yield Asset(ref, lambda: bool(ref))
@@ -134,7 +133,7 @@ def test_drivers_AIGFSInference_initial_conditions(driverobj, ds, logcap):
 
 def test_drivers_AIGFSInference_inputs_targets_forcings(driverobj, logcap, mock_mws):
     @task
-    def ics() -> Iterator:
+    def ics():
         yield "mock initial_conditions"
         ref = xr.Dataset()
         yield Asset(ref, lambda: bool(ref))
@@ -215,7 +214,7 @@ def test_drivers_AIGFSInference_drop_state():
 def test_drivers_AIGFSInference_predictions(driverobj, ds, logcap, mock_mws, utc):
 
     @task
-    def mock_ics() -> Iterator:
+    def mock_ics():
         yield "mock initial_conditions"
         ref = xr.Dataset()
         yield Asset(ref, lambda: bool(ref))
@@ -224,7 +223,7 @@ def test_drivers_AIGFSInference_predictions(driverobj, ds, logcap, mock_mws, utc
         ref.attrs.update(ds.attrs)
 
     @task
-    def mock_itfs() -> Iterator:
+    def mock_itfs():
         yield "mock inputs_targets_forcings"
         ref: list[xr.Dataset] = []
         yield Asset(ref, lambda: bool(ref))
@@ -232,7 +231,7 @@ def test_drivers_AIGFSInference_predictions(driverobj, ds, logcap, mock_mws, utc
         ref.extend([inputs, targets, forcings])
 
     @task
-    def mock_norm() -> Iterator:
+    def mock_norm():
         yield "mock normalization_stats"
         ref: list[xr.Dataset] = []
         yield Asset(ref, lambda: bool(ref))
@@ -315,7 +314,7 @@ def test_drivers_aigfs_inference_construct_wrapped_graphcast(model_config, task_
 # Helpers
 
 
-def ds_check(ds: xr.Dataset):
+def ds_check(ds: xr.Dataset) -> None:
     # Should have fcst_steps + 2 = 6 time steps now:
     assert len(ds["time"]) == 6
     # Time values are 6-hourly timedeltas:

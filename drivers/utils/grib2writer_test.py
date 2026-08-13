@@ -13,7 +13,7 @@ from .grib2writer import SECTION3, Grib2Writer
 
 
 @fixture
-def ds():
+def ds() -> xr.Dataset:
     """
     A minimal xarray Dataset for save_grib2 testing.
     """

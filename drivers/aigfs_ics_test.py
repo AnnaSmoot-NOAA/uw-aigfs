@@ -1,4 +1,3 @@
-from collections.abc import Iterator
 from itertools import product
 from pathlib import Path
 from textwrap import dedent
@@ -112,9 +111,9 @@ def varkit(driverobj):
 @mark.filterwarnings("ignore:Times can't be serialized faithfully:UserWarning")
 def test_drivers_AIGFSICs_merged_netcdf_files(driverobj, varkit):
     @task
-    def mock_ncfiles() -> Iterator:
+    def mock_ncfiles():
 
-        def ds_atm(varnames, time):
+        def ds_atm(varnames: list[str], time: np.datetime64) -> xr.Dataset:
             data_vars: dict = {
                 v: (["time", "plevel", "latitude", "longitude"], np.ones((1, 3, 1, 1)))
                 for v in varnames
@@ -131,7 +130,7 @@ def test_drivers_AIGFSICs_merged_netcdf_files(driverobj, varkit):
                 },
             )
 
-        def ds_sfc(varname, time):
+        def ds_sfc(varname: str, time: np.datetime64) -> xr.Dataset:
             return xr.Dataset(
                 {varname: (["time", "latitude", "longitude"], np.ones((1, 1, 1)))},
                 coords={"time": [time], "latitude": lat, "longitude": lon},
@@ -224,7 +223,7 @@ def test_drivers_AIGFSICs_merged_netcdf_files(driverobj, varkit):
 
 def test_drivers_AIGFSICs_ncfiles(varkit):
     @external
-    def mock__ncfile(path: Path, _: str) -> Iterator:
+    def mock__ncfile(path: Path, _: str):
         yield "mock _ncfile"
         yield Asset(path, lambda: True)
 

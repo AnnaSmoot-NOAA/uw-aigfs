@@ -25,5 +25,5 @@ class User(BaseModel):
         return self
 
 
-def validate(config: dict) -> Config:
-    return Config(**config)
+def validate(config: dict[str, object]) -> Config:
+    return Config.model_validate(config)

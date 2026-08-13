@@ -4,6 +4,7 @@ A driver for AIGFS inference.
 
 import dataclasses
 import logging
+from collections.abc import Callable
 from datetime import timedelta
 from functools import partial
 from pathlib import Path
@@ -166,14 +167,20 @@ class AIGFSInference(DriverCycleBased):
         return "aigfs_inference"
 
     @staticmethod
-    def drop_state(fn):
+    def drop_state(fn: Callable[..., tuple[object, ...]]) -> Callable[..., object]:
         return lambda **kw: fn(**kw)[0]
 
 
 # Public functions
 
 
-def construct_wrapped_graphcast(model_config, task_config, diffs_stddev, mean, stddev):
+def construct_wrapped_graphcast(
+    model_config: graphcast.ModelConfig,
+    task_config: graphcast.TaskConfig,
+    diffs_stddev: xr.Dataset,
+    mean: xr.Dataset,
+    stddev: xr.Dataset,
+) -> autoregressive.Predictor:
     """
     Constructs and wraps the GraphCast Predictor.
     """
@@ -193,8 +200,15 @@ def construct_wrapped_graphcast(model_config, task_config, diffs_stddev, mean, s
 
 @hk.transform_with_state
 def run_forward(
-    model_config, task_config, inputs, targets_template, forcings, diffs_stddev, mean, stddev
-):  # pragma: no cover -- this is just a wrapper, there's nothing really to test
+    model_config: graphcast.ModelConfig,
+    task_config: graphcast.TaskConfig,
+    inputs: xr.Dataset,
+    targets_template: xr.Dataset,
+    forcings: xr.Dataset,
+    diffs_stddev: xr.Dataset,
+    mean: xr.Dataset,
+    stddev: xr.Dataset,
+) -> object:  # pragma: no cover -- this is just a wrapper, there's nothing really to test
     predictor = construct_wrapped_graphcast(model_config, task_config, diffs_stddev, mean, stddev)
     return predictor(inputs, targets_template=targets_template, forcings=forcings)
 
@@ -215,11 +229,11 @@ def _adjust_time(ds: xr.Dataset, fcst_steps: int, taskname: str) -> xr.Dataset:
     return ds
 
 
-def _clean_ics(ds):
+def _clean_ics(ds: xr.Dataset) -> xr.Dataset:
     ds = ds.drop_vars(["geopotential_at_surface", "land_sea_mask", "total_precipitation_6hr"])
     for var in ds.data_vars:
         if "long_name" in ds[var].attrs:
             del ds[var].attrs["long_name"]
     ds = ds.isel(time=slice(1, 2))
-    ds["time"] = ds["time"] - pd.Timedelta(hours=6)
+    ds["time"] = ds["time"] - pd.Timedelta(hours=6)  # type: ignore[operator]
     return ds

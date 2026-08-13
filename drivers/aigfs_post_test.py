@@ -1,4 +1,3 @@
-from collections.abc import Iterator
 from datetime import timedelta
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -47,7 +46,7 @@ def driverobj(config, cycle):
 
 def test_drivers_AIGFSPost_delivery(driverobj, logcap):
     @external
-    def mock__idx_delivered(path: Path) -> Iterator:
+    def mock__idx_delivered(path: Path):
         yield f"mock__idx_delivered {path}"
         yield Asset(path, lambda: True)
 
@@ -65,7 +64,7 @@ def test_drivers_AIGFSPost_delivery(driverobj, logcap):
 
 def test_drivers_AIGFSPost_indexes(driverobj, logcap, touch):
     @external
-    def mock__idx(path: Path) -> Iterator:
+    def mock__idx(path: Path):
         yield f"mock__idx {path}"
         yield Asset(path, path.is_file)
 
@@ -97,7 +96,7 @@ def test_drivers_AIGFSPost__gribfile(driverobj, logcap, touch):
 
 def test_drivers_AIGFSPost__idx(driverobj, logcap, touch):
     @task
-    def mock__gribfile(path: Path) -> Iterator:
+    def mock__gribfile(path: Path):
         yield f"mock__gribfile {path}"
         yield Asset(path, path.is_file)
         yield None
@@ -121,7 +120,7 @@ def test_drivers_AIGFSPost__idx(driverobj, logcap, touch):
 
 def test_drivers_AIGFSPost__idx_delivered(driverobj, logcap, touch):
     @task
-    def mock__idx(path: Path) -> Iterator:
+    def mock__idx(path: Path):
         yield f"mock__idx {path}"
         yield Asset(path, path.is_file)
         yield None
