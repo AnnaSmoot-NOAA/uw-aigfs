@@ -22,9 +22,11 @@ jobs:
       - name: Build API Docs
         run: make docs
       - name: Upload Pages Artifact
+        if: github.event.repository.has_pages
         uses: actions/upload-pages-artifact@v3
         with:
           path: docs/api/
       - name: Deploy to GitHub Pages
+        if: github.event.repository.has_pages
         id: deployment
         uses: actions/deploy-pages@v4
