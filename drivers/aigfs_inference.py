@@ -35,46 +35,51 @@ class AIGFSInference(DriverCycleBased):
     # Public tasks
 
     @task
-    def initial_conditions(self):  # pragma: no cover
+    def initial_conditions(self):
         """
-        Load the initial conditions for the model.
+        Initial conditions.
         """
-        yield "initial conditions"
+        taskname = "initial conditions"
+        yield taskname
         ds = xr.Dataset()
         yield Asset(ds, lambda: bool(ds))
-        ics_path = self.config["ics_path"]
-        yield file(ics_path)
+        req = file(self.config["ics_path"])
+        yield req
         fcst_length = self.config["forecast_length"]
         fcst_freq = self.config["forecast_freq"]
-        src = xr.load_dataset(ics_path)
+        src = xr.load_dataset(req.ref)
         fcst_steps = fcst_length // fcst_freq
-        src = _adjust_time(src, fcst_steps)
+        src = _adjust_time(src, fcst_steps, taskname)
         ds.update(src)
         ds.attrs.update(src.attrs)
 
     @task
-    def inputs_targets_forcings(self):  # pragma: no cover
+    def inputs_targets_forcings(self):
         """
-        The input for GraphCast.
+        Inputs, targets, and forcings.
         """
         yield "inputs, targets, and forcings"
         datasets: list[xr.Dataset] = []
         yield Asset(datasets, lambda: bool(datasets))
-        yield self.initial_conditions()
-        fcst_freq = self.config["forecast_freq"]
-        fcst_length = self.config["forecast_length"]
+        reqs = {
+            "ics": self.initial_conditions(),
+            "weights": self.model_weights(),
+        }
+        yield reqs
+        freq = self.config["forecast_freq"]
+        length = self.config["forecast_length"]
         datasets.extend(
             data_utils.extract_inputs_targets_forcings(
-                self.initial_conditions().ref,
-                target_lead_times=slice(f"{fcst_freq}h", f"{fcst_length}h"),
-                **dataclasses.asdict(self.model_weights().ref[0].task_config),
+                reqs["ics"].ref,
+                target_lead_times=slice(f"{freq}h", f"{length}h"),
+                **dataclasses.asdict(reqs["weights"].ref[0].task_config),
             )
         )
 
     @task
-    def load_normalization_stats(self):  # pragma: no cover
+    def normalization_stats(self):
         """
-        Load and return the stats files contents.
+        Normalization stats.
         """
         yield "normalization stats"
         datasets: list[xr.Dataset] = []
@@ -87,34 +92,34 @@ class AIGFSInference(DriverCycleBased):
         datasets.extend([xr.load_dataset(p) for p in paths])
 
     @task
-    def model_weights(self):  # pragma: no cover
+    def model_weights(self):
         """
         Load the pre-trained model weights.
         """
         yield "model weights"
         weights: list[graphcast.CheckPoint] = []
         yield Asset(weights, lambda: bool(weights))
-        model_weights_path = Path(self.config["model_weights_path"])
-        yield file(model_weights_path)
-        with model_weights_path.open("rb") as f:
+        req = file(self.config["model_weights_path"])
+        yield req
+        with req.ref.open("rb") as f:
             weights.append(checkpoint.load(f, graphcast.CheckPoint))
 
     @task
-    def predictions(self):  # pragma: no cover
+    def predictions(self):
         """
-        GraphCast predictions.
+        Predictions.
         """
-        yield "GraphCast predictions"
+        yield "predictions"
         path = self.rundir / "aigfs.done"
         yield Asset(path, path.is_file)
         ics = self.initial_conditions()
         itfs = self.inputs_targets_forcings()
         model_weights = self.model_weights()
-        norm_stats = self.load_normalization_stats()
+        norm_stats = self.normalization_stats()
         yield [ics, itfs, model_weights, norm_stats]
         ds = _clean_ics(ics.ref)
         converter = Grib2Writer(
-            start_date=pd.to_datetime(ds.datetime.values[0][-1]),  # noqa: PD011 FIXME w/ unit tests
+            start_date=pd.to_datetime(ds.datetime.to_numpy()[0][-1]),
             case_name="aigfs",
             json_path=Path(self.config["json_path"]),
         )
@@ -144,7 +149,7 @@ class AIGFSInference(DriverCycleBased):
         path.touch()
 
     @collection
-    def provisioned_rundir(self):  # pragma: no cover
+    def provisioned_rundir(self):
         """
         Run directory provisioned with all required content.
         """
@@ -161,17 +166,17 @@ class AIGFSInference(DriverCycleBased):
         return "aigfs_inference"
 
     @staticmethod
-    def drop_state(fn):  # pragma: no cover
+    def drop_state(fn):
         return lambda **kw: fn(**kw)[0]
 
 
 # Public functions
 
 
-def construct_wrapped_graphcast(
-    model_config, task_config, diffs_stddev, mean, stddev
-):  # pragma: no cover
-    """Constructs and wraps the GraphCast Predictor."""
+def construct_wrapped_graphcast(model_config, task_config, diffs_stddev, mean, stddev):
+    """
+    Constructs and wraps the GraphCast Predictor.
+    """
     # Deeper one-step predictor.
     predictor = graphcast.GraphCast(model_config, task_config)
     # Modify inputs/outputs to `graphcast.GraphCast` to handle conversion to
@@ -189,7 +194,7 @@ def construct_wrapped_graphcast(
 @hk.transform_with_state
 def run_forward(
     model_config, task_config, inputs, targets_template, forcings, diffs_stddev, mean, stddev
-):  # pragma: no cover
+):  # pragma: no cover -- this is just a wrapper, there's nothing really to test
     predictor = construct_wrapped_graphcast(model_config, task_config, diffs_stddev, mean, stddev)
     return predictor(inputs, targets_template=targets_template, forcings=forcings)
 
@@ -197,20 +202,20 @@ def run_forward(
 # Private functions
 
 
-def _adjust_time(ds, fcst_steps):  # pragma: no cover
+def _adjust_time(ds: xr.Dataset, fcst_steps: int, taskname: str) -> xr.Dataset:
     if (fcst_steps + 2 - len(ds["time"])) > 0:
-        logging.info("Updating dataset to account for forecast length.")
+        logging.info("%s: Updating dataset to account for forecast length.", taskname)
         new_times = np.asarray([timedelta(hours=6) * f for f in range(fcst_steps + 2)]).astype(
             "timedelta64"
         )
         starttime = ds["datetime"][0][0].astype("datetime64[s]")
-        new_datetimes = starttime.values + new_times  # noqa: PD011 FIXME w/ unit tests
+        new_datetimes = starttime.to_numpy() + new_times
         ds = ds.reindex(time=np.asarray(new_times).astype("timedelta64"))
         ds["datetime"][0] = new_datetimes
     return ds
 
 
-def _clean_ics(ds):  # pragma: no cover
+def _clean_ics(ds):
     ds = ds.drop_vars(["geopotential_at_surface", "land_sea_mask", "total_precipitation_6hr"])
     for var in ds.data_vars:
         if "long_name" in ds[var].attrs:

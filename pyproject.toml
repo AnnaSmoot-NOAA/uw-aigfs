@@ -26,6 +26,7 @@ ignore = [
   "ANN201",  # missing-return-type-class-method
   "ANN202",  # missing-return-type-private-function
   "ANN205",  # missing-return-type-static-method
+  "C408",    # unnecessary-collection-call
   "C901",    # complex-structure
   "COM812",  # missing-trailing-comma
   "CPY001",  # missing-copyright-notice

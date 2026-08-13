@@ -1,5 +1,4 @@
 from collections.abc import Iterator
-from datetime import datetime, timezone
 from itertools import product
 from pathlib import Path
 from textwrap import dedent
@@ -13,16 +12,6 @@ from pytest import fixture, mark, raises
 from . import aigfs_ics
 
 # Fixtures
-
-
-@fixture
-def atask():
-    @external
-    def f(ready: bool):
-        yield "A %sready task" % ("" if ready else "not-")
-        yield Asset(ready, lambda: ready)
-
-    return f
 
 
 @fixture
@@ -45,8 +34,8 @@ def config(tmp_path):
 
 
 @fixture
-def cycle():
-    return datetime(2025, 10, 1, 18, tzinfo=timezone.utc)
+def cycle(utc):
+    return utc(2025, 10, 1, 18)
 
 
 @fixture

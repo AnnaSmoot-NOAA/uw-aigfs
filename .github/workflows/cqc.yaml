@@ -18,6 +18,6 @@ jobs:
       - name: Prepare Environment
         run: make devenv
       - name: Code-Quality Check
-        run: .github/scripts/cqc.sh
+        run: .github/scripts/cqc
       - name: Format Check
-        run: .github/scripts/format.sh
+        run: .github/scripts/format

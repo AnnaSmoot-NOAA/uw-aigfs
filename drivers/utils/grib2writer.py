@@ -1,18 +1,13 @@
-#!/usr/bin/env python
-
 import json
 import logging
 import os
 import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
-from time import time
 
 import grib2io  # type: ignore[import-untyped]
 import numpy as np
-import pandas as pd
 import xarray as xr
-from uwtools.api.logging import use_uwtools_logger
 
 SECTION3 = np.array(
     [
@@ -47,7 +42,7 @@ SECTION3 = np.array(
 class Grib2Writer:
     def __init__(
         self, start_date: datetime, case_name: str = "aigfs", json_path: Path | None = None
-    ) -> None:  # pragma: no cover
+    ) -> None:
         self.case_name = case_name
         if self.case_name == "aigfs":
             assert json_path
@@ -64,7 +59,7 @@ class Grib2Writer:
 
     def create_grib2_message(
         self, var: str, lead: int, level: int | None = None
-    ) -> grib2io.Grib2Message:  # pragma: no cover
+    ) -> grib2io.Grib2Message:
         # Set duration. NOTE: the duration attr exists for all Grib2Message objects.
         # For Grib2Messages that are instantaneous, the duration is just 0.
         duration = timedelta(hours=0)
@@ -72,19 +67,16 @@ class Grib2Writer:
             duration = timedelta(hours=6)
         elif var == "total_precipitation_cumsum":
             duration = timedelta(hours=lead)
-
         # Create GRIB2 message.
         msg = grib2io.Grib2Message(
             section3=SECTION3,
             pdtn=self.attrs[var]["templates"]["pdtn"],
             drtn=self.attrs[var]["templates"]["drtn"],
         )
-
         # Set GRIB2 attributes from json table.
         for k, v in self.attrs[var]["attrs"].items():
             setattr(msg, k, v)
-
-        # Set GRIB2 attributes for ensemble members
+        # Set GRIB2 attributes for ensemble members.
         if self.case_name.startswith("aige"):
             number = int(self.case_name[-2:])
             msg.perturbationNumber = number
@@ -94,8 +86,7 @@ class Grib2Writer:
             else:
                 msg.typeOfEnsembleForecast = 3
                 msg.typeOfData = 4
-
-        # update decScaleFactor for specific humidity
+        # Update decScaleFactor for specific humidity:
         # 12 for [5000, 10000]Pa, 10 for [15000, ..., 40000]Pa, 8 for [50000, ..., 100000]Pa
         if var == "specific_humidity":
             assert level is not None
@@ -108,114 +99,76 @@ class Grib2Writer:
             else:
                 msg = f"level {level} Pa is not included in this model!"
                 raise ValueError(msg)
-
         # Set GRIB2 attributes unique to each iteration.
         msg.refDate = self.start_date
         msg.duration = duration
-        msg.unitOfForecastTime = 1  # Hour
+        msg.unitOfForecastTime = 1  # hour
         msg.leadTime = timedelta(hours=lead)
         if level is not None:
             msg.scaledValueOfFirstFixedSurface = level
-
         return msg
 
-    def save_grib2(self, xarray_ds: xr.Dataset, outdir: Path) -> None:  # pragma: no cover
+    def save_grib2(self, ds: xr.Dataset, outdir: Path) -> None:
         prefix = "aigefs" if self.case_name.startswith("aige") else "aigfs"
-
         # Convert geopotential to geopotential height.
-        xarray_ds["geopotential"] = xarray_ds["geopotential"] / 9.80665
-
-        # Update total_precipitation_6h unit to (kg/m^2) and set min to zero
-        if "total_precipitation_6hr" in xarray_ds:
-            xarray_ds["total_precipitation_6hr"] = (
-                xarray_ds["total_precipitation_6hr"].clip(min=0) * 1000
-            )
-
+        ds["geopotential"] = ds["geopotential"] / 9.80665
+        # Update total_precipitation_6h unit to (kg/m^2) and set min to zero.
+        if "total_precipitation_6hr" in ds:
+            ds["total_precipitation_6hr"] = ds["total_precipitation_6hr"].clip(min=0) * 1000
         # Drop total_precipitation_cumsum for AIGEFS. Otherwise update unit to (kg/m^2) and set min
         # to zero.
-        if "total_precipitation_cumsum" in xarray_ds:
+        if "total_precipitation_cumsum" in ds:
             if self.case_name.startswith("aige"):
-                xarray_ds = xarray_ds.drop_vars("total_precipitation_cumsum")
+                ds = ds.drop_vars("total_precipitation_cumsum")
             else:
-                xarray_ds["total_precipitation_cumsum"] = (
-                    xarray_ds["total_precipitation_cumsum"].clip(min=0) * 1000
+                ds["total_precipitation_cumsum"] = (
+                    ds["total_precipitation_cumsum"].clip(min=0) * 1000
                 )
-
-        # Set min spfh to zero
-        if "specific_humidity" in xarray_ds:
-            xarray_ds["specific_humidity"] = xarray_ds["specific_humidity"].clip(min=0)
-
+        # Set min spfh to zero.
+        if "specific_humidity" in ds:
+            ds["specific_humidity"] = ds["specific_humidity"].clip(min=0)
         # Convert levels values from mb to Pa.
-        xarray_ds["level"] = xarray_ds["level"] * 100  # Convert mb to Pa
-        xarray_ds = xarray_ds.squeeze(dim="batch")
-
-        # Reverse lat
-        xarray_ds = xarray_ds.reindex(lat=xarray_ds.lat[::-1])
-
+        ds["level"] = ds["level"] * 100  # mb to Pa
+        ds = ds.squeeze(dim="batch")
+        # Reverse lat.
+        ds = ds.reindex(lat=ds.lat[::-1])
         # Set output GRIB2 file.
         cycle = self.start_date.hour
-        lead = int((xarray_ds.time.dt.total_seconds() // 3600).values[0])  # noqa: PD011 FIXME w/ unit tests
+        lead = int((ds.time.dt.total_seconds() // 3600).values[0])
         outfile_sfc = outdir / f"{prefix}.t{cycle:02d}z.sfc.f{lead:03d}.grib2"
         outfile_pres = outdir / f"{prefix}.t{cycle:02d}z.pres.f{lead:03d}.grib2"
-
         # Delete the old files.
         for outfile in [outfile_sfc, outfile_pres]:
             outfile.unlink(missing_ok=True)
-
         # Open GRIB2 file.
         grib2_out_sfc = grib2io.open(outfile_sfc, mode="w")
         logging.info(" Opening GRIB2 File for surface variables: %s", outfile_sfc)
-
         grib2_out_pres = grib2io.open(outfile_pres, mode="w")
         logging.info(" Opening GRIB2 File for pressure level variables: %s", outfile_pres)
-
         # Iterate over the variable name keys in JSON file.
-        for var in sorted(xarray_ds.data_vars):
+        for var in sorted(ds.data_vars):
             # Get variable as DataArray.
-            da = xarray_ds[var]
-
-            # Iterate over level...
+            da = ds[var]
+            # Iterate over level:
             if "level" in da.coords:
                 for level in da.coords["level"]:
                     msg = self.create_grib2_message(var, lead, level=level)
-                    msg.data = da.sel(level=level).isel(time=0).values  # noqa: PD011 FIXME w/ unit tests
+                    msg.data = da.sel(level=level).isel(time=0).values
                     msg.pack()
                     logging.info("  %s", msg)
                     grib2_out_pres.write(msg)
             else:
                 msg = self.create_grib2_message(var, lead)
-                msg.data = da.isel(time=0).values  # noqa: PD011 FIXME w/ unit tests
+                msg.data = da.isel(time=0).values
                 msg.pack()
                 logging.info("  %s", msg)
                 grib2_out_sfc.write(msg)
-
-        # Close GRIB2 file
+        # Close GRIB2 file.
         grib2_out_sfc.close()
         grib2_out_pres.close()
-
-        # Release post job to create index files and copy files to COM
+        # Release post job to create index files and copy files to COM.
         if os.environ.get("SENDECF", "NO") != "NO":
             seteventsh = os.environ["SETEVENTSH"]
             cmd = [seteventsh, f"{lead:03d}"]
             logging.info("Running shell subprocess %s", cmd)
             subprocess.run(cmd, check=True)
-        done_signal = False
-        if done_signal:
-            # API for ecflow_client --force=set ${ECF_NAME}:release_f${fhour}
-            pass
-
-
-def main():  # pragma: no cover
-    use_uwtools_logger()
-    start_date = pd.to_datetime("2025-07-30 06:00:00")
-    ds = xr.open_dataset("forecasts_levels-13_steps-64.nc")
-    t0 = time()
-    outdir = Path("./")
-    outdir.mkdir(parents=True, exist_ok=True)
-    converter = Grib2Writer(start_date)
-    converter.save_grib2(ds, outdir)
-    logging.info("It took %s mins", (time() - t0) / 60)
-
-
-if __name__ == "__main__":  # pragma: no cover
-    main()
