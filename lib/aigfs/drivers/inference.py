@@ -1,7 +1,3 @@
-"""
-A driver for AIGFS inference.
-"""
-
 import dataclasses
 import logging
 from collections.abc import Callable
@@ -33,6 +29,10 @@ jax.config.update("jax_platforms", "cpu")
 
 
 class AIGFSInference(DriverCycleBased):
+    """
+    A driver for generating AIGFS forecasts.
+    """
+
     # Public tasks
 
     @task
@@ -135,7 +135,7 @@ class AIGFSInference(DriverCycleBased):
             stddev=stddev,
         )
         with_params = partial(jax.jit(with_configs), params=model_weights.ref[0].params, state={})
-        model = self.drop_state(with_params)
+        model = self._drop_state(with_params)
         self.rundir.mkdir(parents=True, exist_ok=True)
         converter.save_grib2(ds, self.rundir)
         rollout.chunked_prediction(
@@ -166,8 +166,10 @@ class AIGFSInference(DriverCycleBased):
         """
         return "aigfs_inference"
 
+    # Private  helper methods
+
     @staticmethod
-    def drop_state(fn: Callable[..., tuple[object, ...]]) -> Callable[..., object]:
+    def _drop_state(fn: Callable[..., tuple[object, ...]]) -> Callable[..., object]:
         return lambda **kw: fn(**kw)[0]
 
 

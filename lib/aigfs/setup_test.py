@@ -18,7 +18,7 @@ def test_ush_setup_generate_configs(tmp_path):
         realize_rocoto.return_value = True
         setup.generate_configs(update_config=update_config, aigfs_config=path)
     realize_config.assert_called_once_with(
-        input_config=setup.APP_HOME / "etc" / "workflow" / "rocoto" / "base.yaml",
+        input_config=setup._APP_HOME / "etc" / "workflow" / "rocoto" / "base.yaml",
         output_file=path,
         update_config=update_config,
     )
@@ -67,12 +67,12 @@ def test_ush_setup_prepare_configs(tmp_path):
         compose.side_effect = [{"app": {"platform": "test"}}, mock_update_config]
         result = setup.prepare_configs(user_config_files)
     assert result is mock_update_config
-    mock_update_config.update_from.assert_called_once_with({"app": {"home": str(setup.APP_HOME)}})
+    mock_update_config.update_from.assert_called_once_with({"app": {"home": str(setup._APP_HOME)}})
     # First call: Compose user configs.
     # Second call: Compose with default, platform, and user configs.
     assert compose.call_count == 2
     second_call = compose.call_args_list[1]
-    etcdir = setup.APP_HOME / "etc"
+    etcdir = setup._APP_HOME / "etc"
     assert second_call[1]["configs"] == [
         etcdir / "base.yaml",
         etcdir / "platform" / "test.yaml",

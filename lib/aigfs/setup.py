@@ -1,3 +1,7 @@
+"""
+Support for setting up AIGFS runtime assets.
+"""
+
 import argparse
 import logging
 import os
@@ -12,14 +16,14 @@ from uwtools.api.rocoto import realize as realize_rocoto
 
 from aigfs.validation import Config, validate
 
-APP_HOME = Path(__file__).parent.parent.parent.resolve()
+_APP_HOME = Path(__file__).parent.parent.parent.resolve()
 
 
 def generate_configs(update_config: YAMLConfig, aigfs_config: Path, engine: str = "rocoto") -> None:
     """
     Generate the AIGFS config and workflow manager artifacts.
     """
-    workflow_config = APP_HOME / "etc" / "workflow" / engine / "base.yaml"
+    workflow_config = _APP_HOME / "etc" / "workflow" / engine / "base.yaml"
     realize_config(
         input_config=workflow_config, output_file=aigfs_config, update_config=update_config
     )
@@ -63,15 +67,15 @@ def prepare_configs(user_config_files: list[Path]) -> YAMLConfig:
     """
     user_config = compose(configs=cast(list[str | Path], user_config_files), output_file=os.devnull)
     platform = user_config["app"]["platform"]
-    base_config = APP_HOME / "etc" / "base.yaml"
-    platform_config = APP_HOME / "etc" / "platform" / f"{platform}.yaml"
+    base_config = _APP_HOME / "etc" / "base.yaml"
+    platform_config = _APP_HOME / "etc" / "platform" / f"{platform}.yaml"
     # Make sure user_config is last to override any settings from supplementals.
     update_config = compose(
         configs=[base_config, platform_config, *user_config_files],
         realize=True,
         output_file=os.devnull,
     )
-    update_config.update_from({"app": {"home": str(APP_HOME)}})
+    update_config.update_from({"app": {"home": str(_APP_HOME)}})
     return cast(YAMLConfig, update_config)
 
 

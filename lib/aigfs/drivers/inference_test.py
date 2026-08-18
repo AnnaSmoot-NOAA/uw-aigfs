@@ -205,9 +205,9 @@ def test_drivers_AIGFSInference_driver_name(driverobj):
     assert driverobj.driver_name() == "aigfs_inference"
 
 
-def test_drivers_AIGFSInference_drop_state():
+def test_drivers_AIGFSInference__drop_state():
     fn = lambda **kw: (kw["a"] + kw["b"], "state")
-    wrapped = inference.AIGFSInference.drop_state(fn)
+    wrapped = inference.AIGFSInference._drop_state(fn)
     assert wrapped(a=1, b=2) == 3
 
 

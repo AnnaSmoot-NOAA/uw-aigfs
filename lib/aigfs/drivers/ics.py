@@ -1,7 +1,3 @@
-"""
-A driver for generating ICS for AIGFS.
-"""
-
 import logging
 import re
 from collections.abc import Iterator
@@ -17,7 +13,7 @@ from uwtools.api.utils import atomic, run_shell_cmd
 
 class AIGFSICs(DriverCycleBased, FileStager):
     """
-    A driver for generating GraphCast initial conditions.
+    A driver for generating AIGFS initial conditions.
     """
 
     # Public tasks

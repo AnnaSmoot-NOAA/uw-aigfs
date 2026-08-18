@@ -1,7 +1,3 @@
-"""
-A driver for post-processing AIGFS forecast data.
-"""
-
 import logging
 from functools import cached_property
 from pathlib import Path
@@ -13,6 +9,10 @@ from uwtools.api.utils import atomic, run_shell_cmd
 
 
 class AIGFSPost(DriverCycleLeadtimeBased):
+    """
+    A driver for post-processing AIGFS forecasts.
+    """
+
     # Public tasks
 
     @collection
