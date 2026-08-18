@@ -9,7 +9,7 @@ from graphcast import checkpoint, graphcast  # type: ignore[import-untyped]
 from iotaa import Asset, task
 from pytest import fixture, mark
 
-from . import aigfs_inference
+from aigfs.drivers import inference
 
 # Fixtures
 
@@ -39,10 +39,10 @@ def cycle(utc):
 
 @fixture
 def driverobj(config, cycle):
-    return aigfs_inference.AIGFSInference(
+    return inference.AIGFSInference(
         config=config,
         cycle=cycle,
-        schema_file=Path(__file__).parent / "aigfs_inference.jsonschema",
+        schema_file=Path(__file__).parent / "inference.jsonschema",
     )
 
 
@@ -144,7 +144,7 @@ def test_drivers_AIGFSInference_inputs_targets_forcings(driverobj, logcap, mock_
     targets = xr.Dataset({"target_var": (["x"], [3, 4])})
     forcings = xr.Dataset({"forcing_var": (["x"], [5, 6])})
     with (
-        patch.object(aigfs_inference.data_utils, "extract_inputs_targets_forcings") as extract,
+        patch.object(inference.data_utils, "extract_inputs_targets_forcings") as extract,
         patch.object(driverobj, "initial_conditions", Mock(wraps=ics)),
         patch.object(driverobj, "model_weights", Mock(wraps=mock_mws)),
     ):
@@ -207,7 +207,7 @@ def test_drivers_AIGFSInference_driver_name(driverobj):
 
 def test_drivers_AIGFSInference_drop_state():
     fn = lambda **kw: (kw["a"] + kw["b"], "state")
-    wrapped = aigfs_inference.AIGFSInference.drop_state(fn)
+    wrapped = inference.AIGFSInference.drop_state(fn)
     assert wrapped(a=1, b=2) == 3
 
 
@@ -249,9 +249,9 @@ def test_drivers_AIGFSInference_predictions(driverobj, ds, logcap, mock_mws, utc
         patch.object(driverobj, "inputs_targets_forcings", Mock(wraps=mock_itfs)),
         patch.object(driverobj, "model_weights", Mock(wraps=mock_mws)),
         patch.object(driverobj, "normalization_stats", Mock(wraps=mock_norm)),
-        patch.object(aigfs_inference, "Grib2Writer") as mock_writer_cls,
-        patch.object(aigfs_inference, "rollout") as mock_rollout,
-        patch.object(aigfs_inference, "jax") as mock_jax,
+        patch.object(inference, "Grib2Writer") as mock_writer_cls,
+        patch.object(inference, "rollout") as mock_rollout,
+        patch.object(inference, "jax") as mock_jax,
     ):
         mock_jit_result = Mock()
         mock_jax.jit.return_value = mock_jit_result
@@ -273,20 +273,20 @@ def test_drivers_AIGFSInference_predictions(driverobj, ds, logcap, mock_mws, utc
     assert "predictions" in logcap.text
 
 
-def test_drivers_aigfs_inference__adjust_time(ds, logcap):
+def test_drivers_inference__adjust_time(ds, logcap):
     # fcst_steps=4 => needs 6 time steps, ds has 2, so the if block is entered.
-    ds_check(aigfs_inference._adjust_time(ds=ds, fcst_steps=4, taskname="test"))
+    ds_check(inference._adjust_time(ds=ds, fcst_steps=4, taskname="test"))
     assert "test: Updating dataset to account for forecast length" in logcap.text
 
 
-def test_drivers_aigfs_inference__adjust_time__noop(ds):
+def test_drivers_inference__adjust_time__noop(ds):
     # fcst_steps=0 => needs 2 time steps, ds has 2, so the if block is NOT entered.
-    result = aigfs_inference._adjust_time(ds=ds, fcst_steps=0, taskname="test")
+    result = inference._adjust_time(ds=ds, fcst_steps=0, taskname="test")
     xr.testing.assert_identical(result, ds)
 
 
-def test_drivers_aigfs_inference__clean_ics(ds):
-    result = aigfs_inference._clean_ics(ds)
+def test_drivers_inference__clean_ics(ds):
+    result = inference._clean_ics(ds)
     # Dropped variables are gone:
     for var in ["geopotential_at_surface", "land_sea_mask", "total_precipitation_6hr"]:
         assert var not in result.data_vars
@@ -297,18 +297,18 @@ def test_drivers_aigfs_inference__clean_ics(ds):
     np.testing.assert_array_equal(result["time"].values, [np.timedelta64(0, "h")])
 
 
-def test_drivers_aigfs_inference_construct_wrapped_graphcast(model_config, task_config):
+def test_drivers_inference_construct_wrapped_graphcast(model_config, task_config):
     diffs_stddev = xr.Dataset({"x": ([], 1.0)})
     mean = xr.Dataset({"x": ([], 2.0)})
     stddev = xr.Dataset({"x": ([], 3.0)})
-    with patch.object(aigfs_inference.graphcast, "GraphCast") as mock_gc:
-        result = aigfs_inference.construct_wrapped_graphcast(
+    with patch.object(inference.graphcast, "GraphCast") as mock_gc:
+        result = inference.construct_wrapped_graphcast(
             model_config, task_config, diffs_stddev, mean, stddev
         )
     # GraphCast was called with model_config and task_config:
     mock_gc.assert_called_once_with(model_config, task_config)
     # The result is an autoregressive.Predictor wrapping the composition:
-    assert isinstance(result, aigfs_inference.autoregressive.Predictor)
+    assert isinstance(result, inference.autoregressive.Predictor)
 
 
 # Helpers
@@ -332,8 +332,8 @@ def ds_check(ds: xr.Dataset) -> None:
 # Schema tests
 
 
-def test_drivers_aigfs_inference_schema(config, logcap, tmp_path, validator, with_set):
-    ok = validator(aigfs_inference, tmp_path)
+def test_drivers_inference_schema(config, logcap, tmp_path, validator, with_set):
+    ok = validator(inference, tmp_path)
     # Valid config passes:
     assert ok(config)
     # Top-level aigfs_inference key is required:
@@ -346,10 +346,8 @@ def test_drivers_aigfs_inference_schema(config, logcap, tmp_path, validator, wit
     logcap.clear()
 
 
-def test_drivers_aigfs_inference_schema_content(
-    config, logcap, tmp_path, validator, with_del, with_set
-):
-    ok = validator(aigfs_inference, tmp_path, "properties", "aigfs_inference")
+def test_drivers_inference_schema_content(config, logcap, tmp_path, validator, with_del, with_set):
+    ok = validator(inference, tmp_path, "properties", "aigfs_inference")
     cfg = config["aigfs_inference"]
     # Required:
     for key in (

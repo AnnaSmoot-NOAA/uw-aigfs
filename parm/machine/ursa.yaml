@@ -1,3 +1,0 @@
-platform:
-  pretrained_model_path: /home/role.rtaigfs/weights
-  scheduler: slurm

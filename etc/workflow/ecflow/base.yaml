@@ -2,17 +2,17 @@ ecflow:
   suitedef:
     scheduler: "{{ platform.scheduler }}"
     vars:
-      ECF_INCLUDE: "{{ user.aigfs_app }}/include"
-      AIGFS_APP: "{{ user.aigfs_app }}"
-      EXPERIMENT_CONFIG: "{{user.experiment_dir}}/experiment.yaml"
-      PLATFORM: "{{ user.platform }}"
+      APPDIR: "{{ app.home }}"
+      ECF_INCLUDE: "{{ app.home }}/include"
+      CONFIG: "{{ app.rundir}}/aigfs.yaml"
+      PLATFORM: "{{ app.platform }}"
     suite_retro:
       family_datetimes:
         repeat_datetime:
           variable: CYCLE
-          start: '{{ user.first_cycle.strftime("%Y%m%dT%H%M%S") }}'
-          end: '{{ user.last_cycle.strftime("%Y%m%dT%H%M%S") }}'
-          step: '{% set f = user.cycle_freq.total_seconds() %}{{ "%02d:%02d:%02d" % (f // 3600, (f % 3600) / 60, f % 60 ) }}'
+          start: '{{ app.first_cycle.strftime("%Y%m%dT%H%M%S") }}'
+          end: '{{ app.last_cycle.strftime("%Y%m%dT%H%M%S") }}'
+          step: '{% set f = app.cycle_freq.total_seconds() %}{{ "%02d:%02d:%02d" % (f // 3600, (f % 3600) / 60, f % 60 ) }}'
         family_forecast:
           task_jaigfs_prep:
             script: &script
@@ -25,12 +25,12 @@ ecflow:
               manual: "Prepares AIGFS ICS from GFS."
               batchargs: !dict "{{ prep.aigfs_ics.execution.batchargs }}"
               body: |
-                source %AIGFS_APP%/load_wflow_modules.sh %PLATFORM%
+                source %APPDIR%/bin/activate-%PLATFORM%
                 uw execute \
-                  --module %AIGFS_APP%/drivers/aigfs_ics.py \
+                  --module aigfs.drivers.ics \
                   --classname AIGFSICs \
                   --task run \
-                  --config %EXPERIMENT_CONFIG% \
+                  --config %CONFIG% \
                   --cycle $ISOCYCLE \
                   --key-path prep
           task_jaigfs_forecast:
@@ -41,12 +41,12 @@ ecflow:
               manual: "Runs AIGFS forecast."
               batchargs: !dict "{{ forecast.aigfs_inference.execution.batchargs }}"
               body: |
-                source %AIGFS_APP%/load_wflow_modules.sh %PLATFORM%
+                source %APPDIR%/bin/activate-%PLATFORM%
                 uw execute \
-                  --module %AIGFS_APP%/drivers/aigfs_inference.py \
+                  --module aigfs.drivers.inference \
                   --classname AIGFSInference \
                   --task run \
-                  --config %EXPERIMENT_CONFIG% \
+                  --config %CONFIG% \
                   --cycle $ISOCYCLE \
                   --key-path forecast
           family_post:
@@ -59,10 +59,10 @@ ecflow:
                 manual: "Runs AIGFS post for {{ ec.fhr }}."
                 batchargs: !dict "{{ post.aigfs_post.execution.batchargs }}"
                 body: |
-                  source %AIGFS_APP%/load_wflow_modules.sh %PLATFORM%
+                  source %APPDIR%/bin/activate-%PLATFORM%
                   module load wgrib2
                   export FH=%FHR%
                   export INPUTDIR={{ forecast.aigfs_inference.rundir }}
-                  %AIGFS_APP%/scripts/run_post.sh
+                  %APPDIR%/bin/post
               vars:
                 FHR: "{{ ec.fhr }}"

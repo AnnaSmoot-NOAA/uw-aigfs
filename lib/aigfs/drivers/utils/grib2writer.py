@@ -8,6 +8,7 @@ from pathlib import Path
 import grib2io  # type: ignore[import-untyped]
 import numpy as np
 import xarray as xr
+from uwtools.api.utils import atomic
 
 SECTION3 = np.array(
     [
@@ -140,32 +141,29 @@ class Grib2Writer:
         # Delete the old files.
         for outfile in [outfile_sfc, outfile_pres]:
             outfile.unlink(missing_ok=True)
-        # Open GRIB2 file.
-        grib2_out_sfc = grib2io.open(outfile_sfc, mode="w")
-        logging.info(" Opening GRIB2 File for surface variables: %s", outfile_sfc)
-        grib2_out_pres = grib2io.open(outfile_pres, mode="w")
-        logging.info(" Opening GRIB2 File for pressure level variables: %s", outfile_pres)
-        # Iterate over the variable name keys in JSON file.
-        for var in sorted(ds.data_vars):
-            # Get variable as DataArray.
-            da = ds[var]
-            # Iterate over level:
-            if "level" in da.coords:
-                for level in da.coords["level"]:
-                    msg = self.create_grib2_message(var, lead, level=level)
-                    msg.data = da.sel(level=level).isel(time=0).values
+        logging.info("Writing surface variables to %s", outfile_sfc)
+        logging.info("Writing pressure-level varibles to %s", outfile_pres)
+        # Write to temporary GRIB2 files, then atomically rename them:
+        with atomic(outfile_sfc) as tmp_sfc, atomic(outfile_pres) as tmp_pres:
+            grib2_out_sfc = grib2io.open(tmp_sfc, mode="w")
+            grib2_out_pres = grib2io.open(tmp_pres, mode="w")
+            for var in sorted(ds.data_vars):
+                da: xr.DataArray = ds[var]
+                if "level" in da.coords:
+                    for level in da.coords["level"]:
+                        msg = self.create_grib2_message(var, lead, level=level)
+                        msg.data = da.sel(level=level).isel(time=0).values
+                        msg.pack()
+                        logging.info("  %s", msg)
+                        grib2_out_pres.write(msg)
+                else:
+                    msg = self.create_grib2_message(var, lead)
+                    msg.data = da.isel(time=0).values
                     msg.pack()
                     logging.info("  %s", msg)
-                    grib2_out_pres.write(msg)
-            else:
-                msg = self.create_grib2_message(var, lead)
-                msg.data = da.isel(time=0).values
-                msg.pack()
-                logging.info("  %s", msg)
-                grib2_out_sfc.write(msg)
-        # Close GRIB2 file.
-        grib2_out_sfc.close()
-        grib2_out_pres.close()
+                    grib2_out_sfc.write(msg)
+            grib2_out_sfc.close()
+            grib2_out_pres.close()
         # Release post job to create index files and copy files to COM.
         if os.environ.get("SENDECF", "NO") != "NO":
             seteventsh = os.environ["SETEVENTSH"]

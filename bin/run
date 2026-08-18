@@ -44,19 +44,44 @@ makedocs() {
 }
 
 makeenv() {
-  local condadir env
+  local condadir dir_a dir_d env envdir libdir
   condadir=$(condadir)
   env=$(env)
   bootstrap
   activate base
   PIP_VERBOSE=1
-  XDG_CACHE_HOME=$(condadir)/cache
+  XDG_CACHE_HOME=$condadir/cache
   export PIP_VERBOSE XDG_CACHE_HOME
-  if [[ -d $condadir/envs/$env ]]; then
+  envdir=$condadir/envs/$env
+  if [[ -d $envdir ]]; then
     msg Using existing environment $env
   else
     msg Creating environment $env
     conda env create --file $(envyaml) --quiet --yes
+    dir_a=$envdir/etc/conda/activate.d
+    dir_d=$envdir/etc/conda/deactivate.d
+    mkdir -pv $dir_a $dir_d
+    libdir=$(rootdir)/lib
+    cat <<EOF >$dir_a/aigfs.sh
+if [[ -v PYTHONPATH ]]; then
+  export AIGFS_OLD_PYTHONPATH=\$PYTHONPATH
+  export PYTHONPATH=$libdir:\$PYTHONPATH
+else
+  export PYTHONPATH=$libdir
+fi
+export AIGFS_OLD_PATH=\$PATH
+export PATH=$(rootdir)/bin:\$PATH
+EOF
+    cat <<EOF >$dir_d/aigfs.sh
+if [[ -v AIGFS_OLD_PYTHONPATH ]]; then
+  export PYTHONPATH=\$AIGFS_OLD_PYTHONPATH
+  unset AIGFS_OLD_PYTHONPATH
+else
+  unset PYTHONPATH
+fi
+export PATH=\$AIGFS_OLD_PATH
+unset AIGFS_OLD_PATH
+EOF
     msg Created environment $env
   fi
   if [[ -v DEVMODE ]]; then
@@ -88,7 +113,7 @@ format() {
 }
 
 jsfiles() {
-  find $(rootdir) -path $(condadir) -prune -o -type f -name "*.json*" -print
+  find $(rootdir) -path $(condadir) -prune -o -type f -name "*.json*" -print | sort
 }
 
 lint() {
@@ -107,7 +132,7 @@ msg() {
 }
 
 pyfiles() {
-  find $(rootdir) -path $(condadir) -prune -o -type f -name "*.py" -print
+  find $(rootdir) -path $(condadir) -prune -o -type f -name "*.py" -print | sort
 }
 
 rmenv() {
@@ -120,7 +145,7 @@ rmenv() {
 }
 
 shfiles() {
-  find $(rootdir) -path $(condadir) -prune -o -type f -print | while read -r x; do
+  find $(rootdir) -path $(condadir) -prune -o -type f -print | sort | while read -r x; do
     file $x | grep -q "Bourne-Again shell script" && echo $x
   done | sort
 }
@@ -135,7 +160,7 @@ typecheck() {
 unittest() {
   activate $(env)
   msg Running Python unit tests
-  pytest --cov=drivers --cov=ush --cov-report=term-missing --ignore=conda/ .
+  pytest --cov=aigfs --cov-report=term-missing --ignore=conda/ .
   conda deactivate
 }
 
@@ -159,7 +184,7 @@ env() {
 }
 
 envyaml() {
-  echo $(rootdir)/envs/environment.yaml
+  echo $(rootdir)/etc/env/environment.yaml
 }
 
 fromroot() {
@@ -171,7 +196,7 @@ rootdir() {
 }
 
 yamlfiles() {
-  find $(rootdir) -path $(condadir) -prune -o -type f -name "*.yaml" -print
+  find $(rootdir) -path $(condadir) -prune -o -type f -name "*.yaml" -print | sort | grep -v "^.*/aigfs.yaml$"
 }
 
 # Main entrypoint:

@@ -188,7 +188,7 @@ def test_drivers_utils_grib2writer_save_grib2(writer, ds, tmp_path, logcap):
         msgs = list(f)
     # Pressure vars: geopotential, specific_humidity, temperature each with 2 levels = 6 msgs
     assert len(msgs) == 6
-    assert "Opening GRIB2 File" in logcap.text
+    assert "Writing surface variables to" in logcap.text
 
 
 def test_drivers_utils_grib2writer_save_grib2_cumsum_aigfs(writer, tmp_path):

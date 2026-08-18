@@ -1,0 +1,5 @@
+#!/bin/bash
+
+run=$(readlink -f $(dirname ${BASH_SOURCE[0]}))/run
+module use $($run rootdir)/modulefiles
+module load workflow-wcoss2

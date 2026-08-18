@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 from iotaa import Asset, Node, external, task
 from pytest import fixture
 
-from . import aigfs_post
+from aigfs.drivers import post
 
 # Fixtures
 
@@ -33,11 +33,11 @@ def cycle(utc):
 
 @fixture
 def driverobj(config, cycle):
-    return aigfs_post.AIGFSPost(
+    return post.AIGFSPost(
         config=config,
         cycle=cycle,
         leadtime=timedelta(hours=6),
-        schema_file=Path(__file__).parent / "aigfs_post.jsonschema",
+        schema_file=Path(__file__).parent / "post.jsonschema",
     )
 
 
@@ -106,7 +106,7 @@ def test_drivers_AIGFSPost__idx(driverobj, logcap, touch):
     assert not path.exists()
     with (
         patch.object(driverobj, "_gribfile", Mock(wraps=mock__gribfile)) as _gribfile,
-        patch.object(aigfs_post, "run_shell_cmd") as run_shell_cmd,
+        patch.object(post, "run_shell_cmd") as run_shell_cmd,
     ):
         run_shell_cmd.side_effect = lambda *_args, **_kwargs: touch(path)
         node = driverobj._idx(path)
@@ -188,8 +188,8 @@ def test_drivers_AIGFSPost__idx2grib(driverobj):
 # Schema tests
 
 
-def test_drivers_aigfs_post_schema(config, logcap, tmp_path, validator, with_set):
-    ok = validator(aigfs_post, tmp_path)
+def test_drivers_post_schema(config, logcap, tmp_path, validator, with_set):
+    ok = validator(post, tmp_path)
     # Valid config passes:
     assert ok(config)
     # Top-level aigfs_post key is required:
@@ -202,8 +202,8 @@ def test_drivers_aigfs_post_schema(config, logcap, tmp_path, validator, with_set
     logcap.clear()
 
 
-def test_drivers_aigfs_post_schema_content(config, logcap, tmp_path, validator, with_del, with_set):
-    ok = validator(aigfs_post, tmp_path, "properties", "aigfs_post")
+def test_drivers_post_schema_content(config, logcap, tmp_path, validator, with_del, with_set):
+    ok = validator(post, tmp_path, "properties", "aigfs_post")
     cfg = config["aigfs_post"]
     # Required:
     for key in ("execution", "inputfiles", "outputdir", "rundir"):

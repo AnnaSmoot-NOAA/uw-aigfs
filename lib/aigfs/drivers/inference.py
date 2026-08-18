@@ -26,8 +26,8 @@ from graphcast import (  # type: ignore[import-untyped]
 from iotaa import Asset, collection, task
 from uwtools.drivers.driver import DriverCycleBased
 
-from .utils.grib2writer import Grib2Writer
-from .utils.tasks import file
+from aigfs.drivers.utils.grib2writer import Grib2Writer
+from aigfs.drivers.utils.tasks import file
 
 jax.config.update("jax_platforms", "cpu")
 

@@ -8,7 +8,7 @@ import xarray as xr
 from iotaa import Asset, external, task
 from pytest import fixture, mark, raises
 
-from . import aigfs_ics
+from aigfs.drivers import ics
 
 # Fixtures
 
@@ -39,11 +39,11 @@ def cycle(utc):
 
 @fixture
 def driverobj(config, cycle):
-    return aigfs_ics.AIGFSICs(
+    return ics.AIGFSICs(
         config=config,
         cycle=cycle,
         batch=True,
-        schema_file=Path(__file__).parent / "aigfs_ics.jsonschema",
+        schema_file=Path(__file__).parent / "ics.jsonschema",
     )
 
 
@@ -289,8 +289,8 @@ def test_drivers_AIGFSICs__ncfiles_to_cmds__bad_grib_filenames(varkit):
 # Schema tests
 
 
-def test_drivers_aigfs_ics_schema(config, logcap, tmp_path, validator, with_del, with_set):
-    ok = validator(aigfs_ics, tmp_path)
+def test_drivers_ics_schema(config, logcap, tmp_path, validator, with_del, with_set):
+    ok = validator(ics, tmp_path)
     # Valid config passes:
     assert ok(config)
     # Top-level aigfs_ics key is required:
@@ -308,8 +308,8 @@ def test_drivers_aigfs_ics_schema(config, logcap, tmp_path, validator, with_del,
     assert ok(with_set(cfg_no_link, {"data/x": "/y"}, "aigfs_ics", "files_to_hardlink"))
 
 
-def test_drivers_aigfs_ics_schema_content(config, logcap, tmp_path, validator, with_del, with_set):
-    ok = validator(aigfs_ics, tmp_path, "properties", "aigfs_ics")
+def test_drivers_ics_schema_content(config, logcap, tmp_path, validator, with_del, with_set):
+    ok = validator(ics, tmp_path, "properties", "aigfs_ics")
     cfg = config["aigfs_ics"]
     # Required:
     for key in ("execution", "rundir", "variable_extraction_yaml"):

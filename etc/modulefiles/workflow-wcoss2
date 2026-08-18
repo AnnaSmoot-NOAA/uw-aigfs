@@ -1,6 +1,6 @@
 #%Module1.0
 ##
-## wflow_wcoss — loads the runtime environment for uw-aigfs on WCOSS2
+## workflow-wcoss2 — loads the runtime environment for uw-aigfs on WCOSS2
 ## Loads system modules and activates the aigfs venv.
 ## No conda, no ecflow.
 ##

@@ -1,0 +1,5 @@
+#!/bin/bash
+
+run=$(readlink -f $(dirname ${BASH_SOURCE[0]}))/run
+. $($run condadir)/etc/profile.d/conda.sh
+conda activate $($run env)

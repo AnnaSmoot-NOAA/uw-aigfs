@@ -36,10 +36,10 @@ This installs [Miniforge](https://github.com/conda-forge/miniforge) into `conda/
 After the initial installation, activate the environment in a fresh shell with:
 
 ```bash
-source load_wflow_modules.sh <platform>
+source bin/activate-<platform>
 ```
 
-where `<platform>` is `ursa` or `wcoss2` (see the [User Guide](user_guide.md#setting-up-the-environment) for details).
+where `<platform>` is `ursa` or `wcoss2` (see the [User Guide](user_guide.md#installing) for details).
 
 > **Note on disk space:** The conda installation requires several gigabytes of disk space. Clone `uw-aigfs` to a location with a sufficiently large disk quota — not your HPC home directory.
 
@@ -101,7 +101,9 @@ make lint
 
 ### Unit Tests
 
-Unit tests live in the `tests/` directory. Run them with coverage reporting:
+### Unit Tests
+
+Unit tests are colocated with the modules they test. Run them with coverage reporting:
 
 ```bash
 make unittest
@@ -158,55 +160,55 @@ Use the _Conversation_ tab of your PR to ask for help with any difficulties you 
 ## Repository Structure
 
 ```
-├── bin                             # Automation tools
-│   ├── activate                    # Source to activate conda and the AIGFS environment
-│   └── run                         # Support for Makefile targets
-├── conda                           # Managed conda installation (created by make [dev]env)
-├── docs                            # User and contributor documentation
-├── drivers                         # Driver classes for workflow stages
-│   ├── aigfs_*.jsonschema          # Driver config schemas
-│   ├── aigfs_*.py                  # Driver modules
-│   ├── aigfs_*_test.py             # Driver test modules
-│   ├── conftest.py                 # Test support
-│   └── utils                       # Shared driver utilities
-├── envs                            # Definitions for conda environments
-│   ├── devpkgs.yaml                # Developer packages
-│   └── environment.yaml            # Core conda environment definition
-├── load_wflow_modules.sh           # Platform environment activation script
-├── Makefile                        # Provides automation targets
-├── modulefiles                     # Directory for system modules
-├── parm                            # Input text files
-│   ├── default_config.yaml         # Baseline experiment configuration
-│   ├── machine                     # Per-platform YAML overrides
-│   ├── user                        # User-specific YAML overrides
-│   ├── wflow                       # Workflow files
-│   │   ├── ecflow                  # ecFlow workflow support
-│   │   └── rocoto                  # Rocoto workflow support
-│   └── wgrib2_data.yaml            # Variables and levels to extract from GFS GRIB2
-├── pyproject.toml                  # Code-quality tool configuration
-├── scripts                         # High-level scripts
-│   └── run_post.sh                 # Helper script for post-processing
-└── ush                             # Low-level or utility scripts, scripting libraries
-    ├── generate_experiment.py      # Experiment setup CLI
-    ├── generate_experiment_test.py # Tests for generate_experiment.py
-    ├── validation.py               # Pydantic config validation
-    └── validation_test.py          # Tests for validation.py
+├── bin                            # Automation tools
+│   ├── activate-<platform>        # Source to activate AIGFS environment for <platform>
+│   ├── post                       # Post-processing script
+│   ├── run                        # Support for Makefile targets
+│   └── setup                      # Executable wrapper for aigfs.setup module
+├── conda                          # Managed conda installation (created by make [dev]env)
+├── docs                           # User and contributor documentation
+├── etc                            # Configuration files, etc.
+│   ├── base.yaml                  # AIGFS app configuration defaults
+│   ├── env                        # Conda environment definitions
+│   │   ├── devpkgs.yaml           # Developer packages
+│   │   └── environment.yaml       # Core AIGFS environment definition
+│   ├── modulefiles                # System modules
+│   ├── platform                   # Per-platform YAML overrides
+│   ├── wgrib2.yaml                # Variable, and levels to extract from GFS GRIB2
+│   └── workflow                   # Workflow files
+│       ├── ecflow                 # ecFlow workflow support
+│       └── rocoto                 # Rocoto workflow support
+├── lib                            # Python library code
+│   └── aigfs                      # The AIGFS python package
+│       ├── conftest.py            # Unit-tests fixtures
+│       ├── drivers                # AIGFS component drivers
+│       │   ├── *.jsonschema       # Config schema
+│       │   ├── *.py               # AIGFS component driver
+│       │   ├── *_test.py          # Unit tests
+│       │   └── utils              # Shared driver utilities
+│       │       ├── grib2writer.py # GRIB2 writing support
+│       │       └── tasks.py       # Shared driver tasks
+│       ├── setup.py               # Logic for preparing AIGFS assets
+│       └── validation.py          # Config validation
+├── Makefile                       # Provides automation targets
+├── pyproject.toml                 # Code-quality tool configuration
+└── README.md                      # Top-level documentation
 ```
 
 ### Key Concepts
 
 **Drivers** (`drivers/`) implement [uwtools](https://uwtools.readthedocs.io/en/main/) driver classes using the [iotaa](https://github.com/maddenp/iotaa) task framework. Each driver exposes tasks (Python methods decorated with `@task`, `@collection`, or `@external`) that declare their inputs and outputs as `Asset` objects. The `uw execute` command (called from ***Rocoto*** job scripts) resolves and runs these tasks.
 
-**Configuration** follows the ***uwtools*** YAML model. `parm/default_config.yaml` is the baseline; it is merged with the machine YAML and any user-provided YAMLs by `ush/generate_experiment.py` using `uwtools.api.config.compose`. The resulting `experiment.yaml` is the single source of truth at runtime.
+**Configuration** follows the ***uwtools*** YAML model. `etc/base.yaml` is the baseline; it is merged with the platform YAML and any user-provided YAMLs by `bin/setup` using `uwtools.api.config.compose`. The resulting `aigfs.yaml` is the single source of truth at runtime.
 
-**Workflow** is managed by [Rocoto](https://github.com/christopherwharrop/rocoto). The `parm/wflow/rocoto/aigfs_base.yaml` template is realized by ***uwtools*** to produce `rocoto.xml`. Task dependencies (prep → forecast → post) are expressed in that template.
+**Workflow** is managed by [Rocoto](https://github.com/NOAA-GSL/rocoto). The `etc/workflow/rocoto/base.yaml` template is realized by ***uwtools*** to produce `rocoto.xml`. Task dependencies (prep → forecast → post) are expressed in that template.
 
 When adding a new workflow stage, you will typically need to:
 
-1. Add a new driver class in `drivers/`.
-2. Add corresponding configuration blocks in `parm/default_config.yaml`.
-3. Add a new task or metatask entry in `parm/wflow/rocoto/aigfs_base.yaml`.
-4. Add unit tests in `tests/drivers/`.
+1. Add a new driver class in `lib/aigfs/drivers/`.
+2. Add corresponding configuration blocks in `etc/base.yaml`.
+3. Add a new task or metatask entry in `etc/workflow/rocoto/base.yaml`.
+4. Add unit tests alongside the modules they test.
 5. Update this documentation.
 
 [← Back to Index](index.md)
