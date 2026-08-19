@@ -3,7 +3,7 @@ app:
   first_cycle: !datetime 2025-10-21T00
   home: YOUR AIGFS GIT CLONE
   last_cycle: !datetime 2025-10-21T00
-  pretrained_model_path: YOUR PRETRAINED MODEL DIRECTORY
+  modeldir: YOUR MODEL DIRECTORY
   rundir: YOUR RUN DIRECTORY
 timevars:
   cyc: '{{ cycle.strftime("%H") }}'
@@ -30,7 +30,7 @@ prep:
     scheduler: '{{ platform.scheduler }}'
 forecast:
   aigfs_inference:
-    diffs_stddev_path: '{{ app.pretrained_model_path }}/stats/diffs_stddev_by_level.nc'
+    diffs_stddev_path: '{{ app.modeldir }}/stats/diffs_stddev_by_level.nc'
     execution:
       batchargs:
         debug: True
@@ -45,11 +45,11 @@ forecast:
     forecast_freq: 6
     forecast_length: 120
     ics_path: '{{ prep.aigfs_ics.rundir }}/aigfs.t{{ timevars.cyc }}z.ic.nc'
-    json_path: '{{ app.pretrained_model_path }}/tables'
-    mean_path: '{{ app.pretrained_model_path }}/stats/mean_by_level.nc'
-    model_weights_path: '{{ app.pretrained_model_path }}/params/GCGFSv2_finetuned - GDAS - ERA5 - resolution 0.25 - pressure levels 13 - mesh 2to6 - precipitation output only.npz'
+    json_path: '{{ app.modeldir }}/tables'
+    mean_path: '{{ app.modeldir }}/stats/mean_by_level.nc'
+    model_weights_path: '{{ app.modeldir }}/params/weights.npz'
     rundir: '{{ app.rundir }}/{{ cycle.strftime("%Y%m%d%H") }}/forecast'
-    stddev_path: '{{ app.pretrained_model_path }}/stats/stddev_by_level.nc'
+    stddev_path: '{{ app.modeldir }}/stats/stddev_by_level.nc'
   platform:
     account: '{{ platform.account }}'
     scheduler: '{{ platform.scheduler }}'

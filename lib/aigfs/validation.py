@@ -15,7 +15,9 @@ class App(BaseModel):
 
     cycle_freq: timedelta
     first_cycle: datetime
+    home: Path
     last_cycle: datetime
+    modeldir: Path
     platform: str
     rundir: Path
 

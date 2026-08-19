@@ -144,16 +144,15 @@ forecast:
 
 ```yaml
 app:
-  pretrained_model_path: /path/to/your/graphcast/weights
+  modeldir: /path/to/your/model/weights
 ```
 
-The `pretrained_model_path` directory is expected to contain:
+The `modeldir` directory is expected to contain:
 
 ```
-fix/
-  params/     # model weight .npz file
-  stats/      # diffs_stddev_by_level.nc, mean_by_level.nc, stddev_by_level.nc
-  tables/     # JSON metadata files for GRIB2 output
+params/ # model weights file weights.npz
+stats/  # diffs_stddev_by_level.nc, mean_by_level.nc, stddev_by_level.nc
+tables/ # JSON metadata file(s) for GRIB2 output
 ```
 
 ---
@@ -228,7 +227,7 @@ The `task_prep` ***Rocoto*** task runs `aigfs.drivers.ics` (driver class `AIGFSI
 The `task_forecast` ***Rocoto*** task runs `aigfs.drivers.inference` (driver class `AIGFSInference`). It depends on `task_prep` completing successfully. The task:
 
 1. Loads the initial-conditions netCDF file produced by the prep step.
-2. Loads the pre-trained ***GraphCast*** model weights (`.npz`) from `app.pretrained_model_path`.
+2. Loads the pre-trained ***GraphCast*** model weights (`.npz`) from `app.modeldir`.
 3. Loads the normalization statistics (`diffs_stddev_by_level.nc`, `mean_by_level.nc`, `stddev_by_level.nc`).
 4. Runs autoregressive ***GraphCast*** inference for `forecast.aigfs_inference.forecast_length` hours at `forecast.aigfs_inference.forecast_freq`-hour intervals.
 5. Writes GRIB2 output files to:

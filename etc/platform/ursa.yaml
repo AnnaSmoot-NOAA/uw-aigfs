@@ -1,5 +1,5 @@
 app:
-  pretrained_model_path: /home/role.rtaigfs/weights
+  modeldir: /home/role.rtaigfs/model
 platform:
   scheduler: slurm
 prep:

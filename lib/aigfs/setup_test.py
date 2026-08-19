@@ -8,7 +8,7 @@ from aigfs import setup
 from aigfs.validation import App, Config
 
 
-def test_ush_setup_generate_configs(tmp_path):
+def test_setup_generate_configs(tmp_path):
     path = tmp_path / "aigfs.yaml"
     update_config = Mock()
     with (
@@ -25,7 +25,7 @@ def test_ush_setup_generate_configs(tmp_path):
     realize_rocoto.assert_called_once_with(config=path, output_file=tmp_path / "rocoto.xml")
 
 
-def test_ush_setup_generate_configs_invalid_xml(logcap, tmp_path):
+def test_setup_generate_configs_invalid_xml(logcap, tmp_path):
     path = tmp_path / "aigfs.yaml"
     with (
         patch.object(setup, "realize_config"),
@@ -37,7 +37,7 @@ def test_ush_setup_generate_configs_invalid_xml(logcap, tmp_path):
     assert "Invalid Rocoto XML" in logcap.text
 
 
-def test_ush_setup_main():
+def test_setup_main():
     with (
         patch.object(setup, "generate_configs") as generate_configs,
         patch.object(setup, "parse_args") as parse_args,
@@ -54,13 +54,13 @@ def test_ush_setup_main():
         generate_configs.assert_called_once_with(prepare_configs(), set_up_rundir()[1])
 
 
-def test_ush_setup_parse_args():
+def test_setup_parse_args():
     with patch("sys.argv", ["prog", "/path/to/a.yaml", "/path/to/b.yaml"]):
         result = setup.parse_args()
     assert result == [Path("/path/to/a.yaml"), Path("/path/to/b.yaml")]
 
 
-def test_ush_setup_prepare_configs(tmp_path):
+def test_setup_prepare_configs(tmp_path):
     user_config_files = [tmp_path / "a.yaml"]
     mock_update_config = Mock()
     with patch.object(setup, "compose") as compose:
@@ -81,15 +81,17 @@ def test_ush_setup_prepare_configs(tmp_path):
     assert second_call[1]["realize"] is True
 
 
-def test_ush_setup_set_up_rundir(logcap, tmp_path, utc):
+def test_setup_set_up_rundir(logcap, tmp_path, utc):
     rundir = tmp_path / "myexp"
     validated = Config(
         app=App(
             cycle_freq=timedelta(hours=6),
-            rundir=rundir,
             first_cycle=utc(2025, 10, 1, 18),
+            home=tmp_path,
             last_cycle=utc(2025, 10, 2, 18),
+            modeldir=tmp_path,
             platform="ursa",
+            rundir=rundir,
         )
     )
     result_dir, result_file = setup.set_up_rundir(validated)

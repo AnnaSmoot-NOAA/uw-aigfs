@@ -1,13 +1,13 @@
 app:
   home: /lfs/h2/emc/noscrub/{{ 'USER' | env }}/aigfs
-  pretrained_model_path: '{{ app.home }}/fix'
+  modeldir: '{{ app.home }}/fix'
   rundir: /lfs/h2/emc/stmp/{{ 'USER' | env }}/aigfs/run
 forecast:
   aigfs_inference:
     execution:
       envcmds:
         - module load workflow-wcoss2
-    model_weights_path: '{{ app.pretrained_model_path }}/params/GCGFSv2_finetuned_GDAS-ERA5_0p25_13pl_mesh2to6_tp_output_only.npz'
+    model_weights_path: '{{ app.modeldir }}/params/weights.npz'
 platform:
   scheduler: pbs
 post:
