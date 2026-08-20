@@ -1,0 +1,9 @@
+workflow:
+  tasks:
+    task_prep:
+      partition: "{{ prep.aigfs_ics.execution.batchargs.partition }}"
+    task_forecast:
+      partition: "{{ forecast.aigfs_inference.execution.batchargs.partition }}"
+    metatask_post:
+      task_post_#fhr#:
+        partition: "{{ post.aigfs_post.execution.batchargs.partition }}"
