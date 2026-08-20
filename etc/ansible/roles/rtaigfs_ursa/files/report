@@ -1,0 +1,92 @@
+#!/usr/bin/env bb
+
+;; -*- clj -*-
+
+(def RECIPIENTS "anna.smoot@noaa.gov christina.holt@noaa.gov emily.l.carpenter@noaa.gov paul.madden@noaa.gov")
+(def RUNDIR (format "%s/rtaigfs" (.getParentFile (.getParentFile (io/file *file*)))))
+
+(require '[babashka.process :refer [process]] '[hiccup2.core :as h])
+
+(def EXPECTED 42) ; .idx files per cycle
+(def GRACE 5) ; hours before missing data is considered late
+(def CYCLES 12) ; number of cycles to report on
+
+(def LATE "#cc3300")
+(def PARTIAL "#ffcc00")
+(def PENDING "#ffffff")
+(def READY "#99cc33")
+
+(def utc (java.time.ZoneId/of "UTC"))
+(def now (java.time.ZonedDateTime/now utc))
+
+(def latest-cycle
+  (as-> (.toEpochSecond now) v
+    (- v (mod v 21600))
+    (java.time.Instant/ofEpochSecond v)
+    (java.time.ZonedDateTime/ofInstant v utc)))
+
+(def cycles (for [n (range 0 (* CYCLES 6) 6)] (.minusHours latest-cycle n)))
+
+(defn yyyymmdd
+  [cycle]
+  (format "%d%02d%02d"
+          (.getYear cycle)
+          (.getValue (.getMonth cycle))
+          (.getDayOfMonth cycle)))
+
+(defn hh
+  [cycle]
+  (format "%02d" (.getHour cycle)))
+
+(defn idxfiles
+  [cycle]
+  (fs/glob
+    (fs/path RUNDIR
+             (yyyymmdd cycle)
+             (hh cycle)
+             (str (yyyymmdd cycle) (hh cycle))
+             "forecast")
+    "*.idx"))
+
+(defn bgcolor
+  [cycle n]
+  (cond
+    (= n EXPECTED) READY
+    (.isAfter now (.plusHours cycle GRACE)) LATE
+    (> n 0) PARTIAL
+    :else PENDING))
+
+(def rows
+  (for [cycle cycles]
+    (let [cstr (format "%s %sZ" (yyyymmdd cycle) (hh cycle))
+          n (count (idxfiles cycle))]
+      [:tr [:td cstr] [:td {:style (format "background-color: %s;" (bgcolor cycle n))} n]])))
+
+(def report
+  (let [block (str/join (repeat 4 "\u00A0"))
+        fmt "background-color: %s; border: 1px solid black;"
+        style "td,th {padding: 2px; white-space: nowrap;}"]
+    (h/html
+      [:head [:style style]]
+      [:p (format "AIGFS Production Report: Latest %s Cycles" CYCLES)]
+      [:table {:border 1 :style "text-align: center;"}
+       [:thead (into [] [:tr [:th "Cycle"] [:th ".idx files"]])]
+       [:tbody rows]]
+      [:p (format "Cells show .idx files available per cycle (of %s expected)" EXPECTED)]
+      [:p
+       [:span {:style (format fmt READY)} block] " => Complete" [:br]
+       [:span {:style (format fmt PARTIAL)} block] " => Partial" [:br]
+       [:span {:style (format fmt LATE)} block] (format " => Missing after %s-hour grace period" GRACE) [:br]
+       [:span {:style (format fmt PENDING)} block] " => Early"])))
+
+(defn send
+  [mail]
+  (let [subject "AIGFS Production Report"
+        client (process (format "s-nail -M text/html -s '%s' %s" subject RECIPIENTS))
+        stdin (io/writer (:in client))]
+    (binding [*out* stdin] (println (str mail)))
+    (.close stdin)
+    (print (slurp (:out client)))
+    (:exit @client)))
+
+(send report)

@@ -168,7 +168,8 @@ Use the _Conversation_ tab of your PR to ask for help with any difficulties you 
 ├── conda                          # Managed conda installation (created by make [dev]env)
 ├── docs                           # User and contributor documentation
 ├── etc                            # Configuration files, etc.
-│   ├── base.yaml                  # AIGFS app configuration defaults
+│   ├── ansible                    # Ansible deployment assets
+│   ├── app                        # AIGFS configuration files
 │   ├── env                        # Conda environment definitions
 │   │   ├── devpkgs.yaml           # Developer packages
 │   │   └── environment.yaml       # Core AIGFS environment definition

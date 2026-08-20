@@ -1,5 +1,3 @@
-app:
-  modeldir: /home/role.rtaigfs/model
 platform:
   scheduler: slurm
 prep:

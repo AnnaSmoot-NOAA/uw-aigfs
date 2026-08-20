@@ -1,0 +1,31 @@
+app:
+  first_cycle: !datetime '{{ "CYCLE" | env }}'
+  home: '{{ "REPOROOT" | env }}'
+  last_cycle: !datetime '{{ "CYCLE" | env }}'
+  modeldir: '{{ "MODELDIR" | env }}'
+  platform: ursa
+  rundir: '{{ "RUNDIR" | env }}'
+platform:
+  account: gsd-fv3
+prep:
+  aigfs_ics:
+    files_to_hardlink:
+      data/gfs.t{{ timevars.cyc }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/{{ user.yyjjjhh }}000000'
+      data/gfs.t{{ user.m1_cyc }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/{{ user.m1_yyjjjhh }}000000'
+      data/gfs.t{{ user.m1_cyc }}z.pgrb2.0p25.f006: '{{ user.gfs_data }}/{{ user.m1_yyjjjhh }}000006'
+      data/gfs.t{{ user.m2_cyc }}z.pgrb2.0p25.f006: '{{ user.gfs_data }}/{{ user.m2_yyjjjhh }}000006'
+user:
+  m1_yyjjjhh: '{{ (cycle - app.cycle_freq).strftime("%y%j%H") }}'
+  m2_yyjjjhh: '{{ (cycle - 2 * app.cycle_freq).strftime("%y%j%H") }}'
+  yyjjjhh: '{{ cycle.strftime("%y%j%H") }}'
+workflow:
+  attrs:
+    realtime: true
+  tasks:
+    task_prep:
+      dependency:
+        timedep:
+          cyclestr:
+            attrs:
+              offset: "03:45:00" # Current 0h forecasts hit /public at 3:42.
+            value: "@Y@m@d@H@M@S"
