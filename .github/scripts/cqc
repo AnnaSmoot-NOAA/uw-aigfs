@@ -1,5 +1,5 @@
 #!/bin/bash
 
 set -eu -o pipefail
-. bin/activate-github
+. bin/activate-conda
 make test

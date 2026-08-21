@@ -1,0 +1,85 @@
+---
+- name: Create rtaigfs install directory
+  ansible.builtin.file:
+    path: "{{ rtaigfs_install_dir | realpath }}"
+    state: directory
+    mode: "0755"
+
+- name: Create rtaigfs bin directory
+  ansible.builtin.file:
+    path: "{{ rtaigfs_bin_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Check for bb executable
+  ansible.builtin.stat:
+    path: "{{ rtaigfs_bin_dir }}/bb"
+  register: rtaigfs_bb
+
+- name: Download bb installer
+  ansible.builtin.get_url:
+    url: "{{ rtaigfs_bb_installer_url }}"
+    dest: "{{ rtaigfs_bb_installer_path }}"
+    mode: "0755"
+  when: not rtaigfs_bb.stat.exists
+
+- name: Install bb executable
+  ansible.builtin.command:
+    argv: >-
+      {{
+        [rtaigfs_bb_installer_path, '--dir', rtaigfs_bin_dir]
+        + (['--version', rtaigfs_bb_version] if rtaigfs_bb_version else [])
+        + ['--download-dir', rtaigfs_install_dir | realpath]
+      }}
+  when: not rtaigfs_bb.stat.exists
+
+- name: Find bb installer artifacts
+  ansible.builtin.find:
+    paths: "{{ rtaigfs_install_dir | realpath }}"
+    file_type: file
+    patterns:
+      - bb.sh
+      - babashka-*.tar.gz
+      - babashka-*.zip
+  register: rtaigfs_bb_installer_artifacts
+  when: not rtaigfs_bb.stat.exists
+
+- name: Remove bb installer artifacts
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ rtaigfs_bb_installer_artifacts.files }}"
+  when: not rtaigfs_bb.stat.exists
+
+- name: Install rtaigfs launcher
+  ansible.builtin.copy:
+    src: rtaigfs
+    dest: "{{ rtaigfs_bin_dir }}/rtaigfs"
+    mode: "0755"
+
+- name: Install report launcher
+  ansible.builtin.copy:
+    src: report
+    dest: "{{ rtaigfs_bin_dir }}/report"
+    mode: "0755"
+
+- name: Install rtaigfs configuration
+  ansible.builtin.copy:
+    src: rtaigfs.yaml
+    dest: "{{ rtaigfs_install_dir | realpath }}/rtaigfs.yaml"
+    mode: "0644"
+
+- name: Extract rtaigfs model archive
+  ansible.builtin.unarchive:
+    src: "{{ rtaigfs_model_archive_path }}"
+    dest: "{{ rtaigfs_install_dir | realpath }}"
+    remote_src: true
+    creates: "{{ rtaigfs_install_dir | realpath }}/model"
+
+- name: Install rtaigfs crontab
+  ansible.builtin.command:
+    argv:
+      - crontab
+      - "-"
+    stdin: "{{ lookup('ansible.builtin.template', 'crontab.j2') }}"
+  changed_when: true
