@@ -215,6 +215,8 @@ When adding a new workflow stage, you will typically need to:
 
 ## Deploying Realtime AIGFS on Ursa
 
+### Production User Deploy Procedure
+
 As user `role.rtaigfs`, `cd` to the appropriate scratch workspace, then:
 
 ```
@@ -223,6 +225,12 @@ $ cd rtaigfs/
 $ make env
 $ make deploy playbook=rtaigfs-ursa
 ```
+
+### Developer Testing Procedure
+
+The `rtaigfs` Ansible playbook is configured to install the crontab only for the production user, so developers can follow the procedure above to obtain an application directory, after which they can run `rtaigfs/bin/rtaigfs` iteratively to execute the workflow. Before iterating the workflow, they should verify that settings in `rtaigfs/rtaigfs.yaml` are appropriate -- especially e.g. that the batch-system `account` value is correct -- and edit as needed.
+
+### Application Directory Layout
 
 If these commands complete successfully, an `rtaigfs/` subdirectory should have been created and populated with assets necessary for execution of realtime AIGFS runs:
 

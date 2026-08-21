@@ -83,3 +83,4 @@
       - "-"
     stdin: "{{ lookup('ansible.builtin.template', 'crontab.j2') }}"
   changed_when: true
+  when: ansible_facts["user_id"] == rtaigfs_user

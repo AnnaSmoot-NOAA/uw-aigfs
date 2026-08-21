@@ -111,7 +111,7 @@ Supported values for `<platform>`:
 | `timevars` | ***Jinja2*** template variables for date/time formatting used throughout the config.          |
 | `user`     | Free-form block for user-required constants, calculated values, etc. Not schema checked.      |
 
-The `platform` block supplies scheduler and account settings. A platform-specific YAML in `etc/platform/` (e.g., `etc/platform/ursa.yaml`) is automatically merged based on the value of `app.platform.name`.
+The top-level `platform` block supplies scheduler and account settings. A platform-specific YAML in `etc/platform/` (e.g., `etc/platform/ursa.yaml`) is automatically merged based on the first argument to the `setup` script.
 
 ### User Config YAML
 
@@ -163,10 +163,16 @@ tables/ # JSON metadata file(s) for GRIB2 output
 With the environment activated (see [Installing](#installing)), and in the repository root, set up the final config:
 
 ```bash
-setup [additional.yaml ...] user.yaml
+setup platform [additional.yaml ...] user.yaml
 ```
 
-Multiple YAML files may be provided; later files take precedence over earlier ones. The generator automatically merges `etc/base.yaml` and the appropriate platform YAML (`etc/platform/<platform>.yaml`) before applying your user configs.
+Multiple YAML files may be provided; later files take precedence over earlier ones. The `setup` script merges, in order:
+
+1. `etc/base.yaml`
+1. The base workflow-engine config `etc/workflow/<engine>/base.yaml`
+1. The platform config `etc/platform/<platform>.yaml`
+1. A config inserting `app.home` and `app.platform` values
+1. The specified user configs
 
 The following files are written to `app.rundir`:
 
@@ -175,7 +181,7 @@ The following files are written to `app.rundir`:
 | `aigfs.yaml` | Fully realized configuration                   |
 | `rocoto.xml` | ***Rocoto*** workflow definition, ready to run |
 
-If the run directory does not exist, it will be created. The generator validates the `user` section of the config with [Pydantic](https://docs.pydantic.dev/) and exits with an error if required fields are missing or invalid.
+If the run directory does not exist, it will be created. The `setup` script validates the `user` section of the config with [Pydantic](https://docs.pydantic.dev/) and exits with an error if required fields are missing or invalid.
 
 ---
 

@@ -52,6 +52,7 @@ ignore = [
   "S101",    # assert
   "S603",    # subprocess-without-shell-equals-true
   "TC006",   # runtime-cast-value
+  "TRY400",  # error-instead-of-exception
   "UP031",   # printf-string-formatting
 ]
 
@@ -61,6 +62,7 @@ ignore = [
   "ANN003",  # missing-type-kwargs
   "ANN401",  # any-type
   "N802",    # invalid-function-name
+  "N806",    # non-lowercase-variable-in-function
   "PLR0915", # too-many-statements
   "PT013",   # pytest-incorrect-pytest-import
   "SLF001",  # private-member-access

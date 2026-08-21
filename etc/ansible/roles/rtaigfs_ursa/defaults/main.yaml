@@ -1,10 +1,11 @@
 ---
 rtaigfs_bb_installer_path: "{{ rtaigfs_install_dir | realpath }}/bb.sh"
 rtaigfs_bb_installer_url: https://raw.githubusercontent.com/babashka/babashka/master/install
-rtaigfs_bb_version: "1.13.219"
+rtaigfs_bb_version: 1.13.219
 rtaigfs_bin_dir: "{{ rtaigfs_install_dir | realpath }}/bin"
 rtaigfs_crontab_path: "{{ rtaigfs_install_dir | realpath }}/crontab"
 rtaigfs_crontab_path_env: "{{ rtaigfs_bin_dir }}:/usr/local/bin:/usr/bin:/bin"
 rtaigfs_install_dir: "{{ playbook_dir }}/../../../rtaigfs"
 rtaigfs_model_archive: aigfs-v1.1.tgz
-rtaigfs_model_archive_path: "{{ lookup('ansible.builtin.env', 'HOME') }}/models/{{ rtaigfs_model_archive }}"
+rtaigfs_model_archive_path: "/home/{{ rtaigfs_user }}/models/{{ rtaigfs_model_archive }}"
+rtaigfs_user: role.rtaigfs

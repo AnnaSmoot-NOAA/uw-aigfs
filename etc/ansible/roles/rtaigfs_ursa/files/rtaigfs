@@ -15,12 +15,11 @@ go() {
 
   MODELDIR=$rtdir/model
   PS4="[$(date +%Y-%m-%dT%H:%M:%S)]          "
-  REPOROOT=$(dirname $rtdir)
-  export MODELDIR PS4 REPOROOT
+  export MODELDIR PS4
   source /etc/profile.d/profile-slurm.sh
   source /etc/profile.d/modules.sh
   module load rocoto
-  source $REPOROOT/bin/activate-conda
+  source $(dirname $rtdir)/bin/activate-conda
   runbase=$rtdir/rtaigfs
 
   # Calculate timestamp for the most recent 6-hourly cycle:
@@ -35,7 +34,7 @@ go() {
     RUNDIR=$runbase/$(date -ud $CYCLE +%Y%m%d)/$(date -ud $CYCLE +%H)
     export CYCLE RUNDIR
     config=$RUNDIR/aigfs.yaml
-    test -f $config || (set -ex && setup $rtdir/rtaigfs.yaml)
+    test -f $config || (set -ex && setup ursa $rtdir/rtaigfs.yaml)
     test -f $config || exit 1
     (set -ex && rocotorun -d $RUNDIR/rocoto.db -w $RUNDIR/rocoto.xml)
   done

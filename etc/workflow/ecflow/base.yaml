@@ -1,11 +1,11 @@
 ecflow:
   suitedef:
-    scheduler: "{{ platform.scheduler }}"
+    scheduler: '{{ platform.scheduler }}'
     vars:
-      APPDIR: "{{ app.home }}"
-      ECF_INCLUDE: "{{ app.home }}/include"
-      CONFIG: "{{ app.rundir}}/aigfs.yaml"
-      PLATFORM: "{{ app.platform.name }}"
+      APPDIR: '{{ app.home }}'
+      ECF_INCLUDE: '{{ app.home }}/include'
+      CONFIG: '{{ app.rundir}}/aigfs.yaml'
+      PLATFORM: '{{ app.platform.name }}'
     suite_retro:
       family_datetimes:
         repeat_datetime:
@@ -22,8 +22,8 @@ ecflow:
                   - envir-1.h
                 exit:
                   - tail.h
-              manual: "Prepares AIGFS ICS from GFS."
-              batchargs: !dict "{{ prep.aigfs_ics.execution.batchargs }}"
+              manual: Prepares AIGFS ICS from GFS.
+              batchargs: !dict '{{ prep.aigfs_ics.execution.batchargs }}'
               body: |
                 source %APPDIR%/bin/activate-%PLATFORM%
                 uw execute \
@@ -38,8 +38,8 @@ ecflow:
             events: !list '[{% for h in range(0, forecast.aigfs_inference.forecast_length + 1, forecast.aigfs_inference.forecast_freq) %}{{ "release_f%03d" % h }},{% endfor %} ]'
             script:
               <<: *script
-              manual: "Runs AIGFS forecast."
-              batchargs: !dict "{{ forecast.aigfs_inference.execution.batchargs }}"
+              manual: Runs AIGFS forecast.
+              batchargs: !dict '{{ forecast.aigfs_inference.execution.batchargs }}'
               body: |
                 source %APPDIR%/bin/activate-%PLATFORM%
                 uw execute \
@@ -53,11 +53,11 @@ ecflow:
             tasks_post_{{ ec.fhr }}:
               expand:
                 fhr: !list '[{% for h in range(0, forecast.aigfs_inference.forecast_length + 1, forecast.aigfs_inference.forecast_freq) %}{{ "f%03d" % h }},{% endfor %} ]'
-              trigger: "../jaigfs_forecast:release_{{ ec.fhr }}"
+              trigger: '../jaigfs_forecast:release_{{ ec.fhr }}'
               script:
                 <<: *script
-                manual: "Runs AIGFS post for {{ ec.fhr }}."
-                batchargs: !dict "{{ post.aigfs_post.execution.batchargs }}"
+                manual: Runs AIGFS post for {{ ec.fhr }}.
+                batchargs: !dict '{{ post.aigfs_post.execution.batchargs }}'
                 body: |
                   source %APPDIR%/bin/activate-%PLATFORM%
                   module load wgrib2
@@ -65,4 +65,4 @@ ecflow:
                   export INPUTDIR={{ forecast.aigfs_inference.rundir }}
                   %APPDIR%/bin/post
               vars:
-                FHR: "{{ ec.fhr }}"
+                FHR: '{{ ec.fhr }}'

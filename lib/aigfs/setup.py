@@ -4,45 +4,36 @@ Support for setting up AIGFS runtime assets.
 
 import argparse
 import logging
-import os
 import sys
 from pathlib import Path
-from typing import cast
+from tempfile import NamedTemporaryFile
 
-from uwtools.api.config import Config as UWConfig
-from uwtools.api.config import YAMLConfig, compose
-from uwtools.api.config import realize as realize_config
+from uwtools.api import rocoto
+from uwtools.api.config import YAMLConfig, compose_to_dict
 from uwtools.api.logging import use_uwtools_logger
-from uwtools.api.rocoto import realize as realize_rocoto
 
-from aigfs.validation import Config, validate
+from aigfs.validation import validate
 
-_APP_HOME = Path(__file__).parent.parent.parent.resolve()
+_HOMEDIR = Path(__file__).parent.parent.parent.resolve()
+_ETCDIR = _HOMEDIR / "etc"
+_PLATFORMDIR = _ETCDIR / "platform"
 
 
-def generate_configs(update_config: YAMLConfig, aigfs_config: Path, engine: str = "rocoto") -> None:
+def compose_configs(platform: str, user_config_files: list[Path]) -> dict:
     """
-    Generate the AIGFS config and workflow manager artifacts.
+    Compose and realize base, platform, and user configs.
     """
-    base = _APP_HOME / "etc" / "workflow" / engine / "base.yaml"
-    platform = update_config["app"]["platform"]["name"]
-    platform_overlay = _APP_HOME / "etc" / "workflow" / engine / f"{platform}.yaml"
-    workflow_config: UWConfig | Path
-    if platform_overlay.exists():
-        workflow_config = compose(
-            configs=cast(list[str | Path], [base, platform_overlay]),
-            output_file=os.devnull,
-        )
-    else:
-        workflow_config = base
-    realize_config(
-        input_config=workflow_config, output_file=aigfs_config, update_config=update_config
-    )
-    rocoto_xml = aigfs_config.parent / "rocoto.xml"
-    rocoto_valid = realize_rocoto(config=aigfs_config, output_file=rocoto_xml)
-    if not rocoto_valid:
-        logging.error("Invalid Rocoto XML")
-        sys.exit(1)
+    with NamedTemporaryFile(delete=True) as tmp:
+        reserved = Path(tmp.name)
+        YAMLConfig({"app": {"home": str(_HOMEDIR), "platform": {"name": platform}}}).dump(reserved)
+        configs: list[str | Path] = [
+            _ETCDIR / "base.yaml",
+            _ETCDIR / "workflow" / "rocoto" / "base.yaml",
+            _PLATFORMDIR / f"{platform}.yaml",
+            *user_config_files,
+            reserved,
+        ]
+        return compose_to_dict(configs, realize=True)
 
 
 def main() -> None:
@@ -50,55 +41,47 @@ def main() -> None:
     Stage the AIGFS config and workflow manager artifacts in the run directory.
     """
     use_uwtools_logger()
-    user_config_files = parse_args()
-    update_config = prepare_configs(user_config_files)
-    validated = validate(update_config.as_dict())
-    _, aigfs_config = set_up_rundir(validated)
-    generate_configs(update_config, aigfs_config)
+    args = parse_args()
+    config = compose_configs(args.platform, args.user_config_files)
+    validate({"app": config["app"]})
+    set_up_rundir(config)
 
 
-def parse_args() -> list[Path]:
+def parse_args() -> argparse.Namespace:
     """
     Parse command-line arguments.
     """
-    parser = argparse.ArgumentParser(description="Configure AIGFS from user config files.")
+    platforms = [x.with_suffix("").name for x in _PLATFORMDIR.glob("*.yaml")]
+    parser = argparse.ArgumentParser(description="Configure AIGFS.")
+    parser.add_argument(
+        "platform",
+        choices=platforms,
+        help="one of: %s" % ", ".join(platforms),
+        metavar="PLATFORM",
+        type=str,
+    )
     parser.add_argument(
         "user_config_files",
-        help="paths to the user config files",
+        help="path to user config file",
         metavar="PATH",
         nargs="+",
         type=Path,
     )
-    return cast(list[Path], parser.parse_args().user_config_files)
+    return parser.parse_args()
 
 
-def prepare_configs(user_config_files: list[Path]) -> YAMLConfig:
+def set_up_rundir(config: dict) -> None:
     """
-    Compose base, user, and platform configs.
+    Create and populate the run directory.
     """
-    user_config = compose(configs=cast(list[str | Path], user_config_files), output_file=os.devnull)
-    platform = user_config["app"]["platform"]["name"]
-    base_config = _APP_HOME / "etc" / "base.yaml"
-    platform_config = _APP_HOME / "etc" / "platform" / f"{platform}.yaml"
-    # Make sure user_config is last to override any settings from supplementals.
-    update_config = compose(
-        configs=[base_config, platform_config, *user_config_files],
-        realize=True,
-        output_file=os.devnull,
-    )
-    update_config.update_from({"app": {"home": str(_APP_HOME)}})
-    return cast(YAMLConfig, update_config)
-
-
-def set_up_rundir(validated: Config) -> tuple[Path, Path]:
-    """
-    Create the run directory and write aigfs.yaml.
-    """
-    rundir = validated.app.rundir
+    rundir = Path(config["app"]["rundir"])
     logging.info("AIGFS will be set up here: %s", rundir)
     rundir.mkdir(parents=True, exist_ok=True)
-    aigfs_config = rundir / "aigfs.yaml"
-    return rundir, aigfs_config
+    final = rundir / "aigfs.yaml"
+    YAMLConfig(config).dump(final)
+    if not rocoto.realize(YAMLConfig(config), rundir / "rocoto.xml"):
+        logging.error("Invalid Rocoto XML")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

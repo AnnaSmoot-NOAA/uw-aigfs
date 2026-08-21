@@ -1,9 +1,8 @@
 app:
+  cycle_freq: !timedelta 6
   first_cycle: !datetime '{{ "CYCLE" | env }}'
-  home: '{{ "REPOROOT" | env }}'
   last_cycle: !datetime '{{ "CYCLE" | env }}'
   modeldir: '{{ "MODELDIR" | env }}'
-  platform: ursa
   rundir: '{{ "RUNDIR" | env }}'
 platform:
   account: gsd-fv3

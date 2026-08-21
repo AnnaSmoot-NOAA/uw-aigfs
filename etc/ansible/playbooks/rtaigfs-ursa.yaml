@@ -1,7 +1,7 @@
 ---
 - name: Configure rtaigfs-ursa
   hosts: localhost
-  gather_facts: false
+  gather_facts: true
 
   pre_tasks:
     - name: Create Ansible remote temp directory

@@ -2,10 +2,15 @@
 Support for validating AIGFS configurations.
 """
 
+import logging
+import sys
 from datetime import datetime, timedelta
 from pathlib import Path
+from pprint import pformat
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, ValidationError, model_validator
+
+# Validation classes
 
 
 class Partition(BaseModel):
@@ -18,22 +23,13 @@ class Partition(BaseModel):
     task: str | None = None
 
 
-class AppPlatform(BaseModel):
+class Platform(BaseModel):
     """
     Model for the `app.platform:` block.
     """
 
     name: str
     partition: Partition | None = None
-
-
-class Platform(BaseModel):
-    """
-    Model for the `platform:` block.
-    """
-
-    account: str | None = None
-    scheduler: str
 
 
 class App(BaseModel):
@@ -46,7 +42,7 @@ class App(BaseModel):
     home: Path
     last_cycle: datetime
     modeldir: Path
-    platform: AppPlatform
+    platform: Platform
     rundir: Path
 
     @model_validator(mode="after")
@@ -63,11 +59,20 @@ class Config(BaseModel):
     """
 
     app: App
-    platform: Platform | None = None
+
+
+# Public functions
 
 
 def validate(config: dict[str, object]) -> Config:
     """
     Validate a config.
     """
-    return Config.model_validate(config)
+    try:
+        return Config.model_validate(config)
+    except ValidationError as e:
+        logging.error("Config validation failed:")
+        lines = pformat(e.errors()).split("\n")
+        for line in lines:
+            logging.error(line)
+        sys.exit(1)
