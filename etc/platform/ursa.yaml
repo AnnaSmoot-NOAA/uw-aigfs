@@ -10,17 +10,17 @@ forecast:
   aigfs_inference:
     execution:
       batchargs:
-        partition: u1-compute
+        partition: '{{ platform.partition.compute }}'
 post:
   aigfs_post:
     execution:
       batchargs:
-        partition: u1-service
+        partition: '{{ platform.partition.task }}'
 prep:
   aigfs_ics:
     execution:
       batchargs:
-        partition: u1-service  # netaccess
+        partition: '{{ platform.partition.netaccess }}'
   files_to_hardlink:
     data/gfs.t{{ timevars.cyc }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/{{ user.yyyymmdd }}/gfs.t{{ timevars.cyc }}z.pgrb2.0p25.f000'
     data/gfs.t{{ user.m1_cyc }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/{{ user.m1_yyyymmdd }}/gfs.t{{ user.m1_cyc}}z.pgrb2.0p25.f000'

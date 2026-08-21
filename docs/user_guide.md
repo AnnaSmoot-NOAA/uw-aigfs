@@ -111,7 +111,7 @@ Supported values for `<platform>`:
 | `timevars` | ***Jinja2*** template variables for date/time formatting used throughout the config.          |
 | `user`     | Free-form block for user-required constants, calculated values, etc. Not schema checked.      |
 
-The `platform` block supplies scheduler and account settings. A platform-specific YAML in `etc/platform/` (e.g., `etc/platform/ursa.yaml`) is automatically merged based on the value of `app.platform`.
+The `platform` block supplies scheduler, account, and partition settings. A platform-specific YAML in `etc/platform/` (e.g., `etc/platform/ursa.yaml`) is automatically merged based on the value of `app.platform`.
 
 ### User Config YAML
 

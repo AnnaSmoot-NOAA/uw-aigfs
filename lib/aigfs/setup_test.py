@@ -12,6 +12,7 @@ from aigfs.validation import App, Config
 def test_setup_generate_configs(tmp_path):
     path = tmp_path / "aigfs.yaml"
     update_config = MagicMock()
+    update_config.__getitem__.return_value.__getitem__.return_value = "no-such-platform"
     with (
         patch.object(setup, "realize_config") as realize_config,
         patch.object(setup, "realize_rocoto") as realize_rocoto,

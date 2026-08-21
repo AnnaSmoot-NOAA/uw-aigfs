@@ -55,8 +55,11 @@ def test_validation_Platform_minimal():
 def test_validation_Platform_with_partition():
     p = validation.Platform(
         scheduler="slurm",
-        partition=validation.Partition(compute="u1-compute", task="u1-service", netaccess="u1-service"),
+        partition=validation.Partition(
+            compute="u1-compute", task="u1-service", netaccess="u1-service"
+        ),
     )
+    assert p.partition is not None
     assert p.partition.compute == "u1-compute"
 
 
