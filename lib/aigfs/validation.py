@@ -8,6 +8,34 @@ from pathlib import Path
 from pydantic import BaseModel, model_validator
 
 
+class Partition(BaseModel):
+    """
+    Model for the `app.platform.partition:` block.
+    """
+
+    compute: str | None = None
+    netaccess: str | None = None
+    task: str | None = None
+
+
+class AppPlatform(BaseModel):
+    """
+    Model for the `app.platform:` block.
+    """
+
+    name: str
+    partition: Partition | None = None
+
+
+class Platform(BaseModel):
+    """
+    Model for the `platform:` block.
+    """
+
+    account: str | None = None
+    scheduler: str
+
+
 class App(BaseModel):
     """
     Model for the `app:` block.
@@ -18,7 +46,7 @@ class App(BaseModel):
     home: Path
     last_cycle: datetime
     modeldir: Path
-    platform: str
+    platform: AppPlatform
     rundir: Path
 
     @model_validator(mode="after")
@@ -35,6 +63,7 @@ class Config(BaseModel):
     """
 
     app: App
+    platform: Platform | None = None
 
 
 def validate(config: dict[str, object]) -> Config:

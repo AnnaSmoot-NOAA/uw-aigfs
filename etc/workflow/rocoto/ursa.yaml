@@ -1,0 +1,9 @@
+workflow:
+  tasks:
+    task_prep:
+      partition: "{{ app.platform.partition.task }}"
+    task_forecast:
+      partition: "{{ app.platform.partition.compute }}"
+    metatask_post:
+      task_post_#fhr#:
+        partition: "{{ app.platform.partition.task }}"

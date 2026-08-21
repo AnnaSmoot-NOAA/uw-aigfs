@@ -1,16 +1,20 @@
+import os
 from datetime import timedelta
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 from pytest import raises
 
 from aigfs import setup
-from aigfs.validation import App, Config
+from aigfs.validation import App, AppPlatform, Config
 
 
 def test_setup_generate_configs(tmp_path):
     path = tmp_path / "aigfs.yaml"
-    update_config = Mock()
+    update_config = MagicMock()
+    update_config.__getitem__.return_value.__getitem__.return_value.__getitem__.return_value = (
+        "no-such-platform"
+    )
     with (
         patch.object(setup, "realize_config") as realize_config,
         patch.object(setup, "realize_rocoto") as realize_rocoto,
@@ -25,6 +29,38 @@ def test_setup_generate_configs(tmp_path):
     realize_rocoto.assert_called_once_with(config=path, output_file=tmp_path / "rocoto.xml")
 
 
+def test_setup_generate_configs_with_overlay(tmp_path):
+    rocoto_dir = tmp_path / "etc" / "workflow" / "rocoto"
+    rocoto_dir.mkdir(parents=True)
+    (rocoto_dir / "base.yaml").write_text("")
+    (rocoto_dir / "ursa.yaml").write_text("")
+    path = tmp_path / "aigfs.yaml"
+    update_config = MagicMock()
+    update_config.__getitem__.return_value.__getitem__.return_value.__getitem__.return_value = (
+        "ursa"
+    )
+    with (
+        patch.object(setup, "_APP_HOME", tmp_path),
+        patch.object(setup, "compose") as mock_compose,
+        patch.object(setup, "realize_config") as realize_config,
+        patch.object(setup, "realize_rocoto") as realize_rocoto,
+    ):
+        realize_rocoto.return_value = True
+        composed = MagicMock()
+        mock_compose.return_value = composed
+        setup.generate_configs(update_config=update_config, aigfs_config=path)
+    mock_compose.assert_called_once_with(
+        configs=[rocoto_dir / "base.yaml", rocoto_dir / "ursa.yaml"],
+        output_file=os.devnull,
+    )
+    realize_config.assert_called_once_with(
+        input_config=composed,
+        output_file=path,
+        update_config=update_config,
+    )
+    realize_rocoto.assert_called_once_with(config=path, output_file=tmp_path / "rocoto.xml")
+
+
 def test_setup_generate_configs_invalid_xml(logcap, tmp_path):
     path = tmp_path / "aigfs.yaml"
     with (
@@ -33,7 +69,7 @@ def test_setup_generate_configs_invalid_xml(logcap, tmp_path):
     ):
         realize_rocoto.return_value = False
         with raises(SystemExit):
-            setup.generate_configs(update_config=Mock(), aigfs_config=path)
+            setup.generate_configs(update_config=MagicMock(), aigfs_config=path)
     assert "Invalid Rocoto XML" in logcap.text
 
 
@@ -64,7 +100,7 @@ def test_setup_prepare_configs(tmp_path):
     user_config_files = [tmp_path / "a.yaml"]
     mock_update_config = Mock()
     with patch.object(setup, "compose") as compose:
-        compose.side_effect = [{"app": {"platform": "test"}}, mock_update_config]
+        compose.side_effect = [{"app": {"platform": {"name": "test"}}}, mock_update_config]
         result = setup.prepare_configs(user_config_files)
     assert result is mock_update_config
     mock_update_config.update_from.assert_called_once_with({"app": {"home": str(setup._APP_HOME)}})
@@ -90,7 +126,7 @@ def test_setup_set_up_rundir(logcap, tmp_path, utc):
             home=tmp_path,
             last_cycle=utc(2025, 10, 2, 18),
             modeldir=tmp_path,
-            platform="ursa",
+            platform=AppPlatform(name="ursa"),
             rundir=rundir,
         )
     )

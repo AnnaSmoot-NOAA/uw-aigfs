@@ -1,6 +1,28 @@
+app:
+  modeldir: /home/role.rtaigfs/model
+  platform:
+    name: ursa
+    partition:
+      compute: u1-compute
+      netaccess: u1-service
+      task: u1-service
 platform:
   scheduler: slurm
+forecast:
+  aigfs_inference:
+    execution:
+      batchargs:
+        partition: '{{ app.platform.partition.compute }}'
+post:
+  aigfs_post:
+    execution:
+      batchargs:
+        partition: '{{ app.platform.partition.task }}'
 prep:
+  aigfs_ics:
+    execution:
+      batchargs:
+        partition: '{{ app.platform.partition.task }}'
   files_to_hardlink:
     data/gfs.t{{ timevars.cyc }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/{{ user.yyyymmdd }}/gfs.t{{ timevars.cyc }}z.pgrb2.0p25.f000'
     data/gfs.t{{ user.m1_cyc }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/{{ user.m1_yyyymmdd }}/gfs.t{{ user.m1_cyc}}z.pgrb2.0p25.f000'

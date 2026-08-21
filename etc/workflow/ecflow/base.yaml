@@ -5,7 +5,7 @@ ecflow:
       APPDIR: "{{ app.home }}"
       ECF_INCLUDE: "{{ app.home }}/include"
       CONFIG: "{{ app.rundir}}/aigfs.yaml"
-      PLATFORM: "{{ app.platform }}"
+      PLATFORM: "{{ app.platform.name }}"
     suite_retro:
       family_datetimes:
         repeat_datetime:

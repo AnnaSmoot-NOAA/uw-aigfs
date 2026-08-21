@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 from typing import cast
 
+from uwtools.api.config import Config as UWConfig
 from uwtools.api.config import YAMLConfig, compose
 from uwtools.api.config import realize as realize_config
 from uwtools.api.logging import use_uwtools_logger
@@ -23,7 +24,17 @@ def generate_configs(update_config: YAMLConfig, aigfs_config: Path, engine: str 
     """
     Generate the AIGFS config and workflow manager artifacts.
     """
-    workflow_config = _APP_HOME / "etc" / "workflow" / engine / "base.yaml"
+    base = _APP_HOME / "etc" / "workflow" / engine / "base.yaml"
+    platform = update_config["app"]["platform"]["name"]
+    platform_overlay = _APP_HOME / "etc" / "workflow" / engine / f"{platform}.yaml"
+    workflow_config: UWConfig | Path
+    if platform_overlay.exists():
+        workflow_config = compose(
+            configs=cast(list[str | Path], [base, platform_overlay]),
+            output_file=os.devnull,
+        )
+    else:
+        workflow_config = base
     realize_config(
         input_config=workflow_config, output_file=aigfs_config, update_config=update_config
     )
@@ -66,7 +77,7 @@ def prepare_configs(user_config_files: list[Path]) -> YAMLConfig:
     Compose base, user, and platform configs.
     """
     user_config = compose(configs=cast(list[str | Path], user_config_files), output_file=os.devnull)
-    platform = user_config["app"]["platform"]
+    platform = user_config["app"]["platform"]["name"]
     base_config = _APP_HOME / "etc" / "base.yaml"
     platform_config = _APP_HOME / "etc" / "platform" / f"{platform}.yaml"
     # Make sure user_config is last to override any settings from supplementals.
