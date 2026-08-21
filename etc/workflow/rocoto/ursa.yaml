@@ -1,9 +1,9 @@
 workflow:
   tasks:
     task_prep:
-      partition: "{{ platform.partition.netaccess }}"
+      partition: "{{ app.platform.partition.netaccess }}"
     task_forecast:
-      partition: "{{ platform.partition.compute }}"
+      partition: "{{ app.platform.partition.compute }}"
     metatask_post:
       task_post_#fhr#:
-        partition: "{{ platform.partition.task }}"
+        partition: "{{ app.platform.partition.task }}"

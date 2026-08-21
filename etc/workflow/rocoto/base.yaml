@@ -12,7 +12,7 @@ workflow:
     APPDIR: "{{ app.home }}"
     CONFIG: "{{ app.rundir}}/aigfs.yaml"
     LOGDIR: "{{ app.rundir}}/logs"
-    PLATFORM: "{{ app.platform }}"
+    PLATFORM: "{{ app.platform.name }}"
   tasks:
     task_prep:
       account: "{{ platform.account }}"

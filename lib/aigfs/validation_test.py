@@ -18,7 +18,7 @@ def kwargs(tmp_path, utc):
         home=tmp_path,
         last_cycle=utc(2026, 1, 31, 23),
         modeldir=tmp_path,
-        platform="ursa",
+        platform=validation.AppPlatform(name="ursa"),
         rundir=tmp_path,
     )
 
@@ -48,13 +48,17 @@ def test_validation_validate(app):
 
 def test_validation_Platform_minimal():
     p = validation.Platform(scheduler="slurm")
-    assert p.partition is None
     assert p.account is None
 
 
-def test_validation_Platform_with_partition():
-    p = validation.Platform(
-        scheduler="slurm",
+def test_validation_AppPlatform_minimal():
+    p = validation.AppPlatform(name="ursa")
+    assert p.partition is None
+
+
+def test_validation_AppPlatform_with_partition():
+    p = validation.AppPlatform(
+        name="ursa",
         partition=validation.Partition(
             compute="u1-compute", task="u1-service", netaccess="u1-service"
         ),

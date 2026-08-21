@@ -111,7 +111,7 @@ Supported values for `<platform>`:
 | `timevars` | ***Jinja2*** template variables for date/time formatting used throughout the config.          |
 | `user`     | Free-form block for user-required constants, calculated values, etc. Not schema checked.      |
 
-The `platform` block supplies scheduler, account, and partition settings. A platform-specific YAML in `etc/platform/` (e.g., `etc/platform/ursa.yaml`) is automatically merged based on the value of `app.platform`.
+The `platform` block supplies scheduler and account settings. A platform-specific YAML in `etc/platform/` (e.g., `etc/platform/ursa.yaml`) is automatically merged based on the value of `app.platform.name`.
 
 ### User Config YAML
 
@@ -123,7 +123,8 @@ You can override any default values by providing one or more user YAML files. Th
 app:
   first_cycle: !datetime 2025-10-21T00
   last_cycle: !datetime 2025-10-21T00
-  platform: ursa
+  platform:
+    name: ursa
   rundir: /path/to/your/run/directory
 platform:
   account: your_hpc_account

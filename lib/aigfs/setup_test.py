@@ -6,13 +6,15 @@ from unittest.mock import MagicMock, Mock, patch
 from pytest import raises
 
 from aigfs import setup
-from aigfs.validation import App, Config
+from aigfs.validation import App, AppPlatform, Config
 
 
 def test_setup_generate_configs(tmp_path):
     path = tmp_path / "aigfs.yaml"
     update_config = MagicMock()
-    update_config.__getitem__.return_value.__getitem__.return_value = "no-such-platform"
+    update_config.__getitem__.return_value.__getitem__.return_value.__getitem__.return_value = (
+        "no-such-platform"
+    )
     with (
         patch.object(setup, "realize_config") as realize_config,
         patch.object(setup, "realize_rocoto") as realize_rocoto,
@@ -34,7 +36,9 @@ def test_setup_generate_configs_with_overlay(tmp_path):
     (rocoto_dir / "ursa.yaml").write_text("")
     path = tmp_path / "aigfs.yaml"
     update_config = MagicMock()
-    update_config.__getitem__.return_value.__getitem__.return_value = "ursa"
+    update_config.__getitem__.return_value.__getitem__.return_value.__getitem__.return_value = (
+        "ursa"
+    )
     with (
         patch.object(setup, "_APP_HOME", tmp_path),
         patch.object(setup, "compose") as mock_compose,
@@ -96,7 +100,7 @@ def test_setup_prepare_configs(tmp_path):
     user_config_files = [tmp_path / "a.yaml"]
     mock_update_config = Mock()
     with patch.object(setup, "compose") as compose:
-        compose.side_effect = [{"app": {"platform": "test"}}, mock_update_config]
+        compose.side_effect = [{"app": {"platform": {"name": "test"}}}, mock_update_config]
         result = setup.prepare_configs(user_config_files)
     assert result is mock_update_config
     mock_update_config.update_from.assert_called_once_with({"app": {"home": str(setup._APP_HOME)}})
@@ -122,7 +126,7 @@ def test_setup_set_up_rundir(logcap, tmp_path, utc):
             home=tmp_path,
             last_cycle=utc(2025, 10, 2, 18),
             modeldir=tmp_path,
-            platform="ursa",
+            platform=AppPlatform(name="ursa"),
             rundir=rundir,
         )
     )
