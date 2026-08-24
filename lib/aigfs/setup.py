@@ -12,11 +12,8 @@ from uwtools.api import rocoto
 from uwtools.api.config import YAMLConfig, compose_to_dict
 from uwtools.api.logging import use_uwtools_logger
 
+from aigfs.common import ETCDIR, HOMEDIR, PLATFORMDIR, platforms
 from aigfs.validation import validate
-
-_HOMEDIR = Path(__file__).parent.parent.parent.resolve()
-_ETCDIR = _HOMEDIR / "etc"
-_PLATFORMDIR = _ETCDIR / "platform"
 
 
 def compose_configs(platform: str, user_config_files: list[Path]) -> dict:
@@ -25,11 +22,11 @@ def compose_configs(platform: str, user_config_files: list[Path]) -> dict:
     """
     with NamedTemporaryFile(delete=True) as tmp:
         reserved = Path(tmp.name)
-        YAMLConfig({"app": {"home": str(_HOMEDIR), "platform": {"name": platform}}}).dump(reserved)
+        YAMLConfig({"app": {"home": str(HOMEDIR), "platform": {"name": platform}}}).dump(reserved)
         configs: list[str | Path] = [
-            _ETCDIR / "base.yaml",
-            _ETCDIR / "workflow" / "rocoto" / "base.yaml",
-            _PLATFORMDIR / f"{platform}.yaml",
+            ETCDIR / "base.yaml",
+            ETCDIR / "workflow" / "rocoto" / "base.yaml",
+            PLATFORMDIR / f"{platform}.yaml",
             *user_config_files,
             reserved,
         ]
@@ -43,7 +40,7 @@ def main() -> None:
     use_uwtools_logger()
     args = parse_args()
     config = compose_configs(args.platform, args.user_config_files)
-    validate({"app": config["app"]})
+    validate(config)
     set_up_rundir(config)
 
 
@@ -51,12 +48,11 @@ def parse_args() -> argparse.Namespace:
     """
     Parse command-line arguments.
     """
-    platforms = [x.with_suffix("").name for x in _PLATFORMDIR.glob("*.yaml")]
     parser = argparse.ArgumentParser(description="Configure AIGFS.")
     parser.add_argument(
         "platform",
-        choices=platforms,
-        help="one of: %s" % ", ".join(platforms),
+        choices=platforms(),
+        help="one of: %s" % ", ".join(platforms()),
         metavar="PLATFORM",
         type=str,
     )

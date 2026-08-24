@@ -1,6 +1,6 @@
 ecflow:
   suitedef:
-    scheduler: '{{ platform.scheduler }}'
+    scheduler: '{{ app.platform.scheduler.type }}'
     vars:
       APPDIR: '{{ app.home }}'
       ECF_INCLUDE: '{{ app.home }}/include'

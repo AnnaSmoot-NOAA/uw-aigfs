@@ -1,7 +1,7 @@
 workflow:
   attrs:
     realtime: False
-    scheduler: '{{ platform.scheduler }}'
+    scheduler: '{{ app.platform.scheduler.type }}'
   cycledef:
     - attrs:
         group: forecast
@@ -15,7 +15,7 @@ workflow:
     PLATFORM: '{{ app.platform.name }}'
   tasks:
     task_prep:
-      account: '{{ platform.account }}'
+      account: '{{ app.platform.scheduler.account }}'
       command:
         cyclestr:
           value: source &APPDIR;/bin/activate-&PLATFORM; && uw execute
@@ -32,7 +32,7 @@ workflow:
       nodes: '{{ prep.aigfs_ics.execution.batchargs.nodes }}:ppn={{ prep.aigfs_ics.execution.batchargs.tasks_per_node }}'
       walltime: '{{ prep.aigfs_ics.execution.batchargs.walltime }}'
     task_forecast:
-      account: '{{ platform.account }}'
+      account: '{{ app.platform.scheduler.account }}'
       attrs:
         maxtries: 3
       command:
@@ -58,7 +58,7 @@ workflow:
       var:
         fhr: '{% for x in range(0, forecast.aigfs_inference.forecast_length + 1, forecast.aigfs_inference.forecast_freq) %}{{"%03d" | format(x)}}{% if not loop.last %} {% endif %}{% endfor %}'
       task_post_#fhr#:
-        account: '{{ platform.account }}'
+        account: '{{ app.platform.scheduler.account }}'
         attrs:
           maxtries: 3
         command:
@@ -91,7 +91,7 @@ workflow:
                 cyclestr:
                   value: '{{ app.rundir }}/@Y@m@d@H/forecast/aigfs.t@Hz.sfc.f#fhr#.grib2'
     task_all:
-      account: '{{ platform.account }}'
+      account: '{{ app.platform.scheduler.account }}'
       command: /bin/true
       cores: 1
       dependency:

@@ -1,80 +1,149 @@
 from datetime import timedelta
 
-from pytest import fixture, raises
+from pydantic import ValidationError
+from pytest import fixture, mark, raises
 
 from aigfs import validation
 
 
 @fixture
-def app(kwargs):
-    return validation.App(**kwargs)
-
-
-@fixture
-def kwargs(tmp_path, utc):
+def args_app(args_platform, args_time, tmp_path, utc):
     return dict(
         cycle_freq=timedelta(hours=1),
         first_cycle=utc(2026, 1, 1, 0),
         home=tmp_path,
         last_cycle=utc(2026, 1, 31, 23),
         modeldir=tmp_path,
-        platform=validation.Platform(name="jet"),
+        platform=validation.Platform(**args_platform),
         rundir=tmp_path,
+        time=validation.Time(**args_time),
     )
 
 
-def test_validation_Partition_all_none():
-    p = validation.Partition()
-    assert p.compute is None
-    assert p.task is None
-    assert p.netaccess is None
+@fixture
+def args_config(args_app):
+    return dict(app=args_app, forecast={}, post={}, prep={}, user={}, workflow={})
 
 
-def test_validation_Partition_partial():
-    p = validation.Partition(compute="u1-compute")
-    assert p.compute == "u1-compute"
-    assert p.task is None
-    assert p.netaccess is None
+@fixture
+def args_partition():
+    return dict(compute="p-compute", netaccess="p-netaccess", task="p-task")
 
 
-def test_validation_Platform_minimal():
-    p = validation.Platform(name="ursa")
-    assert p.partition is None
-
-
-def test_validation_Platform_with_partition():
-    p = validation.Platform(
+@fixture
+def args_platform(args_partition, args_scheduler):
+    return dict(
         name="ursa",
-        partition=validation.Partition(
-            compute="u1-compute", task="u1-service", netaccess="u1-service"
-        ),
+        partition=validation.Partition(**args_partition),
+        scheduler=validation.Scheduler(**args_scheduler),
     )
-    assert p.partition is not None
-    assert p.partition.compute == "u1-compute"
 
 
-def test_validation_App(kwargs):
-    assert validation.App(**kwargs)
+@fixture
+def args_scheduler():
+    return dict(account="me", type="slurm")
 
 
-def test_validation_App_fail(kwargs, utc):
-    kwargs["last_cycle"] = utc(1970, 1, 1, 0)
+@fixture
+def args_time():
+    return dict(fff="fff", hh="hh", yyyymmdd="yyyymmdd")
+
+
+@mark.parametrize("compute", ["a", None])
+@mark.parametrize("netaccess", ["b", None])
+@mark.parametrize("task", ["c", None])
+def test_validation_Partition(args_partition, compute, netaccess, task):
+    assert validation.Partition(**args_partition)
+    if any([compute, netaccess, task]):
+        obj = validation.Partition(compute=compute, netaccess=netaccess, task=task)
+        assert obj.compute == compute
+        assert obj.netaccess == netaccess
+        assert obj.task == task
+    else:  # if no partitions are specified
+        with raises(ValidationError) as e:
+            validation.Partition(compute=compute, netaccess=netaccess, task=task)
+        assert e.value.error_count() == 1
+        msg = "Specify at least one partition name (compute, netaccess, task)"
+        assert msg in e.value.errors()[0]["msg"]
+
+
+def test_validation_Scheduler(args_scheduler):
+    assert validation.Scheduler(**args_scheduler)
+    for val in ["pbs", "slurm"]:
+        assert validation.Scheduler(type=val).type == val  # type: ignore[arg-type]
+    obj = validation.Scheduler(account="me", type="slurm")
+    assert obj.account == "me"
+    assert obj.type == "slurm"
+
+
+def test_validation_Scheduler_bad_type():
+    with raises(ValidationError) as e:
+        validation.Scheduler(type="foo")  # type: ignore[arg-type]
+    assert e.value.error_count() == 1
+    msg = "Input should be 'pbs' or 'slurm'"
+    assert msg in e.value.errors()[0]["msg"]
+
+
+def test_validation_Platform(args_platform):
+    assert validation.Platform(**args_platform)
+
+
+def test_validation_Platform_bad_name(args_platform, with_set):
+    with raises(ValidationError) as e:
+        validation.Platform(**with_set(args_platform, "foo", "name"))
+    assert e.value.error_count() == 1
+    msg = "Platform name must be one of"
+    assert msg in e.value.errors()[0]["msg"]
+
+
+def test_validation_Time(args_time, with_del):
+    obj = validation.Time(**args_time)
+    for key in obj.model_dump():
+        with raises(ValidationError) as e:
+            validation.Time(**with_del(args_time, key))
+        assert e.value.error_count() == 1
+        assert e.value.errors()[0]["type"] == "missing"
+
+
+def test_validation_App(args_app, with_del):
+    obj = validation.App(**args_app)
+    for key in obj.model_dump():
+        with raises(ValidationError) as e:
+            validation.App(**with_del(args_app, key))
+        assert e.value.error_count() == 1
+        assert e.value.errors()[0]["type"] == "missing"
+
+
+@mark.parametrize("hours", [0, -1])
+def test_validation_App_bad_cycle_freq(args_app, hours):
+    args_app["cycle_freq"] = timedelta(hours=hours)
+    with raises(ValueError, match="cycle_freq must be greater than 0"):
+        validation.App(**args_app)
+
+
+def test_validation_App_bad_first_vs_last_cycle(args_app, utc):
+    args_app["last_cycle"] = utc(1970, 1, 1, 0)
     with raises(ValueError, match="last_cycle cannot precede first_cycle"):
-        validation.App(**kwargs)
+        validation.App(**args_app)
 
 
-def test_validation_Config(app):
-    assert validation.Config(app=app)
+def test_validation_Config(args_config, with_del):
+    assert validation.Config(**args_config)
+    obj = validation.Config(**with_del(args_config, "user"))
+    for key in obj.model_dump():
+        with raises(ValidationError):
+            validation.App(**with_del(args_config, key))
 
 
-def test_validation_validate(app):
-    assert validation.validate(config=dict(app=app))
+def test_validation_validate(args_config, with_set):
+    assert validation.validate(config=args_config)
+    assert validation.validate(config=with_set(args_config, {}, "user"))
 
 
-def test_validation_validate_fail(kwargs, logcap):
-    del kwargs["rundir"]
+def test_validation_validate_fail(args_app, logcap):
+    del args_app["rundir"]
     with raises(SystemExit) as e:
-        validation.validate({"app": kwargs})
+        validation.validate({"app": args_app})
     assert e.value.code == 1
     assert "Config validation failed:" in logcap.text
     assert "'loc': ('app', 'rundir')" in logcap.text

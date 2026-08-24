@@ -3,16 +3,17 @@ app:
   first_cycle: !datetime '{{ "CYCLE" | env }}'
   last_cycle: !datetime '{{ "CYCLE" | env }}'
   modeldir: '{{ "MODELDIR" | env }}'
+  platform:
+    scheduler:
+      account: gsd-fv3
   rundir: '{{ "RUNDIR" | env }}'
-platform:
-  account: gsd-fv3
 prep:
   aigfs_ics:
     files_to_hardlink:
-      data/gfs.t{{ timevars.cyc }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/{{ user.yyjjjhh }}000000'
-      data/gfs.t{{ user.m1_cyc }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/{{ user.m1_yyjjjhh }}000000'
-      data/gfs.t{{ user.m1_cyc }}z.pgrb2.0p25.f006: '{{ user.gfs_data }}/{{ user.m1_yyjjjhh }}000006'
-      data/gfs.t{{ user.m2_cyc }}z.pgrb2.0p25.f006: '{{ user.gfs_data }}/{{ user.m2_yyjjjhh }}000006'
+      data/gfs.t{{ app.time.hh }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/{{ user.yyjjjhh }}000000'
+      data/gfs.t{{ user.m1_hh }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/{{ user.m1_yyjjjhh }}000000'
+      data/gfs.t{{ user.m1_hh }}z.pgrb2.0p25.f006: '{{ user.gfs_data }}/{{ user.m1_yyjjjhh }}000006'
+      data/gfs.t{{ user.m2_hh }}z.pgrb2.0p25.f006: '{{ user.gfs_data }}/{{ user.m2_yyjjjhh }}000006'
 user:
   m1_yyjjjhh: '{{ (cycle - app.cycle_freq).strftime("%y%j%H") }}'
   m2_yyjjjhh: '{{ (cycle - 2 * app.cycle_freq).strftime("%y%j%H") }}'

@@ -2,7 +2,7 @@
 
 [← Back to Index](index.md)
 
-Welcome to the ***uw-aigfs*** User Guide. This guide describes how to install, configure, and run the AIGFS workflow using the ***Rocoto*** workflow manager.
+Welcome to the `uw-aigfs` User Guide. This guide describes how to install, configure, and run the AIGFS workflow using the Rocoto workflow manager.
 
 > **⚠️ Work in Progress**
 > This project is currently under active development and may undergo significant breaking changes without notice.
@@ -23,34 +23,29 @@ Welcome to the ***uw-aigfs*** User Guide. This guide describes how to install, c
   - [Forecast: GraphCast Inference](#forecast-graphcast-inference)
   - [Post-Processing](#post-processing)
 
----
-
 ## Overview
 
-***uw-aigfs*** drives an AI-based medium-range global forecast using the [GraphCast](https://github.com/noaa-emc/graphcast) model, orchestrated via [uwtools](https://uwtools.readthedocs.io/en/main/) and the [Rocoto](https://github.com/christopherwharrop/rocoto) workflow manager. The workflow consists of three sequential stages per forecast cycle:
+`uw-aigfs` drives an AI-based medium-range global forecast using the [GraphCast](https://github.com/noaa-emc/graphcast) model, orchestrated via [uwtools](https://uwtools.readthedocs.io/en/main/) and the [Rocoto](https://github.com/christopherwharrop/rocoto) workflow manager. The workflow consists of three sequential stages per forecast cycle:
 
-1. **Prep** — Extract variables from GFS GRIB2 files and produce a netCDF initial-conditions file for ***GraphCast***.
-2. **Forecast** — Run ***GraphCast*** inference to produce GRIB2 output files at each forecast lead time.
+1. **Prep** — Extract variables from GFS GRIB2 files and produce a netCDF initial-conditions file for GraphCast.
+2. **Forecast** — Run GraphCast inference to produce GRIB2 output files at each forecast lead time.
 3. **Post** — Generate GRIB2 index files and deliver them to the forecast output directory.
-
----
 
 ## Prerequisites
 
-Before using ***uw-aigfs***, ensure the following are available on your system:
+Before using `uw-aigfs`, ensure the following are available on your system:
 
-| Requirement                               | Notes                                               |
-|-------------------------------------------|-----------------------------------------------------|
-| Supported platform                        | Ursa or WCOSS2                                      |
-| Pre-trained ***GraphCast*** model weights | See your platform config for the expected path      |
-| GFS GRIB2 input data                      | 0.25° analysis and short-range forecast files       |
-| `wgrib2`                                  | Must be loadable as a module or available in `PATH` |
-| Git                                       | For cloning the repository                          |
-| `curl`                                    | Used by the setup script to install Miniforge       |
+| Requirement                   | Description                                         |
+|-------------------------------|-----------------------------------------------------|
+| Supported platform            | Ursa or WCOSS2                                      |
+| GraphCast model weights       | See your platform config for the expected path      |
+| GFS GRIB2 input data          | 0.25° analysis and short-range forecast files       |
+| `git`                         | For cloning the repository                          |
+| GNU `make`                    | For executing some automation commands              |
+| `curl`                        | Used by the setup script to install Miniforge       |
+| `wgrib2`                      | Must be loadable as a module or available on `PATH` |
 
 > **Note on disk space:** The conda environment installation requires several gigabytes of disk space. Consider cloning `uw-aigfs` to a location with a sufficiently large disk quota, rather than your HPC home directory.
-
----
 
 ## Getting Started
 
@@ -61,11 +56,9 @@ git clone https://github.com/NOAA-GSL/uw-aigfs.git
 cd uw-aigfs
 ```
 
----
-
 ## Installing
 
-***uw-aigfs*** installs and manages its own conda installation in the `conda/` subdirectory of the repository root. To build the environment, run:
+`uw-aigfs` installs and manages its own conda installation in the `conda/` subdirectory of the repository root. To install:
 
 ```bash
 make env
@@ -73,11 +66,13 @@ make env
 
 This installs [Miniforge](https://github.com/conda-forge/miniforge) and creates the `aigfs` conda environment defined by `etc/env/environment.yaml`.
 
-For an environment that also includes developer tools (linters, test frameworks, etc.), use instead:
+For an environment that also includes developer tools (linters, test frameworks, etc.), run:
 
 ```bash
 make devenv
 ```
+
+This command can also be run later to upgrade a non-development environment to a developer environment.
 
 Once the environment is built, activate it for a given platform by sourcing the module loader from the repository root:
 
@@ -87,65 +82,90 @@ source bin/activate-<platform>
 
 Supported values for `<platform>`:
 
-| Platform | Description                                               |
-|----------|-----------------------------------------------------------|
-| `ursa`   | Activates the locally installed conda `aigfs` environment |
-| `wcoss2` | Loads the `workflow-wcoss2` module from `modulefiles/`    |
+| Platform | Description                                                |
+|----------|------------------------------------------------------------|
+| `ursa`   | Activates the locally installed conda `aigfs` environment  |
+| `wcoss2` | Loads the `workflow-wcoss2` module from `env/modulefiles/` |
 
-> **Tip:** This `source` command must be run each time you open a new shell. The platform-specific environment it activates is also the one used by the workflow jobs at runtime.
+> **Tip:** This `source` command must be run each time you open a new shell. The platform-specific environment it activates is also the one used by the workflow jobs at runtime, but the run automation performs its own activation.
 
----
+## Configuration
 
-## Configuring
+The AIGFS YAML configuration is generated by the `setup` script by composing:
 
-### Default Configuration
+- The `etc/base.yaml` config file
+- The Rocoto workflow config `etc/workflow/rocoto/base.yaml`
+- The platform config, e.g. `etc/platform/ursa.yaml`
+- An internal config providing the `app.home` and `app.platform.name` values
+- One or more user configs specified on the command line
 
-`etc/base.yaml` contains the baseline settings for all workflow stages. It is organized into top-level blocks that correspond to the workflow stages and follow the [uwtools YAML](https://uwtools.readthedocs.io/en/main/sections/user_guide/yaml/components/index.html) conventions:
+These configs are composed top to bottom (or left to right for user configs specified on the command line), with each subsequent config potentially augmenting or overriding values from previous configs.
 
-| Block      | Purpose                                                                                       |
-|------------|-----------------------------------------------------------------------------------------------|
-| `app`      | Application-required values.                                                                  |
-| `forecast` | ***GraphCast*** model inference: model weights, normalization stats, and forecast parameters. |
-| `post`     | Post-processing: GRIB2 index generation and file delivery.                                    |
-| `prep`     | ICS generation: GFS file staging and ***wgrib2*** variable extraction.                        |
-| `timevars` | ***Jinja2*** template variables for date/time formatting used throughout the config.          |
-| `user`     | Free-form block for user-required constants, calculated values, etc. Not schema checked.      |
+Here is an outline of the configuration as generated by the `setup` script.
 
-The top-level `platform` block supplies scheduler and account settings. A platform-specific YAML in `etc/platform/` (e.g., `etc/platform/ursa.yaml`) is automatically merged based on the first argument to the `setup` script.
+| Key                | Example Value               | Description                      | Disposition       |
+|--------------------|-----------------------------|----------------------------------|-------------------|
+| `app:`             |                             | Application-required values      |                   |
+|   `cycle_freq:`    | `!timedelta 6`              | Hours between cycles             | User must set     |
+|   `first_cycle:`   | `!datetime 2026-08-20T00`   | Initial cycle to forecast        | User must set     |
+|   `home:`          | `/git/clone/path`           | Git clone directory              | Set by automation |
+|   `last_cycle:`    | `!datetime 2026-08-20T00`   | Final cycle to forecast          | User must set     | 
+|   `modeldir:`      | `/foo/bar`                  | Model weights, etc. directory    | User must set     |
+|   `platform:`      |                             | Platform-specific values         |                   |
+|     `name:`        | `ursa`                      | Platform name                    | Set by automation |
+|     `partition:`   |                             | Batch partition information      |                   |
+|       `compute:`   | `u1-compute`                | Partition for CPU-heavy jobs     | User may set      |
+|       `netaccess:` | `u1-service`                | Partition with internet access  | User may set      |
+|       `task:`      | `u1-service`                | Partition for short/small tasks  | User may set      |
+|     `scheduler:`   |                             | Batch scheduler information      |                   |
+|       `type:`      | `slurm` or `pbs`            | Type of scheduler                | User must set     |
+|       `account:`   | `gsd-hpcs`                  | Account name for batch jobs      | User may set      |
+|   `rundir:`        | `/path/to/runs`             | Root directory of per-cycle runs | User must set     |
+|   `time:`          |                             | Time values                      |                   |
+|     `fff:`         | `006`                       | Forecast leadtime template       | See etc/base.yaml |
+|     `hh:`          | `12`                        | Forecast cycle hour              | See etc/base.yaml |
+|     `yyyymmdd`     | `20260822`                  | Forecast year/month/date         | See etc/base.yaml |
+| `forecast:`        | See inference.jsonschema    | Inference driver config          |                   |
+| `post:`            | See post.jsonschema         | Post driver config               |                   |
+| `prep:`            | See prep.jsonschema         | Prep driver config               |                   |
+| `user:`            | Arbitrary YAML mapping      | Free-form block for user needs   |                   |
+| `workflow:`        | See `uwtools` documentation | Rocoto config block              |                   |
 
-### User Config YAML
+Notes:
 
-You can override any default values by providing one or more user YAML files. These files must follow the same block structure as `base.yaml`, and later files take precedence over earlier ones.
+- The `app` block supplies values required for all configurations of the application. Some must be supplied by the user, while others are injected automatically by automation. This block is validated by `setup`, which will exit with an informative error message if errors are detected.
+- The `app.home` value is set to the root directory of the `uw-aigfs` git clone. If set in a user config, it will be overwritten by automation.
+- The `app.platform.name` value is taken from the first argument to the `setup` script. If set in a user config, it will be overwritten by automation.
+- The `app.platform.partition` values may be set if driver and Rocoto configs use them to request specific batch partitions.
+- Items labeled `User must set` are required and have no default values. Values must be provided in at least one of the YAML config files passed as arguments to the `setup` script.
+- Items labeled `User may set` are generally optional, though they may be required if they are referenced by workflow, platform, or user configs composed onto `etc/base.yaml`.
+- The `app.time.{fff,hh,yyyymmdd}` values are set in `etc/base.yaml`. A user config may override them, but this is unlikely to be useful. This block does not support additional content, but arbitrary keys and values may be defined in the top-level `user:` block.
+- The `forecast:`, `post:` and `prep:` blocks are described by their associated JSON Schema files under `lib/aigfs/drivers`. These blocks are validated when drivers are initiated rather than by the `setup` script.
+- The `user:` block is a free-form YAML mapping that can define any values, including values dynamically calculated via Jinja2 expressions, useful to users for calculating other config values. This block is never validated.
+- The `workflow:` block configures the Rocoto workflow, and is described in the `uwtools` [documentation](https://uwtools.readthedocs.io/en/stable/sections/user_guide/yaml/rocoto.html)
 
-**Minimal required configuration:**
+All keys and values are processed by `uwtools` and can take advantage of [UW YAML](https://uwtools.readthedocs.io/en/stable/sections/user_guide/yaml/index.html) tools and techniques.
+
+### Set Up Final Config
+
+With the environment activated (see [Installing](#installing)), and in the repository root, set up the final config:
+
+```bash
+setup <platform> user.yaml [user.yaml ...]
+```
+
+The following files are written to `app.rundir`, which is created if it does not exist.
+
+| File         | Contents                     |
+|--------------|------------------------------|
+| `aigfs.yaml` | Fully realized configuration |
+| `rocoto.xml` | Rocoto workflow definition   |
+
+### The Model Directory
 
 ```yaml
 app:
-  first_cycle: !datetime 2025-10-21T00
-  last_cycle: !datetime 2025-10-21T00
-  platform:
-    name: ursa
-  rundir: /path/to/your/run/directory
-platform:
-  account: your_hpc_account
-user:
-  gfs_data: /path/to/gfs/data
-```
-
-**Adjusting forecast length and frequency:**
-
-```yaml
-forecast:
-  aigfs_inference:
-    forecast_length: 240   # hours; default is 120
-    forecast_freq: 6       # output frequency in hours; default is 6
-```
-
-**Changing the pretrained model path:**
-
-```yaml
-app:
-  modeldir: /path/to/your/model/weights
+  modeldir: /path/to/model/files
 ```
 
 The `modeldir` directory is expected to contain:
@@ -156,38 +176,9 @@ stats/  # diffs_stddev_by_level.nc, mean_by_level.nc, stddev_by_level.nc
 tables/ # JSON metadata file(s) for GRIB2 output
 ```
 
----
-
-### Set Up Final Config
-
-With the environment activated (see [Installing](#installing)), and in the repository root, set up the final config:
-
-```bash
-setup platform [additional.yaml ...] user.yaml
-```
-
-Multiple YAML files may be provided; later files take precedence over earlier ones. The `setup` script merges, in order:
-
-1. `etc/base.yaml`
-1. The base workflow-engine config `etc/workflow/<engine>/base.yaml`
-1. The platform config `etc/platform/<platform>.yaml`
-1. A config inserting `app.home` and `app.platform` values
-1. The specified user configs
-
-The following files are written to `app.rundir`:
-
-| File         | Contents                                       |
-|--------------|------------------------------------------------|
-| `aigfs.yaml` | Fully realized configuration                   |
-| `rocoto.xml` | ***Rocoto*** workflow definition, ready to run |
-
-If the run directory does not exist, it will be created. The `setup` script validates the `user` section of the config with [Pydantic](https://docs.pydantic.dev/) and exits with an error if required fields are missing or invalid.
-
----
-
 ## Running the Workflow
 
-On RDHPCS platforms, ***Rocoto*** is available via system module. Run the following command to load it into your environment:
+On RDHPCS platforms, Rocoto is available via system module. Run the following command to load it into your environment:
 
 ```bash
 module load rocoto
@@ -205,52 +196,50 @@ The `rocoto.db` file will not exist until `rocotorun` is run the first time. Re-
 rocotostat -w rocoto.xml -d rocoto.db
 ```
 
-Individual task logs are written to `<rundir>/log/`. An overall workflow log is written to `<rundir>/workflow.log`.
+Individual task logs are written to `<rundir>/logs/`. An overall workflow log is written to `<rundir>/logs/workflow.log`.
 
-The ***uwtools*** package provides a tool to help iterate through the entire workflow: `uw rocoto iterate`. See the [uwtools Rocoto tool documentation](https://uwtools.readthedocs.io/en/main/sections/user_guide/cli/tools/rocoto.html#cli-rocoto-iterate-examples) for details.
-
----
+The `uwtools` package provides a tool to help iterate through the entire workflow: `uw rocoto iterate`. See the [uwtools Rocoto tool documentation](https://uwtools.readthedocs.io/en/main/sections/user_guide/cli/tools/rocoto.html#cli-rocoto-iterate-examples) for details.
 
 ## Workflow Stages
 
 ### Prep: Initial Conditions Generation
 
-The `task_prep` ***Rocoto*** task runs `aigfs.drivers.ics` (driver class `AIGFSICs`). It:
+The `task_prep` Rocoto task runs `aigfs.drivers.ics` (driver class `AIGFSICs`). It:
 
-1. Hard-links GFS GRIB2 files from `user.gfs_data` into the cycle's `prep/data/` subdirectory. The files required are:
+1. Stages GFS GRIB2 into the cycle's `prep/data/` subdirectory. The files required are:
    - Two timesteps from the previous two cycles (for temporal interpolation)
    - The analysis and short-range forecast from the current cycle
 2. Runs `wgrib2` commands (defined by `etc/wgrib2.yaml`) to extract meteorological variables at the required pressure levels into individual netCDF files.
 3. Merges the extracted netCDF files into a single initial-conditions file:
 
    ```
-   <rundir>/<YYYYMMDDHH>/prep/aigfs.t<HH>z.ic.nc
+   <rundir>/<yyyymmddhh>/prep/aigfs.t<hh>z.ic.nc
    ```
 
-   Variables are renamed and units are converted to match ***GraphCast***'s expectations (e.g., geopotential is converted from m to m²/s² by multiplying by 9.80665; total precipitation is converted from kg/m² to m by dividing by 1000).
+   Variables are renamed and units are converted to match GraphCast's expectations (e.g., geopotential is converted from m to m²/s² by multiplying by 9.80665; total precipitation is converted from kg/m² to m by dividing by 1000).
 
 ### Forecast: GraphCast Inference
 
-The `task_forecast` ***Rocoto*** task runs `aigfs.drivers.inference` (driver class `AIGFSInference`). It depends on `task_prep` completing successfully. The task:
+The `task_forecast` Rocoto task runs `aigfs.drivers.inference` (driver class `AIGFSInference`). It depends on `task_prep` completing successfully. The task:
 
 1. Loads the initial-conditions netCDF file produced by the prep step.
-2. Loads the pre-trained ***GraphCast*** model weights (`.npz`) from `app.modeldir`.
-3. Loads the normalization statistics (`diffs_stddev_by_level.nc`, `mean_by_level.nc`, `stddev_by_level.nc`).
-4. Runs autoregressive ***GraphCast*** inference for `forecast.aigfs_inference.forecast_length` hours at `forecast.aigfs_inference.forecast_freq`-hour intervals.
+2. Loads the pre-trained GraphCast model weights (`weights.npz`) from the `params/` subdirectory of `app.modeldir`.
+3. Loads the normalization statistics (`diffs_stddev_by_level.nc`, `mean_by_level.nc`, `stddev_by_level.nc`) from the `stats/` subdirectory of `app.modeldir`.
+4. Runs autoregressive GraphCast inference for `forecast.aigfs_inference.forecast_length` hours at `forecast.aigfs_inference.forecast_freq`-hour intervals.
 5. Writes GRIB2 output files to:
 
    ```
-   <rundir>/<YYYYMMDDHH>/forecast/aigfs.t<HH>z.sfc.f<FFF>.grib2
-   <rundir>/<YYYYMMDDHH>/forecast/aigfs.t<HH>z.pres.f<FFF>.grib2
+   <rundir>/<yyyymmddhh>/forecast/aigfs.t<hh>z.sfc.f<fff>.grib2
+   <rundir>/<yyyymmddhh>/forecast/aigfs.t<hh>z.pres.f<fff>.grib2
    ```
 
-   where `<FFF>` is the three-digit forecast hour. A sentinel file `aigfs.done` is created when the run is complete.
+   where `<fff>` is the three-digit forecast hour. A sentinel file `aigfs.done` is created when the run is complete.
 
-The forecast job requires significant memory (default: 150 GB) due to the size of the ***GraphCast*** model.
+The forecast job requires significant memory (default: 150 GB) due to the size of the GraphCast model.
 
 ### Post-Processing
 
-The `metatask_post` ***Rocoto*** metatask fans out into one `task_post_<FFF>` job per forecast lead time. Each post job runs `aigfs.drivers.post` (driver class `AIGFSPost`). It:
+The `metatask_post` Rocoto metatask fans out into one `task_post_<fff>` job per forecast lead time. Each post job runs `aigfs.drivers.post` (driver class `AIGFSPost`). It:
 
 1. Waits for the corresponding GRIB2 surface and pressure-level files to exist in the forecast directory (or for `task_forecast` to complete, whichever happens first).
 2. Generates a `wgrib2` inventory index (`.idx`) file for each GRIB2 file.
@@ -259,8 +248,8 @@ The `metatask_post` ***Rocoto*** metatask fans out into one `task_post_<FFF>` jo
 Output index files are written to:
 
 ```
-<rundir>/<YYYYMMDDHH>/post_<FFF>/aigfs.t<HH>z.sfc.f<FFF>.grib2.idx
-<rundir>/<YYYYMMDDHH>/post_<FFF>/aigfs.t<HH>z.pres.f<FFF>.grib2.idx
+<rundir>/<yyyymmddhh>/post_<fff>/aigfs.t<hh>z.sfc.f<fff>.grib2.idx
+<rundir>/<yyyymmddhh>/post_<fff>/aigfs.t<hh>z.pres.f<fff>.grib2.idx
 ```
 
 [← Back to Index](index.md)
