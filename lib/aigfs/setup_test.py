@@ -35,6 +35,31 @@ def test_setup_compose_configs(tmp_path):
     assert YAMLConfig(reserved_path) == expected
 
 
+def test_setup_compose_configs_ecflow(tmp_path):
+    platform = "ursa"
+    user_config_files = [Path("/path/to/a.yaml")]
+    with (
+        patch.object(setup, "compose_to_dict") as compose_to_dict,
+        patch.object(setup, "NamedTemporaryFile") as NamedTemporaryFile,
+    ):
+        compose_to_dict.return_value = {"app": {"rundir": "/some/path"}}
+        reserved_path = tmp_path / "reserved.yaml"
+        tmp = Mock()
+        tmp.name = str(reserved_path)
+        NamedTemporaryFile().__enter__.return_value = tmp
+        setup.compose_configs(platform, user_config_files, workflow="ecflow")
+    compose_to_dict.assert_called_once_with(
+        [
+            setup.ETCDIR / "base.yaml",
+            setup.ETCDIR / "workflow" / "ecflow" / "base.yaml",
+            setup.PLATFORMDIR / "ursa.yaml",
+            Path("/path/to/a.yaml"),
+            reserved_path,
+        ],
+        realize=True,
+    )
+
+
 def test_setup_main():
     with (
         patch.object(setup, "compose_configs") as compose_configs,
@@ -42,15 +67,15 @@ def test_setup_main():
         patch.object(setup, "set_up_rundir") as set_up_rundir,
         patch.object(setup, "validate") as validate,
     ):
-        args = Mock(platform="ursa", user_config_files=[Path("/path/to/a.yaml")])
+        args = Mock(platform="ursa", user_config_files=[Path("/path/to/a.yaml")], workflow="rocoto")
         parse_args.return_value = args
         compose_configs.return_value = {"app": {"key": "val"}}
         setup.main()
         parse_args.assert_called_once_with()
-        compose_configs.assert_called_once_with("ursa", [Path("/path/to/a.yaml")])
+        compose_configs.assert_called_once_with("ursa", [Path("/path/to/a.yaml")], "rocoto")
         config = {"app": {"key": "val"}}
         validate.assert_called_once_with(config)
-        set_up_rundir.assert_called_once_with(config)
+        set_up_rundir.assert_called_once_with(config, "rocoto")
 
 
 def test_setup_parse_args():
@@ -60,6 +85,15 @@ def test_setup_parse_args():
             result = setup.parse_args()
     assert result.platform == "ursa"
     assert result.user_config_files == [Path("/path/to/a.yaml"), Path("/path/to/b.yaml")]
+    assert result.workflow == "rocoto"
+
+
+def test_setup_parse_args_workflow_ecflow():
+    with patch.object(setup, "PLATFORMDIR") as mock_platform:
+        mock_platform.glob.return_value = [Path("ursa.yaml")]
+        with patch("sys.argv", ["prog", "ursa", "/path/to/a.yaml", "--workflow", "ecflow"]):
+            result = setup.parse_args()
+    assert result.workflow == "ecflow"
 
 
 def test_setup_set_up_rundir(logcap, tmp_path):
@@ -72,11 +106,37 @@ def test_setup_set_up_rundir(logcap, tmp_path):
         rocoto.realize.return_value = True
         setup.set_up_rundir(config)
     assert rundir.is_dir()
-    assert YAMLConfig.call_args_list[0].args[0] == config
-    assert YAMLConfig.call_args_list[1].args[0] == config
     YAMLConfig.return_value.dump.assert_called_once_with(rundir / "aigfs.yaml")
     rocoto.realize.assert_called_once_with(YAMLConfig(config), rundir / "rocoto.xml")
     assert f"AIGFS will be set up here: {rundir}" in logcap.text
+
+
+def test_setup_set_up_rundir_ecflow(logcap, tmp_path):
+    rundir = tmp_path / "rundir"
+    config: dict = {"app": {"rundir": str(rundir)}}
+    with (
+        patch.object(setup, "YAMLConfig") as YAMLConfig,
+        patch.object(setup, "ecflow") as ecflow,
+    ):
+        ecflow.realize.return_value = True
+        setup.set_up_rundir(config, "ecflow")
+    assert rundir.is_dir()
+    YAMLConfig.return_value.dump.assert_called_once_with(rundir / "aigfs.yaml")
+    ecflow.realize.assert_called_once_with(YAMLConfig(config), rundir / "aigfs.def", scripts_path=rundir / "ecf")
+    assert f"AIGFS will be set up here: {rundir}" in logcap.text
+
+
+def test_setup_set_up_rundir_invalid_def(logcap, tmp_path):
+    rundir = tmp_path / "rundir"
+    config: dict = {"app": {"rundir": str(rundir)}}
+    with (
+        patch.object(setup, "YAMLConfig"),
+        patch.object(setup, "ecflow") as ecflow,
+    ):
+        ecflow.realize.return_value = False
+        with raises(SystemExit):
+            setup.set_up_rundir(config, "ecflow")
+    assert "Invalid ecFlow suite definition" in logcap.text
 
 
 def test_setup_set_up_rundir_invalid_xml(logcap, tmp_path):

@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
-from uwtools.api import rocoto
+from uwtools.api import ecflow, rocoto
 from uwtools.api.config import YAMLConfig, compose_to_dict
 from uwtools.api.logging import use_uwtools_logger
 
@@ -16,7 +16,7 @@ from aigfs.common import ETCDIR, HOMEDIR, PLATFORMDIR, platforms
 from aigfs.validation import validate
 
 
-def compose_configs(platform: str, user_config_files: list[Path]) -> dict:
+def compose_configs(platform: str, user_config_files: list[Path], workflow: str = "rocoto") -> dict:
     """
     Compose and realize base, platform, and user configs.
     """
@@ -25,7 +25,7 @@ def compose_configs(platform: str, user_config_files: list[Path]) -> dict:
         YAMLConfig({"app": {"home": str(HOMEDIR), "platform": {"name": platform}}}).dump(reserved)
         configs: list[str | Path] = [
             ETCDIR / "base.yaml",
-            ETCDIR / "workflow" / "rocoto" / "base.yaml",
+            ETCDIR / "workflow" / workflow / "base.yaml",
             PLATFORMDIR / f"{platform}.yaml",
             *user_config_files,
             reserved,
@@ -39,9 +39,9 @@ def main() -> None:
     """
     use_uwtools_logger()
     args = parse_args()
-    config = compose_configs(args.platform, args.user_config_files)
+    config = compose_configs(args.platform, args.user_config_files, args.workflow)
     validate(config)
-    set_up_rundir(config)
+    set_up_rundir(config, args.workflow)
 
 
 def parse_args() -> argparse.Namespace:
@@ -63,21 +63,31 @@ def parse_args() -> argparse.Namespace:
         nargs="+",
         type=Path,
     )
+    parser.add_argument(
+        "--workflow",
+        choices=["ecflow", "rocoto"],
+        default="rocoto",
+        help="workflow manager (default: rocoto)",
+    )
     return parser.parse_args()
 
 
-def set_up_rundir(config: dict) -> None:
+def set_up_rundir(config: dict, workflow: str = "rocoto") -> None:
     """
     Create and populate the run directory.
     """
     rundir = Path(config["app"]["rundir"])
     logging.info("AIGFS will be set up here: %s", rundir)
     rundir.mkdir(parents=True, exist_ok=True)
-    final = rundir / "aigfs.yaml"
-    YAMLConfig(config).dump(final)
-    if not rocoto.realize(YAMLConfig(config), rundir / "rocoto.xml"):
-        logging.error("Invalid Rocoto XML")
-        sys.exit(1)
+    YAMLConfig(config).dump(rundir / "aigfs.yaml")
+    if workflow == "ecflow":
+        if not ecflow.realize(YAMLConfig(config), rundir / "aigfs.def", scripts_path=rundir / "ecf"):
+            logging.error("Invalid ecFlow suite definition")
+            sys.exit(1)
+    else:
+        if not rocoto.realize(YAMLConfig(config), rundir / "rocoto.xml"):
+            logging.error("Invalid Rocoto XML")
+            sys.exit(1)
 
 
 if __name__ == "__main__":
