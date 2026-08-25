@@ -13,10 +13,9 @@ Welcome to the `uw-aigfs` User Guide. This guide describes how to install, confi
 - [Prerequisites](#prerequisites)
 - [Getting Started](#getting-started)
 - [Installing](#installing)
-- [Configuring](#configuring)
-  - [Default Configuration](#default-configuration)
-  - [User Config YAML](#user-config-yaml)
-  - [Set Up Final Config](#set-up-final-config)
+- [Configuration](#configuration)
+  - [Setting Up the Final Config](#setting-up-the-final-config)
+  - [The Model Directory](#the-model-directory)
 - [Running the Workflow](#running-the-workflow)
 - [Workflow Stages](#workflow-stages)
   - [Prep: Initial Conditions Generation](#prep-initial-conditions-generation)
@@ -146,7 +145,7 @@ Notes:
 
 All keys and values are processed by `uwtools` and can take advantage of [UW YAML](https://uwtools.readthedocs.io/en/stable/sections/user_guide/yaml/index.html) tools and techniques.
 
-### Set Up Final Config
+### Setting Up the Final Config
 
 With the environment activated (see [Installing](#installing)), and in the repository root, set up the final config:
 

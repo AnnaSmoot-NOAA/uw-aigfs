@@ -10,15 +10,18 @@ Welcome to the `uw-aigfs` Contributor Guide. Please familiarize yourself with an
 
 - [Developer Setup](#developer-setup)
 - [Code Quality](#code-quality)
-  - [Formatting and Linting](#formatting-and-linting)
-  - [Unit Tests](#unit-tests)
+- [API Documentation](#api-documentation)
 - [Fork and PR Model](#fork-and-pr-model)
   - [Overview](#overview)
   - [Specifics for uw-aigfs](#specifics-for-uw-aigfs)
   - [Merging](#merging)
   - [Need Help?](#need-help)
 - [Repository Structure](#repository-structure)
+  - [Key Concepts](#key-concepts)
 - [Deploying Realtime AIGFS on Ursa](#deploying-realtime-aigfs-on-ursa)
+  - [Production User Deploy Procedure](#production-user-deploy-procedure)
+  - [Developer Testing Procedure](#developer-testing-procedure)
+  - [Application Directory Layout](#application-directory-layout)
 
 ## Developer Setup
 
