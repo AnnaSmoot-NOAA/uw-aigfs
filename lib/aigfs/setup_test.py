@@ -1,13 +1,14 @@
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from pytest import raises
+from pytest import mark, raises
 from uwtools.api.config import YAMLConfig
 
 from aigfs import setup
 
 
-def test_setup_compose_configs(tmp_path):
+@mark.parametrize("workflow", ["rocoto", "ecflow"])
+def test_setup_compose_configs(tmp_path, workflow):
     platform = "ursa"
     user_config_files = [Path("/path/to/a.yaml")]
     with (
@@ -19,12 +20,12 @@ def test_setup_compose_configs(tmp_path):
         tmp = Mock()
         tmp.name = str(reserved_path)
         NamedTemporaryFile().__enter__.return_value = tmp
-        result = setup.compose_configs(platform, user_config_files)
+        result = setup.compose_configs(platform, user_config_files, workflow=workflow)
     assert result == {"app": {"rundir": "/some/path"}}
     compose_to_dict.assert_called_once_with(
         [
             setup.ETCDIR / "base.yaml",
-            setup.ETCDIR / "workflow" / "rocoto" / "base.yaml",
+            setup.ETCDIR / "workflow" / workflow / "base.yaml",
             setup.PLATFORMDIR / "ursa.yaml",
             Path("/path/to/a.yaml"),
             reserved_path,
@@ -79,8 +80,7 @@ def test_setup_main():
 
 
 def test_setup_parse_args():
-    with patch.object(setup, "PLATFORMDIR") as mock_platform:
-        mock_platform.glob.return_value = [Path("ursa.yaml")]
+    with patch.object(setup, "platforms", return_value=["ursa"]):
         with patch("sys.argv", ["prog", "ursa", "/path/to/a.yaml", "/path/to/b.yaml"]):
             result = setup.parse_args()
     assert result.platform == "ursa"
@@ -98,8 +98,7 @@ def test_setup_parse_args_workflow_ecflow():
 
 
 def test_setup_parse_args_ecflow():
-    with patch.object(setup, "PLATFORMDIR") as mock_platform:
-        mock_platform.glob.return_value = [Path("ursa.yaml")]
+    with patch.object(setup, "platforms", return_value=["ursa"]):
         with patch("sys.argv", ["prog", "--workflow", "ecflow", "ursa", "/path/to/a.yaml"]):
             result = setup.parse_args()
     assert result.workflow == "ecflow"
@@ -150,26 +149,3 @@ def test_setup_set_up_rundir_ecflow(logcap, tmp_path):
     assert f"AIGFS will be set up here: {rundir}" in logcap.text
 
 
-def test_setup_compose_configs_ecflow(tmp_path):
-    platform = "jet"
-    user_config_files = [Path("/path/to/a.yaml")]
-    with (
-        patch.object(setup, "compose_to_dict") as compose_to_dict,
-        patch.object(setup, "NamedTemporaryFile") as NamedTemporaryFile,
-    ):
-        compose_to_dict.return_value = {"app": {"rundir": "/some/path"}}
-        reserved_path = tmp_path / "reserved.yaml"
-        tmp = Mock()
-        tmp.name = str(reserved_path)
-        NamedTemporaryFile().__enter__.return_value = tmp
-        setup.compose_configs(platform, user_config_files, workflow="ecflow")
-    compose_to_dict.assert_called_once_with(
-        [
-            setup.ETCDIR / "base.yaml",
-            setup.ETCDIR / "workflow" / "ecflow" / "base.yaml",
-            setup.PLATFORMDIR / "jet.yaml",
-            Path("/path/to/a.yaml"),
-            reserved_path,
-        ],
-        realize=True,
-    )
