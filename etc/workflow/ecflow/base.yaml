@@ -66,18 +66,4 @@ ecflow:
                   %APPDIR%/bin/post
               vars:
                 FHR: '{{ ec.fhr }}'
-prep:
-  aigfs_ics:
-    execution:
-      batchargs:
-        account: '{{ app.platform.scheduler.account }}'
-forecast:
-  aigfs_inference:
-    execution:
-      batchargs:
-        account: '{{ app.platform.scheduler.account }}'
-post:
-  aigfs_post:
-    execution:
-      batchargs:
-        account: '{{ app.platform.scheduler.account }}'
+
