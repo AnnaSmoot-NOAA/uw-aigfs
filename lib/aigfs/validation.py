@@ -117,6 +117,7 @@ class Config(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     app: App
+    ecflow: dict | None = None
     forecast: dict
     post: dict
     prep: dict
