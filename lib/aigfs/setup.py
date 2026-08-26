@@ -50,6 +50,12 @@ def parse_args() -> argparse.Namespace:
     """
     parser = argparse.ArgumentParser(description="Configure AIGFS.")
     parser.add_argument(
+        "--workflow",
+        choices=["ecflow", "rocoto"],
+        default="rocoto",
+        help="workflow manager (default: rocoto)",
+    )
+    parser.add_argument(
         "platform",
         choices=platforms(),
         help="one of: %s" % ", ".join(platforms()),
@@ -63,12 +69,6 @@ def parse_args() -> argparse.Namespace:
         nargs="+",
         type=Path,
     )
-    parser.add_argument(
-        "--workflow",
-        choices=["ecflow", "rocoto"],
-        default="rocoto",
-        help="workflow manager (default: rocoto)",
-    )
     return parser.parse_args()
 
 
@@ -79,11 +79,10 @@ def set_up_rundir(config: dict, workflow: str = "rocoto") -> None:
     rundir = Path(config["app"]["rundir"])
     logging.info("AIGFS will be set up here: %s", rundir)
     rundir.mkdir(parents=True, exist_ok=True)
-    YAMLConfig(config).dump(rundir / "aigfs.yaml")
+    final = rundir / "aigfs.yaml"
+    YAMLConfig(config).dump(final)
     if workflow == "ecflow":
-        if not ecflow.realize(YAMLConfig(config), rundir / "aigfs.def", scripts_path=rundir / "ecf"):
-            logging.error("Invalid ecFlow suite definition")
-            sys.exit(1)
+        ecflow.realize(YAMLConfig(config), rundir, scripts_path=rundir / "ecf")
     else:
         if not rocoto.realize(YAMLConfig(config), rundir / "rocoto.xml"):
             logging.error("Invalid Rocoto XML")
