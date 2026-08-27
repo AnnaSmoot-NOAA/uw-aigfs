@@ -79,6 +79,23 @@ def test_setup_main():
         set_up_rundir.assert_called_once_with(config, "rocoto")
 
 
+def test_setup_main_ecflow():
+    with (
+        patch.object(setup, "compose_configs") as compose_configs,
+        patch.object(setup, "parse_args") as parse_args,
+        patch.object(setup, "set_up_rundir") as set_up_rundir,
+        patch.object(setup, "validate") as validate,
+    ):
+        args = Mock(platform="ursa", workflow="ecflow", user_config_files=[Path("/path/to/a.yaml")])
+        parse_args.return_value = args
+        compose_configs.return_value = {"app": {"key": "val"}}
+        setup.main()
+        compose_configs.assert_called_once_with("ursa", [Path("/path/to/a.yaml")], "ecflow")
+        config = {"app": {"key": "val"}}
+        validate.assert_called_once_with(config)
+        set_up_rundir.assert_called_once_with(config, "ecflow")
+
+
 def test_setup_parse_args():
     with (
         patch.object(setup, "platforms", return_value=["ursa"]),
