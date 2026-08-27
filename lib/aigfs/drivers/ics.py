@@ -30,7 +30,7 @@ class AIGFSICs(DriverCycleBased, FileStager):
         yield reqs
         datasets = map(xr.open_dataset, reqs.ref)
         ds = xr.merge(datasets, compat="no_conflicts", join="outer")
-        ds = ds.drop_dims("level", errors="ignore")
+        ds = ds.drop_dims("level")
         ds = ds.rename(
             {
                 "APCP_surface": "total_precipitation_6hr",
@@ -134,7 +134,7 @@ class AIGFSICs(DriverCycleBased, FileStager):
         for suffix, cfgs in get_yaml_config(self.config["variable_extraction_yaml"]).items():
             for var, cfg in cfgs.items():
                 lev = cfg["levels"][0]
-                for path in sorted(filter(lambda x: x.name.endswith(suffix), paths), reverse=True):
+                for path in filter(lambda x: x.name.endswith(suffix), paths):
                     if (load_once := cfg.get("load_once")) is False:
                         continue
                     logging.info("Loading %s", var)
