@@ -7,25 +7,21 @@ app:
       netaccess: u1-service
       task: u1-service
     scheduler:
-      account: fv3-cpu
       type: slurm
 forecast:
   aigfs_inference:
     execution:
       batchargs:
-        account: '{{ app.platform.scheduler.account }}'
         partition: '{{ app.platform.partition.compute }}'
 post:
   aigfs_post:
     execution:
       batchargs:
-        account: '{{ app.platform.scheduler.account }}'
         partition: '{{ app.platform.partition.task }}'
 prep:
   aigfs_ics:
     execution:
       batchargs:
-        account: '{{ app.platform.scheduler.account }}'
         partition: '{{ app.platform.partition.task }}'
   files_to_hardlink:
     data/gfs.t{{ app.time.hh }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/{{ user.yyyymmdd }}/gfs.t{{ app.time.hh }}z.pgrb2.0p25.f000'
