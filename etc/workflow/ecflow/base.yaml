@@ -1,12 +1,13 @@
 ecflow:
   suitedef:
     scheduler: '{{ app.platform.scheduler.type }}'
-    vars:
-      APPDIR: '{{ app.home }}'
-      ECF_INCLUDE: '{{ app.home }}/include'
-      CONFIG: '{{ app.rundir}}/aigfs.yaml'
-      PLATFORM: '{{ app.platform.name }}'
     suite_retro:
+      vars:
+        APPDIR: '{{ app.home }}'
+        ECF_HOME: '{{ app.rundir }}/ecf'
+        ECF_INCLUDE: '{{ app.home }}/include'
+        CONFIG: '{{ app.rundir}}/aigfs.yaml'
+        PLATFORM: '{{ app.platform.name }}'
       family_datetimes:
         repeat_datetime:
           variable: CYCLE

@@ -142,6 +142,8 @@ def test_setup_set_up_rundir_ecflow(logcap, tmp_path):
     ):
         setup.set_up_rundir(config, "ecflow")
     assert rundir.is_dir()
+    assert YAMLConfig.call_args_list[0].args[0] == config
+    assert YAMLConfig.call_args_list[1].args[0] == config
     YAMLConfig.return_value.dump.assert_called_once_with(rundir / "aigfs.yaml")
     ecflow.realize.assert_called_once_with(
         YAMLConfig(config), rundir, scripts_path=rundir / "ecf"

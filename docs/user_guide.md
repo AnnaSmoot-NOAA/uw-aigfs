@@ -223,12 +223,11 @@ Load ecFlow into your environment (platform-dependent), then start the ecFlow se
 ecflow_start
 ```
 
-Load the suite definition and set the `ECF_HOME` variable so ecFlow can find the task scripts:
+Load the suite definition and begin the suite:
 
 ```bash
 cd <rundir>
 ecflow_client --load suite.def
-ecflow_client --alter change variable ECF_HOME "$(pwd)/ecf" /retro
 ecflow_client --begin retro
 ```
 
