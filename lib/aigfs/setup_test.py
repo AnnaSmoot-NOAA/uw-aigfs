@@ -36,31 +36,6 @@ def test_setup_compose_configs(tmp_path, workflow):
     assert YAMLConfig(reserved_path) == expected
 
 
-def test_setup_compose_configs_ecflow(tmp_path):
-    platform = "ursa"
-    user_config_files = [Path("/path/to/a.yaml")]
-    with (
-        patch.object(setup, "compose_to_dict") as compose_to_dict,
-        patch.object(setup, "NamedTemporaryFile") as NamedTemporaryFile,
-    ):
-        compose_to_dict.return_value = {"app": {"rundir": "/some/path"}}
-        reserved_path = tmp_path / "reserved.yaml"
-        tmp = Mock()
-        tmp.name = str(reserved_path)
-        NamedTemporaryFile().__enter__.return_value = tmp
-        setup.compose_configs(platform, user_config_files, workflow="ecflow")
-    compose_to_dict.assert_called_once_with(
-        [
-            setup.ETCDIR / "base.yaml",
-            setup.ETCDIR / "workflow" / "ecflow" / "base.yaml",
-            setup.PLATFORMDIR / "ursa.yaml",
-            Path("/path/to/a.yaml"),
-            reserved_path,
-        ],
-        realize=True,
-    )
-
-
 def test_setup_main():
     with (
         patch.object(setup, "compose_configs") as compose_configs,
