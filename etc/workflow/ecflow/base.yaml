@@ -67,4 +67,3 @@ ecflow:
                   %APPDIR%/bin/post
               vars:
                 FHR: '{{ ec.fhr }}'
-

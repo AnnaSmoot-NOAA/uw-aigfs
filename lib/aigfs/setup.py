@@ -83,10 +83,9 @@ def set_up_rundir(config: dict, workflow: str = "rocoto") -> None:
     YAMLConfig(config).dump(final)
     if workflow == "ecflow":
         ecflow.realize(YAMLConfig(config), rundir, scripts_path=rundir / "ecf")
-    else:
-        if not rocoto.realize(YAMLConfig(config), rundir / "rocoto.xml"):
-            logging.error("Invalid Rocoto XML")
-            sys.exit(1)
+    elif not rocoto.realize(YAMLConfig(config), rundir / "rocoto.xml"):
+        logging.error("Invalid Rocoto XML")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

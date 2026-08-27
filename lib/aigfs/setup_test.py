@@ -80,27 +80,31 @@ def test_setup_main():
 
 
 def test_setup_parse_args():
-    with patch.object(setup, "platforms", return_value=["ursa"]):
-        with patch("sys.argv", ["prog", "ursa", "/path/to/a.yaml", "/path/to/b.yaml"]):
-            result = setup.parse_args()
+    with (
+        patch.object(setup, "platforms", return_value=["ursa"]),
+        patch("sys.argv", ["prog", "ursa", "/path/to/a.yaml", "/path/to/b.yaml"]),
+    ):
+        result = setup.parse_args()
     assert result.platform == "ursa"
     assert result.workflow == "rocoto"
     assert result.user_config_files == [Path("/path/to/a.yaml"), Path("/path/to/b.yaml")]
-    assert result.workflow == "rocoto"
 
 
 def test_setup_parse_args_workflow_ecflow():
-    with patch.object(setup, "PLATFORMDIR") as mock_platform:
-        mock_platform.glob.return_value = [Path("ursa.yaml")]
-        with patch("sys.argv", ["prog", "ursa", "/path/to/a.yaml", "--workflow", "ecflow"]):
-            result = setup.parse_args()
+    with (
+        patch.object(setup, "platforms", return_value=["ursa"]),
+        patch("sys.argv", ["prog", "ursa", "/path/to/a.yaml", "--workflow", "ecflow"]),
+    ):
+        result = setup.parse_args()
     assert result.workflow == "ecflow"
 
 
 def test_setup_parse_args_ecflow():
-    with patch.object(setup, "platforms", return_value=["ursa"]):
-        with patch("sys.argv", ["prog", "--workflow", "ecflow", "ursa", "/path/to/a.yaml"]):
-            result = setup.parse_args()
+    with (
+        patch.object(setup, "platforms", return_value=["ursa"]),
+        patch("sys.argv", ["prog", "--workflow", "ecflow", "ursa", "/path/to/a.yaml"]),
+    ):
+        result = setup.parse_args()
     assert result.workflow == "ecflow"
     assert result.platform == "ursa"
 
