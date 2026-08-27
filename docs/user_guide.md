@@ -237,7 +237,7 @@ Monitor the suite in the ecFlow GUI (`ecflow_ui`) or via the command line:
 ecflow_client --get_state /retro
 ```
 
-Task scripts are written to `<rundir>/ecf/` and include the `head.h`, `envir-1.h`, and `tail.h` wrappers from the `include/` directory. Task output is captured by ecFlow according to the `ECF_JOBOUT` variable set in `head.h`.
+Task scripts are written to `<rundir>/ecf/` and include the `head.h`, `envir-1.h`, and `tail.h` wrappers from the `include/` directory. Task output is captured by ecFlow in each task's job output file.
 
 **ecFlow task names** (equivalent Rocoto tasks in parentheses):
 
