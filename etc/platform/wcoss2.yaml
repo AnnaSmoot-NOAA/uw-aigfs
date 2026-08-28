@@ -23,17 +23,12 @@ prep:
       envcmds:
         - module load workflow-wcoss2
     files_to_hardlink:
-      data/gfs.t{{ app.time.hh }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/gfs.{{ user.yyyymmdd }}/{{ app.time.hh }}/atmos/gfs.t{{ app.time.hh }}z.pgrb2.0p25.f000'
-      data/gfs.t{{ user.m1_hh }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/gfs.{{ user.m1_yyyymmdd }}/{{ user.m1_hh }}/atmos/gfs.t{{ user.m1_hh }}z.pgrb2.0p25.f000'
-      data/gfs.t{{ user.m1_hh }}z.pgrb2.0p25.f006: '{{ user.gfs_data }}/gfs.{{ user.m1_yyyymmdd }}/{{ user.m1_hh }}/atmos/gfs.t{{ user.m1_hh }}z.pgrb2.0p25.f006'
-      data/gfs.t{{ user.m2_hh }}z.pgrb2.0p25.f006: '{{ user.gfs_data }}/gfs.{{ user.m2_yyyymmdd }}/{{ user.m2_hh }}/atmos/gfs.t{{ user.m2_hh }}z.pgrb2.0p25.f006'
+      data/{{ app.time.yyyymmdd }}-gfs.t{{ app.time.hh }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/gfs.{{ app.time.yyyymmdd }}/{{ app.time.hh }}/atmos/gfs.t{{ app.time.hh }}z.pgrb2.0p25.f000'
+      data/{{ app.time.m1_yyyymmdd }}-gfs.t{{ app.time.m1_hh }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/gfs.{{ app.time.m1_yyyymmdd }}/{{ app.time.m1_hh }}/atmos/gfs.t{{ app.time.m1_hh }}z.pgrb2.0p25.f000'
+      data/{{ app.time.m1_yyyymmdd }}-gfs.t{{ app.time.m1_hh }}z.pgrb2.0p25.f006: '{{ user.gfs_data }}/gfs.{{ app.time.m1_yyyymmdd }}/{{ app.time.m1_hh }}/atmos/gfs.t{{ app.time.m1_hh }}z.pgrb2.0p25.f006'
+      data/{{ app.time.m2_yyyymmdd }}-gfs.t{{ app.time.m2_hh }}z.pgrb2.0p25.f006: '{{ user.gfs_data }}/gfs.{{ app.time.m2_yyyymmdd }}/{{ app.time.m2_hh }}/atmos/gfs.t{{ app.time.m2_hh }}z.pgrb2.0p25.f006'
 user:
   gfs_data: /lfs/h1/ops/prod/com/gfs/v16.3
-  m1_hh: '{{ (cycle - app.cycle_freq).strftime("%H") }}'
-  m1_yyyymmdd: '{{ (cycle - app.cycle_freq).strftime("%Y%m%d") }}'
-  m2_hh: '{{ (cycle - 2 * app.cycle_freq).strftime("%H") }}'
-  m2_yyyymmdd: '{{ (cycle - 2 * app.cycle_freq).strftime("%Y%m%d") }}'
-  yyyymmdd: '{{ cycle.strftime("%Y%m%d") }}'
 
 # WCOSS2-specific config overlay for uw-aigfs.
 # Fork of etc/base.yaml — do NOT edit base.yaml for WCOSS2 changes;

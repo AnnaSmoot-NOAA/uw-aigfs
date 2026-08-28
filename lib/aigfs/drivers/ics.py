@@ -125,11 +125,13 @@ class AIGFSICs(DriverCycleBased, FileStager):
         A mapping from netCDF file paths to the commands that create them.
         """
         datadir = self.rundir / "data"
-        paths = set()
-        for section in ("files_to_copy", "files_to_hardlink", "files_to_link"):
-            for dst in self.config.get(section, []):
-                if Path(dst).parts[0] == datadir.name:
-                    paths.add(self.rundir / dst)
+        paths = [
+            self.rundir / dst
+            for section in ("files_to_copy", "files_to_hardlink", "files_to_link")
+            for dst in self.config.get(section, [])
+            if Path(dst).parts[0] == datadir.name
+        ]
+        paths = sorted(set(paths), reverse=True)
         mapping: dict[Path, str] = {}
         for suffix, cfgs in get_yaml_config(self.config["variable_extraction_yaml"]).items():
             for var, cfg in cfgs.items():
@@ -140,7 +142,7 @@ class AIGFSICs(DriverCycleBased, FileStager):
                     logging.info("Loading %s", var)
                     if not (m := re.match(rf"^.*\.t(\d\d)z{suffix}$", path.name)):
                         msg = "GRIB files don't have names expected by this driver!"
-                        raise ValueError(msg)  # PM DON'T BLOW UP THE TASK GRAPH
+                        raise ValueError(msg)
                     if load_once is True:
                         cfg["load_once"] = False
                     fmt = lambda x: re.sub(r"[|()]", ".", x).replace(":", "")

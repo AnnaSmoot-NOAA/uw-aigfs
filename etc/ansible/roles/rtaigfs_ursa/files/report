@@ -68,11 +68,12 @@
         style "td,th {padding: 2px; white-space: nowrap;}"]
     (h/html
       [:head [:style style]]
-      [:p (format "AIGFS Production Report: Latest %s Cycles" CYCLES)]
+      [:p [:b (format "AIGFS Production Report: Latest %s Cycles" CYCLES)]]
       [:table {:border 1 :style "text-align: center;"}
        [:thead (into [] [:tr [:th "Cycle"] [:th ".idx files"]])]
        [:tbody rows]]
       [:p (format "Cells show .idx files available per cycle (of %s expected)" EXPECTED)]
+      [:p (format "Run root directory: %s" RUNDIR)]
       [:p
        [:span {:style (format fmt READY)} block] " => Complete" [:br]
        [:span {:style (format fmt PARTIAL)} block] " => Partial" [:br]

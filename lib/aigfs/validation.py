@@ -9,7 +9,7 @@ from pathlib import Path
 from pprint import pformat
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
+from pydantic import BaseModel, ConfigDict, ValidationError, field_validator, model_validator
 
 from aigfs.common import platforms
 
@@ -58,12 +58,13 @@ class Platform(BaseModel):
     partition: Partition | None = None
     scheduler: Scheduler
 
-    @model_validator(mode="after")
-    def platform_name(self) -> "Platform":
-        if self.name not in platforms():
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, val: str) -> str:
+        if val not in platforms():
             msg = "Platform name must be one of: %s" % ", ".join(platforms())
             raise ValueError(msg)
-        return self
+        return val
 
 
 class Time(BaseModel):
@@ -75,6 +76,11 @@ class Time(BaseModel):
 
     fff: str
     hh: str
+    m1_hh: str
+    m1_yyyymmdd: str
+    m2_hh: str
+    m2_yyyymmdd: str
+    m6h: timedelta
     yyyymmdd: str
 
 
@@ -94,12 +100,16 @@ class App(BaseModel):
     rundir: Path
     time: Time
 
-    @model_validator(mode="after")
-    def cycle_freq_greater_than_zero(self) -> "App":
-        if self.cycle_freq.total_seconds() <= 0:
+    @field_validator("cycle_freq")
+    @classmethod
+    def validate_cycle_freq(cls, val: timedelta) -> timedelta:
+        if val.total_seconds() <= 0:
             msg = "cycle_freq must be greater than 0"
             raise ValueError(msg)
-        return self
+        if val.total_seconds() % (6 * 3600) != 0:
+            msg = "cycle_freq must be a multiple of 6"
+            raise ValueError(msg)
+        return val
 
     @model_validator(mode="after")
     def first_and_last_cycle(self) -> "App":

@@ -2,6 +2,11 @@ app:
   time:
     fff: '{{ "%03d" % (leadtime.total_seconds() // 3600) }}'
     hh: '{{ cycle.strftime("%H") }}'
+    m1_hh: '{{ (cycle - app.time.m6h).strftime("%H") }}'
+    m1_yyyymmdd: '{{ (cycle - app.time.m6h).strftime("%Y%m%d") }}'
+    m2_hh: '{{ (cycle - 2 * app.time.m6h).strftime("%H") }}'
+    m2_yyyymmdd: '{{ (cycle - 2 * app.time.m6h).strftime("%Y%m%d") }}'
+    m6h: !timedelta 6
     yyyymmdd: '{{ cycle.strftime("%Y%m%d") }}'
 forecast:
   aigfs_inference:

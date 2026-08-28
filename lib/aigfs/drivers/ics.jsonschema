@@ -16,7 +16,7 @@
         },
         {
           "properties": {
-            "files_to_hardlinke": {
+            "files_to_hardlink": {
               "minProperties": 1,
               "patternProperties": {
                 "^data/": {}
