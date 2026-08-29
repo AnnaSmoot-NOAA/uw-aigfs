@@ -3,7 +3,7 @@
 ;; -*- clj -*-
 
 (def RECIPIENTS "anna.smoot@noaa.gov christina.holt@noaa.gov emily.l.carpenter@noaa.gov paul.madden@noaa.gov")
-(def CYCLESDIR (format "%s/cycles" (.getParentFile (.getParentFile (io/file *file*)))))
+(def CYCLESDIR (format "%s/cycles" (.getParentFile (.getParentFile (io/file (.getCanonicalPath (io/file *file*)))))))
 
 (require '[babashka.process :refer [process]] '[hiccup2.core :as h])
 
