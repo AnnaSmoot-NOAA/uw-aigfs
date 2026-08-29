@@ -7,13 +7,20 @@ app:
     scheduler:
       account: gsd-fv3
   rundir: '{{ "RUNDIR" | env }}'
+forecast:
+  aigfs_inference:
+    rundir: '{{ app.rundir }}/forecast'
+post:
+  aigfs_post:
+    rundir: '{{ app.rundir }}/post_{{ app.time.fff }}'
 prep:
   aigfs_ics:
     files_to_hardlink:
-      data/{{ app.time.yyyymmdd }}-gfs.t{{ app.time.hh }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/{{ user.yyjjjhh }}000000'
       data/{{ app.time.m1_yyyymmdd }}-gfs.t{{ app.time.m1_hh }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/{{ user.m1_yyjjjhh }}000000'
       data/{{ app.time.m1_yyyymmdd }}-gfs.t{{ app.time.m1_hh }}z.pgrb2.0p25.f006: '{{ user.gfs_data }}/{{ user.m1_yyjjjhh }}000006'
       data/{{ app.time.m2_yyyymmdd }}-gfs.t{{ app.time.m2_hh }}z.pgrb2.0p25.f006: '{{ user.gfs_data }}/{{ user.m2_yyjjjhh }}000006'
+      data/{{ app.time.yyyymmdd }}-gfs.t{{ app.time.hh }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/{{ user.yyjjjhh }}000000'
+    rundir: '{{ app.rundir }}/prep'
 user:
   m1_yyjjjhh: '{{ (cycle - app.time.m6h).strftime("%y%j%H") }}'
   m2_yyjjjhh: '{{ (cycle - 2 * app.time.m6h).strftime("%y%j%H") }}'
@@ -29,3 +36,15 @@ workflow:
             attrs:
               offset: "03:45:00" # Current 0h forecasts hit /public at 3:42.
             value: "@Y@m@d@H@M@S"
+    metatask_post:
+      task_post_#fhr#:
+        dependency:
+          and:
+            datadep_pres:
+              value:
+                cyclestr:
+                  value: '{{ app.rundir }}/forecast/aigfs.t@Hz.pres.f#fhr#.grib2'
+            datadep_sfc:
+              value:
+                cyclestr:
+                  value: '{{ app.rundir }}/forecast/aigfs.t@Hz.sfc.f#fhr#.grib2'

@@ -24,10 +24,10 @@ prep:
       batchargs:
         partition: '{{ app.platform.partition.task }}'
     files_to_hardlink:
-      data/{{ app.time.yyyymmdd }}-gfs.t{{ app.time.hh }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/{{ app.time.yyyymmdd }}/gfs.t{{ app.time.hh }}z.pgrb2.0p25.f000'
       data/{{ app.time.m1_yyyymmdd }}-gfs.t{{ app.time.m1_hh }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/{{ app.time.m1_yyyymmdd }}/gfs.t{{ app.time.m1_hh}}z.pgrb2.0p25.f000'
       data/{{ app.time.m1_yyyymmdd }}-gfs.t{{ app.time.m1_hh }}z.pgrb2.0p25.f006: '{{ user.gfs_data }}/{{ app.time.m1_yyyymmdd }}/gfs.t{{ app.time.m1_hh}}z.pgrb2.0p25.f006'
       data/{{ app.time.m2_yyyymmdd }}-gfs.t{{ app.time.m2_hh }}z.pgrb2.0p25.f006: '{{ user.gfs_data }}/{{ app.time.m2_yyyymmdd }}/gfs.t{{ app.time.m2_hh }}z.pgrb2.0p25.f006'
+      data/{{ app.time.yyyymmdd }}-gfs.t{{ app.time.hh }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/{{ app.time.yyyymmdd }}/gfs.t{{ app.time.hh }}z.pgrb2.0p25.f000'
 user:
   gfs_data: /public/data/grids/gfs/0p25deg/grib2
 workflow:
