@@ -222,7 +222,21 @@ The `uwtools` package provides a tool to help iterate through the entire workflo
 
 ### Running with ecFlow
 
-Load ecFlow into your environment (platform-dependent), then start the ecFlow server if it is not already running:
+Start the ecFlow server if it is not already running.
+
+**If using the `aigfs` conda environment** (ecFlow is pre-installed — this includes all RDHPCS platforms, where ecFlow is not available as a system module):
+
+Ensure your `aigfs.yaml` contains an `ecflow.server` block (see the [uwtools ecFlow server YAML docs](https://uwtools.readthedocs.io/en/main/sections/user_guide/yaml/ecflow.html#server-configuration)), then run:
+
+```bash
+uw ecflow server --config-file aigfs.yaml
+```
+
+See the [uwtools ecFlow server documentation](https://uwtools.readthedocs.io/en/main/sections/user_guide/cli/tools/ecflow.html#server) for options including port and SSL configuration.
+
+> **Note for RDHPCS users:** The ecFlow server must run on a dedicated ecFlow node, not a login node. Consult your platform documentation for how to access it.
+
+**If using a platform-provided or externally installed ecFlow:**
 
 ```bash
 ecflow_start
