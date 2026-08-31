@@ -154,12 +154,12 @@ All keys and values are processed by `uwtools` and can take advantage of [UW YAM
 With the environment activated (see [Installing](#installing)), and in the repository root, set up the final config:
 
 ```bash
-setup [--workflow rocoto|ecflow] <platform> user.yaml [user.yaml ...]
+setup --platform <platform> --workflow rocoto|ecflow user.yaml [user.yaml ...]
 ```
 
-The `--workflow` flag selects the workflow manager (default: `rocoto`). The following files are written to `app.rundir`, which is created if it does not exist.
+The `--workflow` flag selects the workflow manager. The following files are written to `app.rundir`, which is created if it does not exist.
 
-**Rocoto** (`--workflow rocoto`, default):
+**Rocoto** (`--workflow rocoto`):
 
 | File         | Contents                     |
 |--------------|------------------------------|
@@ -243,8 +243,8 @@ Task scripts are written to `<rundir>/ecf/` and include the `head.h`, `envir-1.h
 
 | ecFlow task           | Rocoto equivalent      | Description                       |
 |-----------------------|------------------------|-----------------------------------|
-| `jaigfs_prep`         | `task_prep`            | ICS generation                    |
-| `jaigfs_forecast`     | `task_forecast`        | GraphCast inference               |
+| `prep`                | `task_prep`            | ICS generation                    |
+| `forecast`            | `task_forecast`        | GraphCast inference               |
 | `post_f000`…`post_f120` | `task_post_000`…`task_post_120` | Post-processing per lead time |
 
 ## Workflow Stages

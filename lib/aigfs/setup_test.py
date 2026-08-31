@@ -20,7 +20,7 @@ def test_setup_compose_configs(tmp_path, workflow):
         tmp = Mock()
         tmp.name = str(reserved_path)
         NamedTemporaryFile().__enter__.return_value = tmp
-        result = setup.compose_configs(platform, user_config_files, workflow=workflow)
+        result = setup.compose_configs(workflow, platform, user_config_files)
     assert result == {"app": {"rundir": "/some/path"}}
     compose_to_dict.assert_called_once_with(
         [
@@ -36,69 +36,57 @@ def test_setup_compose_configs(tmp_path, workflow):
     assert YAMLConfig(reserved_path) == expected
 
 
-def test_setup_main():
+@mark.parametrize("workflow", ["rocoto", "ecflow"])
+def test_setup_main(workflow):
     with (
         patch.object(setup, "compose_configs") as compose_configs,
         patch.object(setup, "parse_args") as parse_args,
         patch.object(setup, "set_up_rundir") as set_up_rundir,
         patch.object(setup, "validate") as validate,
     ):
-        args = Mock(platform="ursa", workflow="rocoto", user_config_files=[Path("/path/to/a.yaml")])
+        args = Mock(platform="ursa", workflow=workflow, user_config_files=[Path("/path/to/a.yaml")])
         parse_args.return_value = args
         compose_configs.return_value = {"app": {"key": "val"}}
         setup.main()
         parse_args.assert_called_once_with()
-        compose_configs.assert_called_once_with("ursa", [Path("/path/to/a.yaml")], "rocoto")
+        compose_configs.assert_called_once_with(workflow, "ursa", [Path("/path/to/a.yaml")])
         config = {"app": {"key": "val"}}
         validate.assert_called_once_with(config)
-        set_up_rundir.assert_called_once_with(config, "rocoto")
+        set_up_rundir.assert_called_once_with(config, workflow)
 
 
-def test_setup_main_ecflow():
-    with (
-        patch.object(setup, "compose_configs") as compose_configs,
-        patch.object(setup, "parse_args") as parse_args,
-        patch.object(setup, "set_up_rundir") as set_up_rundir,
-        patch.object(setup, "validate") as validate,
-    ):
-        args = Mock(platform="ursa", workflow="ecflow", user_config_files=[Path("/path/to/a.yaml")])
-        parse_args.return_value = args
-        compose_configs.return_value = {"app": {"key": "val"}}
-        setup.main()
-        compose_configs.assert_called_once_with("ursa", [Path("/path/to/a.yaml")], "ecflow")
-        config = {"app": {"key": "val"}}
-        validate.assert_called_once_with(config)
-        set_up_rundir.assert_called_once_with(config, "ecflow")
-
-
-def test_setup_parse_args():
-    with (
-        patch.object(setup, "platforms", return_value=["ursa"]),
-        patch("sys.argv", ["prog", "ursa", "/path/to/a.yaml", "/path/to/b.yaml"]),
-    ):
-        result = setup.parse_args()
-    assert result.platform == "ursa"
-    assert result.workflow == "rocoto"
-    assert result.user_config_files == [Path("/path/to/a.yaml"), Path("/path/to/b.yaml")]
-
-
-def test_setup_parse_args_workflow_ecflow():
+@mark.parametrize(
+    ("argv", "expected_platform", "expected_workflow", "expected_files"),
+    [
+        (
+            ["--platform", "ursa", "--workflow", "rocoto", "/path/to/a.yaml", "/path/to/b.yaml"],
+            "ursa",
+            "rocoto",
+            [Path("/path/to/a.yaml"), Path("/path/to/b.yaml")],
+        ),
+        (
+            ["--platform", "ursa", "/path/to/a.yaml", "--workflow", "ecflow"],
+            "ursa",
+            "ecflow",
+            [Path("/path/to/a.yaml")],
+        ),
+        (
+            ["--workflow", "ecflow", "--platform", "ursa", "/path/to/a.yaml"],
+            "ursa",
+            "ecflow",
+            [Path("/path/to/a.yaml")],
+        ),
+    ],
+)
+def test_setup_parse_args(argv, expected_platform, expected_workflow, expected_files):
     with (
         patch.object(setup, "platforms", return_value=["ursa"]),
-        patch("sys.argv", ["prog", "ursa", "/path/to/a.yaml", "--workflow", "ecflow"]),
+        patch("sys.argv", ["prog", *argv]),
     ):
         result = setup.parse_args()
-    assert result.workflow == "ecflow"
-
-
-def test_setup_parse_args_ecflow():
-    with (
-        patch.object(setup, "platforms", return_value=["ursa"]),
-        patch("sys.argv", ["prog", "--workflow", "ecflow", "ursa", "/path/to/a.yaml"]),
-    ):
-        result = setup.parse_args()
-    assert result.workflow == "ecflow"
-    assert result.platform == "ursa"
+    assert result.platform == expected_platform
+    assert result.workflow == expected_workflow
+    assert result.user_config_files == expected_files
 
 
 def test_setup_set_up_rundir(logcap, tmp_path):

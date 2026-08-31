@@ -16,7 +16,7 @@ from aigfs.common import ETCDIR, HOMEDIR, PLATFORMDIR, platforms
 from aigfs.validation import validate
 
 
-def compose_configs(platform: str, user_config_files: list[Path], workflow: str = "rocoto") -> dict:
+def compose_configs(workflow: str, platform: str, user_config_files: list[Path]) -> dict:
     """
     Compose and realize base, platform, and user configs.
     """
@@ -39,7 +39,7 @@ def main() -> None:
     """
     use_uwtools_logger()
     args = parse_args()
-    config = compose_configs(args.platform, args.user_config_files, args.workflow)
+    config = compose_configs(args.workflow, args.platform, args.user_config_files)
     validate(config)
     set_up_rundir(config, args.workflow)
 
@@ -52,14 +52,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--workflow",
         choices=["ecflow", "rocoto"],
-        default="rocoto",
-        help="workflow manager (default: rocoto)",
+        help="workflow manager",
+        required=True,
     )
     parser.add_argument(
-        "platform",
+        "--platform",
         choices=platforms(),
         help="one of: %s" % ", ".join(platforms()),
         metavar="PLATFORM",
+        required=True,
         type=str,
     )
     parser.add_argument(

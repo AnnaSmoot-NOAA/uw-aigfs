@@ -34,7 +34,7 @@ go() {
     RUNDIR=$runbase/$(date -ud $CYCLE +%Y%m%d)/$(date -ud $CYCLE +%H)
     export CYCLE RUNDIR
     config=$RUNDIR/aigfs.yaml
-    test -f $config || (set -ex && setup ursa $rtdir/rtaigfs.yaml)
+    test -f $config || (set -ex && setup --platform ursa --workflow rocoto $rtdir/rtaigfs.yaml)
     test -f $config || exit 1
     (set -ex && rocotorun -d $RUNDIR/rocoto.db -w $RUNDIR/rocoto.xml)
   done
