@@ -58,7 +58,7 @@ Several `make` targets are available in an activated `aigfs` development environ
 | `make unittest`  | Run unit tests and report coverage with [pytest](https://docs.pytest.org/) and [coverage](https://coverage.readthedocs.io/en/)                                                          |
 | `make test`      | Equivalent to `make lint && make typecheck && make unittest`                                                                                                                            |
 
-Configuration for `ruff`, `mypy`, `pytest`, and `coverage` is provided by `pyproject.toml`, `shellcheck` by `.shellcheckrc`, and `yamllint` by `.yamllint.yaml`, and in the repo root.
+Configuration for `ruff`, `mypy`, `pytest`, and `coverage` is provided by `pyproject.toml`, `shellcheck` by `.shellcheckrc`, and `yamllint` by `.yamllint.yaml`, all in the repo root.
 
 A useful development idiom is:
 
@@ -153,7 +153,7 @@ Use the _Conversation_ tab of your PR to ask for help with any difficulties you 
 │       └── rocoto                 # Rocoto workflow support
 ├── lib                            # Python library code
 │   └── aigfs                      # The AIGFS python package
-│       ├── conftest.py            # Unit-tests fixtures
+│       ├── conftest.py            # Unit-test fixtures
 │       ├── drivers                # AIGFS component drivers
 │       │   ├── *.jsonschema       # Config schema
 │       │   ├── *.py               # AIGFS component driver
@@ -202,17 +202,17 @@ $ make deploy playbook=rtaigfs-ursa
 
 ### Developer Testing Procedure
 
-The `rtaigfs` Ansible playbook is configured to install the crontab only for the production user, so developers can follow the procedure above to obtain an application directory, after which they can run `rtaigfs/bin/rtaigfs` iteratively to execute the workflow. Before iterating the workflow, they should verify that settings in `rtaigfs/rtaigfs.yaml` are appropriate -- especially e.g. that the `app.platform.scheduler.account` value is correct -- and edit as needed.
+The `rtaigfs` Ansible playbook is configured to install the crontab only for the production user, so developers can follow the procedure above to obtain an application directory, after which they can run `app/bin/run` iteratively to execute the workflow. Before iterating the workflow, they should verify that settings in `app/rtaigfs.yaml` are appropriate -- especially e.g. that the `app.platform.scheduler.account` value is correct -- and edit as needed.
 
 ### Application Directory Layout
 
-If these commands complete successfully, an `rtaigfs/` subdirectory should have been created and populated with assets necessary for execution of realtime AIGFS runs:
+If these commands complete successfully, an `app/` subdirectory should have been created and populated with assets necessary for execution of realtime AIGFS runs:
 
 ```
-rtaigfs/
+app/
 ├── bin              # Executables
+├── cycles           # Root of yyyymmdd/hh cycle run directories
 ├── model            # AIGFS model files
-├── rtaigfs          # Root of yyyymmdd/hh cycle run directories
 ├── rtaigfs.log      # Log file from latest run
 ├── rtaigfs.log.last # Log file from previous run (created after first run)
 └── rtaigfs.yaml     # Parameterized configuration
@@ -231,14 +231,13 @@ After deployment, *no manual changes* should be made to the contents of the git 
 The structure of a `yyyymmdd/hh` cycle run directory is as follows:
 
 ```
-├── yyyymmddhh       # Cycle run root directory
-│   ├── forecast     # Run directory for forecast task
-│   ├── post_*       # Run directory for post task (one per leadtime)
-│   └── prep         # Run directory for prep step
 ├── aigfs.yaml       # Fully realized AIGFS config 
+├── forecast         # Run directory for forecast task
 ├── logs             # Rocoto logs
 │   ├── <task>.log   # Task log (one per task execution)
 │   └── workflow.log # Rocoto general log
+├── post_*           # Run directory for post task (one per leadtime)
+├── prep             # Run directory for prep task
 ├── rocoto.db        # Rocoto sqlite3 database
 ├── rocoto_lock.db   # Rocoto database lockfile
 └── rocoto.xml       # Rocoto workflow document

@@ -9,6 +9,7 @@ from iotaa import Asset, external, task
 from pytest import fixture, mark, raises
 
 from aigfs.drivers import ics
+from aigfs.strings import STR
 
 # Fixtures
 
@@ -16,18 +17,18 @@ from aigfs.drivers import ics
 @fixture
 def config(tmp_path):
     return {
-        "aigfs_ics": {
+        STR.aigfs_ics: {
             "execution": {
                 "executable": "uw execute -h",
                 "batchargs": {"walltime": "00:05:00"},
             },
-            "files_to_link": {
+            STR.files_to_link: {
                 "data/a.t00z.pgrb2.0p25.f000": str(tmp_path / "fh0.grib2"),
                 "data/a.t00z.pgrb2.0p25.f006": str(tmp_path / "fh6.grib2"),
                 "foo/bar": "/baz/quz",
             },
-            "rundir": str(tmp_path / "prep"),
-            "variable_extraction_yaml": str(tmp_path / "vars.yaml"),
+            STR.rundir: str(tmp_path / "prep"),
+            STR.variable_extraction_yaml: str(tmp_path / "vars.yaml"),
         }
     }
 
@@ -80,8 +81,8 @@ def varkit(driverobj):
           - ":surface:"
         load_once: false
     """
-    Path(driverobj.config["variable_extraction_yaml"]).write_text(dedent(content))
-    d = driverobj.rundir / "data"
+    Path(driverobj.config[STR.variable_extraction_yaml]).write_text(dedent(content))
+    d = driverobj.rundir / STR.data
     keys = [
         Path(f"{d}/HGT_surface_00.pgrb2.0p25.f000.nc"),
         Path(f"{d}/TMP_2_m_above_ground_00.pgrb2.0p25.f000.nc"),
@@ -115,25 +116,25 @@ def test_drivers_AIGFSICs_merged_netcdf_files(driverobj, varkit):
 
         def ds_atm(varnames: list[str], time: np.datetime64) -> xr.Dataset:
             data_vars: dict = {
-                v: (["time", "plevel", "latitude", "longitude"], np.ones((1, 3, 1, 1)))
+                v: ([STR.time, STR.plevel, STR.latitude, STR.longitude], np.ones((1, 3, 1, 1)))
                 for v in varnames
             }
-            data_vars["_dummy"] = (["level"], np.zeros(1))  # to exercise drop_dims("level")
+            data_vars["_dummy"] = ([STR.level], np.zeros(1))  # to exercise drop_dims("level")
             return xr.Dataset(
                 data_vars,
                 coords={
-                    "time": [time],
-                    "plevel": np.array([200.0, 850.0, 1000.0], dtype="float64"),
-                    "level": [0.0],
-                    "latitude": lat,
-                    "longitude": lon,
+                    STR.time: [time],
+                    STR.plevel: np.array([200.0, 850.0, 1000.0], dtype="float64"),
+                    STR.level: [0.0],
+                    STR.latitude: lat,
+                    STR.longitude: lon,
                 },
             )
 
         def ds_sfc(varname: str, time: np.datetime64) -> xr.Dataset:
             return xr.Dataset(
-                {varname: (["time", "latitude", "longitude"], np.ones((1, 1, 1)))},
-                coords={"time": [time], "latitude": lat, "longitude": lon},
+                {varname: ([STR.time, STR.latitude, STR.longitude], np.ones((1, 1, 1)))},
+                coords={STR.time: [time], STR.latitude: lat, STR.longitude: lon},
             )
 
         yield "mock ncfiles"
@@ -147,22 +148,24 @@ def test_drivers_AIGFSICs_merged_netcdf_files(driverobj, varkit):
         datasets: dict[str, xr.Dataset] = {}
         for ncfile in ncfiles:
             name = ncfile.name
-            if "HGT_surface" in name:
-                datasets[name] = ds_sfc("HGT_surface", t0)
+            if STR.HGT_surface in name:
+                datasets[name] = ds_sfc(STR.HGT_surface, t0)
             elif "TMP_2_m_above_ground" in name:
-                datasets[name] = ds_sfc("TMP_2maboveground", t0)
+                datasets[name] = ds_sfc(STR.TMP_2maboveground, t0)
             elif "PRMSL_mean_sea_level" in name:
-                datasets[name] = ds_sfc("PRMSL_meansealevel", t0)
+                datasets[name] = ds_sfc(STR.PRMSL_meansealevel, t0)
             elif "VGRD.UGRD_10_m_above_ground" in name:
-                ds = ds_sfc("UGRD_10maboveground", t0)
-                ds["VGRD_10maboveground"] = ds["UGRD_10maboveground"].copy()
+                ds = ds_sfc(STR.UGRD_10maboveground, t0)
+                ds[STR.VGRD_10maboveground] = ds[STR.UGRD_10maboveground].copy()
                 datasets[name] = ds
             elif "SPFH.VVEL" in name:
-                datasets[name] = ds_atm(["SPFH", "VVEL", "VGRD", "UGRD", "HGT", "TMP"], t0)
-            elif "LAND_surface" in name:
-                datasets[name] = ds_sfc("LAND_surface", t6)
+                datasets[name] = ds_atm(
+                    [STR.SPFH, STR.VVEL, STR.VGRD, STR.UGRD, STR.HGT, STR.TMP], t0
+                )
+            elif STR.LAND_surface in name:
+                datasets[name] = ds_sfc(STR.LAND_surface, t6)
             else:
-                datasets[name] = ds_sfc("APCP_surface", t6)
+                datasets[name] = ds_sfc(STR.APCP_surface, t6)
         for ncfile in ncfiles:
             ncfile.parent.mkdir(exist_ok=True, parents=True)
             datasets[ncfile.name].to_netcdf(ncfile)
@@ -175,48 +178,49 @@ def test_drivers_AIGFSICs_merged_netcdf_files(driverobj, varkit):
     ds = xr.open_dataset(node.ref)
     # Variables were renamed from GRIB names to descriptive names:
     renamed = [
-        "total_precipitation_6hr",
-        "geopotential",
-        "geopotential_at_surface",
-        "land_sea_mask",
-        "mean_sea_level_pressure",
-        "specific_humidity",
-        "temperature",
-        "2m_temperature",
-        "u_component_of_wind",
-        "10m_u_component_of_wind",
-        "v_component_of_wind",
-        "10m_v_component_of_wind",
-        "vertical_velocity",
+        STR.total_precipitation_6hr,
+        STR.geopotential,
+        STR.geopotential_at_surface,
+        STR.land_sea_mask,
+        STR.mean_sea_level_pressure,
+        STR.specific_humidity,
+        STR.temperature,
+        STR.two_m_temperature,
+        STR.u_component_of_wind,
+        STR.ten_m_u_component_of_wind,
+        STR.v_component_of_wind,
+        STR.ten_m_v_component_of_wind,
+        STR.vertical_velocity,
     ]
     for name in renamed:
         assert name in ds.data_vars
     # Original GRIB names should not be present:
-    for name in ["HGT", "HGT_surface", "LAND_surface", "APCP_surface", "TMP", "SPFH"]:
+    for name in [STR.HGT, STR.HGT_surface, STR.LAND_surface, STR.APCP_surface, STR.TMP, STR.SPFH]:
         assert name not in ds.data_vars
     # Coordinate types were converted:
-    assert ds["lat"].dtype == np.float32
-    assert ds["lon"].dtype == np.float32
-    assert ds["level"].dtype == np.int32
+    assert ds[STR.lat].dtype == np.float32
+    assert ds[STR.lon].dtype == np.float32
+    assert ds[STR.level].dtype == np.int32
     # Level values are the pressure levels:
-    np.testing.assert_array_equal(ds["level"].values, [200, 850, 1000])
+    np.testing.assert_array_equal(ds[STR.level].values, [200, 850, 1000])
     # Time is relative (first time step is zero):
-    assert ds["time"].values[0] == np.timedelta64(0)
+    assert ds[STR.time].values[0] == np.timedelta64(0)
     # batch dimension was added:
-    assert "batch" in ds.dims
+    assert STR.batch in ds.dims
     # datetime coordinate exists with batch dimension:
-    assert "datetime" in ds.coords
-    assert "batch" in ds["datetime"].dims
+    assert STR.datetime in ds.coords
+    assert STR.batch in ds[STR.datetime].dims
     # geopotential_at_surface was scaled by 9.80665 and has no time dim (selected one time):
-    assert "time" not in ds["geopotential_at_surface"].dims
-    np.testing.assert_allclose(ds["geopotential_at_surface"].values.flat[0], 9.80665)
+    assert STR.time not in ds[STR.geopotential_at_surface].dims
+    np.testing.assert_allclose(ds[STR.geopotential_at_surface].values.flat[0], 9.80665)
     # land_sea_mask was selected at one time (no time dim):
-    assert "time" not in ds["land_sea_mask"].dims
+    assert STR.time not in ds[STR.land_sea_mask].dims
     # geopotential (on pressure levels) was scaled by 9.80665:
-    np.testing.assert_allclose(ds["geopotential"].values.flat[0], 9.80665)
+    np.testing.assert_allclose(ds[STR.geopotential].values.flat[0], 9.80665)
     # total_precipitation_6hr was divided by 1000 (use last time since it's from f006):
     np.testing.assert_allclose(
-        float(ds["total_precipitation_6hr"].isel(batch=0, time=-1).values.flat[0]), 0.001
+        float(ds[STR.total_precipitation_6hr].isel(batch=0, time=-1).values.flat[0]),
+        0.001,
     )
     ds.close()
 
@@ -268,7 +272,7 @@ def test_drivers_AIGFSICs__ncfile(atask, ready, driverobj, logcap):
 
 
 def test_drivers_AIGFSICs_driver_name(driverobj):
-    assert driverobj.driver_name() == "aigfs_ics"
+    assert driverobj.driver_name() == STR.aigfs_ics
 
 
 def test_drivers_AIGFSICs__ncfiles_to_cmds(varkit):
@@ -279,7 +283,7 @@ def test_drivers_AIGFSICs__ncfiles_to_cmds(varkit):
 
 def test_drivers_AIGFSICs__ncfiles_to_cmds__bad_grib_filenames(varkit):
     driverobj, _ = varkit
-    config = driverobj._config["files_to_link"]
+    config = driverobj._config[STR.files_to_link]
     key = next(iter(config))
     config[key.replace("t00z", "z00t")] = config[key]
     with raises(ValueError, match="GRIB files don't have names expected by this driver!"):
@@ -298,21 +302,21 @@ def test_drivers_ics_schema(config, logcap, tmp_path, validator, with_del, with_
     assert "'aigfs_ics' is a required property" in logcap.text
     logcap.clear()
     # Expecting an object:
-    assert not ok(with_set(config, [], "aigfs_ics"))
+    assert not ok(with_set(config, [], STR.aigfs_ics))
     assert "is not of type 'object'" in logcap.text
     logcap.clear()
     # files_to_link is not required (but one of files_to_* must satisfy anyOf):
-    cfg_no_link = with_del(config, "aigfs_ics", "files_to_link")
+    cfg_no_link = with_del(config, STR.aigfs_ics, STR.files_to_link)
     # Without any files_to_* the anyOf still passes (it just checks pattern if present):
-    assert ok(with_set(cfg_no_link, {"data/x": "/y"}, "aigfs_ics", "files_to_copy"))
-    assert ok(with_set(cfg_no_link, {"data/x": "/y"}, "aigfs_ics", "files_to_hardlink"))
+    assert ok(with_set(cfg_no_link, {"data/x": "/y"}, STR.aigfs_ics, STR.files_to_copy))
+    assert ok(with_set(cfg_no_link, {"data/x": "/y"}, STR.aigfs_ics, STR.files_to_hardlink))
 
 
 def test_drivers_ics_schema_content(config, logcap, tmp_path, validator, with_del, with_set):
-    ok = validator(ics, tmp_path, "properties", "aigfs_ics")
-    cfg = config["aigfs_ics"]
+    ok = validator(ics, tmp_path, "properties", STR.aigfs_ics)
+    cfg = config[STR.aigfs_ics]
     # Required:
-    for key in ("execution", "rundir", "variable_extraction_yaml"):
+    for key in ("execution", STR.rundir, STR.variable_extraction_yaml):
         assert not ok(with_del(cfg, key))
         assert f"'{key}' is a required property" in logcap.text
         logcap.clear()
@@ -321,7 +325,7 @@ def test_drivers_ics_schema_content(config, logcap, tmp_path, validator, with_de
     assert "Additional properties are not allowed" in logcap.text
     logcap.clear()
     # Expecting a string:
-    for key in ("rundir", "variable_extraction_yaml"):
+    for key in (STR.rundir, STR.variable_extraction_yaml):
         assert not ok(with_set(cfg, 42, key))
         assert "is not of type 'string'" in logcap.text
         logcap.clear()

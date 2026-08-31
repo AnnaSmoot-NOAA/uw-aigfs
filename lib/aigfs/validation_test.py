@@ -4,12 +4,13 @@ from pydantic import ValidationError
 from pytest import fixture, mark, raises
 
 from aigfs import validation
+from aigfs.strings import STR
 
 
 @fixture
 def args_app(args_platform, args_time, tmp_path, utc):
     return dict(
-        cycle_freq=timedelta(hours=1),
+        cycle_freq=timedelta(hours=12),
         first_cycle=utc(2026, 1, 1, 0),
         home=tmp_path,
         last_cycle=utc(2026, 1, 31, 23),
@@ -46,7 +47,16 @@ def args_scheduler():
 
 @fixture
 def args_time():
-    return dict(fff="fff", hh="hh", yyyymmdd="yyyymmdd")
+    return dict(
+        fff="006",
+        hh="00",
+        m1_hh="18",
+        m1_yyyymmdd="20260826",
+        m2_hh="12",
+        m2_yyyymmdd="20260826",
+        m6h=timedelta(hours=6),
+        yyyymmdd="20260827",
+    )
 
 
 @mark.parametrize("compute", ["a", None])
@@ -90,7 +100,7 @@ def test_validation_Platform(args_platform):
 
 def test_validation_Platform_bad_name(args_platform, with_set):
     with raises(ValidationError) as e:
-        validation.Platform(**with_set(args_platform, "foo", "name"))
+        validation.Platform(**with_set(args_platform, "foo", STR.name))
     assert e.value.error_count() == 1
     msg = "Platform name must be one of"
     assert msg in e.value.errors()[0]["msg"]
@@ -115,9 +125,15 @@ def test_validation_App(args_app, with_del):
 
 
 @mark.parametrize("hours", [0, -1])
-def test_validation_App_bad_cycle_freq(args_app, hours):
+def test_validation_App_bad_cycle_freq_negative(args_app, hours):
     args_app["cycle_freq"] = timedelta(hours=hours)
     with raises(ValueError, match="cycle_freq must be greater than 0"):
+        validation.App(**args_app)
+
+
+def test_validation_App_bad_cycle_freq_not_0_mod_6(args_app):
+    args_app["cycle_freq"] = timedelta(hours=1)
+    with raises(ValueError, match="cycle_freq must be a multiple of 6"):
         validation.App(**args_app)
 
 
@@ -141,9 +157,9 @@ def test_validation_validate(args_config, with_set):
 
 
 def test_validation_validate_fail(args_app, logcap):
-    del args_app["rundir"]
+    del args_app[STR.rundir]
     with raises(SystemExit) as e:
-        validation.validate({"app": args_app})
+        validation.validate({STR.app: args_app})
     assert e.value.code == 1
     assert "Config validation failed:" in logcap.text
     assert "'loc': ('app', 'rundir')" in logcap.text

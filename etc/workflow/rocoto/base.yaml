@@ -25,11 +25,11 @@ workflow:
             --config &CONFIG;
             --cycle @Y-@m-@dT@H
             --key-path prep
+      cores: !int '{{ prep.aigfs_ics.execution.batchargs.cores }}'
       join:
         cyclestr:
           value: '&LOGDIR;/{{ jobname }}_@Y@m@d@H.log'
       memory: '{{ prep.aigfs_ics.execution.batchargs.memory }}'
-      nodes: '{{ prep.aigfs_ics.execution.batchargs.nodes }}:ppn={{ prep.aigfs_ics.execution.batchargs.tasks_per_node }}'
       walltime: '{{ prep.aigfs_ics.execution.batchargs.walltime }}'
     task_forecast:
       account: '{{ app.platform.scheduler.account }}'
@@ -72,12 +72,12 @@ workflow:
               --cycle @Y-@m-@dT@H
               --key-path post
               --leadtime #fhr#'
+        cores: !int '{{ post.aigfs_post.execution.batchargs.cores }}'
         join:
           cyclestr:
             value: '&LOGDIR;/{{ jobname }}_@Y@m@d@H.log'
         envars:
           FHR: '#fhr#'
-        nodes: '{{ post.aigfs_post.execution.batchargs.nodes }}:ppn={{ post.aigfs_post.execution.batchargs.tasks_per_node }}'
         memory: '{{ post.aigfs_post.execution.batchargs.memory }}'
         walltime: '{{ post.aigfs_post.execution.batchargs.walltime }}'
         dependency:

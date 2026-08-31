@@ -6,6 +6,7 @@ from iotaa import Asset, Node, external, task
 from pytest import fixture
 
 from aigfs.drivers import post
+from aigfs.strings import STR
 
 # Fixtures
 
@@ -13,15 +14,15 @@ from aigfs.drivers import post
 @fixture
 def config(tmp_path):
     return {
-        "aigfs_post": {
-            "deliver_to": str(tmp_path / "delivery"),
+        STR.aigfs_post: {
+            STR.deliver_to: str(tmp_path / "delivery"),
             "execution": {"executable": "uw execute -h"},
-            "inputfiles": [
+            STR.inputfiles: [
                 str(tmp_path / "run" / "aigfs.t00z.sfc.f006.grib2"),
                 str(tmp_path / "run" / "aigfs.t00z.pres.f006.grib2"),
             ],
-            "outputdir": str(tmp_path / "post"),
-            "rundir": str(tmp_path / "run"),
+            STR.outputdir: str(tmp_path / "post"),
+            STR.rundir: str(tmp_path / "run"),
         }
     }
 
@@ -56,7 +57,7 @@ def test_drivers_AIGFSPost_delivery(driverobj, logcap):
         assert driverobj.delivery().ready
     assert "Delivered GRIB indexes" in logcap.text
     del driverobj._deliver_to
-    del driverobj._config["deliver_to"]
+    del driverobj._config[STR.deliver_to]
     node = driverobj.delivery()
     assert not node.ready
     assert "Definition of 'deliver_to' in 'delivery' task config block" in logcap.text
@@ -102,7 +103,7 @@ def test_drivers_AIGFSPost__idx(driverobj, logcap, touch):
         yield None
         touch(path)
 
-    path = Path(driverobj.config["outputdir"], "aigfs.t00z.sfc.f006.grib2.idx")
+    path = Path(driverobj.config[STR.outputdir], "aigfs.t00z.sfc.f006.grib2.idx")
     assert not path.exists()
     with (
         patch.object(driverobj, "_gribfile", Mock(wraps=mock__gribfile)) as _gribfile,
@@ -146,22 +147,22 @@ def test_drivers_AIGFSPost__valid_driver_config(driverobj, logcap):
 
 
 def test_drivers_AIGFSPost_driver_name(driverobj):
-    assert driverobj.driver_name() == "aigfs_post"
+    assert driverobj.driver_name() == STR.aigfs_post
 
 
 def test_drivers_AIGFSPost_output(driverobj):
-    do = Path(driverobj.config["outputdir"])
+    do = Path(driverobj.config[STR.outputdir])
     assert driverobj.output == {
-        "idx": [do / "aigfs.t00z.sfc.f006.grib2.idx", do / "aigfs.t00z.pres.f006.grib2.idx"]
+        STR.idx: [do / "aigfs.t00z.sfc.f006.grib2.idx", do / "aigfs.t00z.pres.f006.grib2.idx"]
     }
 
 
 def test_drivers_AIGFSPost__deliver_to(driverobj):
-    assert driverobj._deliver_to == Path(driverobj.config["deliver_to"])
+    assert driverobj._deliver_to == Path(driverobj.config[STR.deliver_to])
 
 
 def test_drivers_AIGFSPost__deliver_to__fail(driverobj):
-    del driverobj._config["deliver_to"]
+    del driverobj._config[STR.deliver_to]
     node = driverobj._deliver_to
     assert isinstance(node, Node)
     assert not node.ready
@@ -169,7 +170,7 @@ def test_drivers_AIGFSPost__deliver_to__fail(driverobj):
 
 def test_drivers_AIGFSPost__delivered2idx(driverobj):
     dd = driverobj._deliver_to
-    do = Path(driverobj.config["outputdir"])
+    do = Path(driverobj.config[STR.outputdir])
     assert driverobj._delivered2idx == {
         dd / "aigfs.t00z.sfc.f006.grib2.idx": do / "aigfs.t00z.sfc.f006.grib2.idx",
         dd / "aigfs.t00z.pres.f006.grib2.idx": do / "aigfs.t00z.pres.f006.grib2.idx",
@@ -178,7 +179,7 @@ def test_drivers_AIGFSPost__delivered2idx(driverobj):
 
 def test_drivers_AIGFSPost__idx2grib(driverobj):
     di = driverobj.rundir
-    do = Path(driverobj.config["outputdir"])
+    do = Path(driverobj.config[STR.outputdir])
     assert driverobj._idx2grib == {
         do / "aigfs.t00z.sfc.f006.grib2.idx": di / "aigfs.t00z.sfc.f006.grib2",
         do / "aigfs.t00z.pres.f006.grib2.idx": di / "aigfs.t00z.pres.f006.grib2",
@@ -197,38 +198,38 @@ def test_drivers_post_schema(config, logcap, tmp_path, validator, with_set):
     assert "'aigfs_post' is a required property" in logcap.text
     logcap.clear()
     # Expecting an object:
-    assert not ok(with_set(config, [], "aigfs_post"))
+    assert not ok(with_set(config, [], STR.aigfs_post))
     assert "is not of type 'object'" in logcap.text
     logcap.clear()
 
 
 def test_drivers_post_schema_content(config, logcap, tmp_path, validator, with_del, with_set):
-    ok = validator(post, tmp_path, "properties", "aigfs_post")
-    cfg = config["aigfs_post"]
+    ok = validator(post, tmp_path, "properties", STR.aigfs_post)
+    cfg = config[STR.aigfs_post]
     # Required:
-    for key in ("execution", "inputfiles", "outputdir", "rundir"):
+    for key in ("execution", STR.inputfiles, STR.outputdir, STR.rundir):
         assert not ok(with_del(cfg, key))
         assert f"'{key}' is a required property" in logcap.text
         logcap.clear()
     # Optional:
-    assert ok(with_del(cfg, "deliver_to"))
+    assert ok(with_del(cfg, STR.deliver_to))
     # No additional properties:
     assert not ok(with_set(cfg, "bar", "foo"))
     assert "Additional properties are not allowed" in logcap.text
     logcap.clear()
     # Expecting a string:
-    for key in ("deliver_to", "outputdir", "rundir"):
+    for key in (STR.deliver_to, STR.outputdir, STR.rundir):
         assert not ok(with_set(cfg, 42, key))
         assert "is not of type 'string'" in logcap.text
         logcap.clear()
     # Expecting an array:
-    assert not ok(with_set(cfg, "bad", "inputfiles"))
+    assert not ok(with_set(cfg, "bad", STR.inputfiles))
     assert "is not of type 'array'" in logcap.text
     logcap.clear()
     # Expecting an array with at least 2 strings:
-    assert not ok(with_set(cfg, ["foo"], "inputfiles"))
+    assert not ok(with_set(cfg, ["foo"], STR.inputfiles))
     assert "is too short" in logcap.text
     logcap.clear()
-    assert not ok(with_set(cfg, [1, 2, 3], "inputfiles"))
+    assert not ok(with_set(cfg, [1, 2, 3], STR.inputfiles))
     assert "1 is not of type 'string'" in logcap.text
     logcap.clear()

@@ -10,6 +10,8 @@ import numpy as np
 import xarray as xr
 from uwtools.api.utils import atomic
 
+from aigfs.strings import STR
+
 SECTION3 = np.array(
     [
         0,
@@ -42,17 +44,17 @@ SECTION3 = np.array(
 
 class Grib2Writer:
     def __init__(
-        self, start_date: datetime, case_name: str = "aigfs", json_path: Path | None = None
+        self, start_date: datetime, case_name: str = STR.aigfs, json_path: Path | None = None
     ) -> None:
         self.case_name = case_name
-        if self.case_name == "aigfs":
+        if self.case_name == STR.aigfs:
             assert json_path
-            table_file = json_path / "tables_aigfs.json"
-        elif self.case_name.startswith("aige"):
+            table_file = json_path / STR.tables_aigfs_json
+        elif self.case_name.startswith(STR.aige):
             assert json_path
-            table_file = json_path / "tables_aigefs.json"
+            table_file = json_path / STR.tables_aigefs_json
         else:
-            msg = f"name {self.case_name} is not supported!"
+            msg = f"name {self.case_name} is not supported."
             raise ValueError(msg)
         with table_file.open() as f:
             self.attrs = json.load(f)
@@ -64,21 +66,21 @@ class Grib2Writer:
         # Set duration. NOTE: the duration attr exists for all Grib2Message objects.
         # For Grib2Messages that are instantaneous, the duration is just 0.
         duration = timedelta(hours=0)
-        if var == "total_precipitation_6hr":
+        if var == STR.total_precipitation_6hr:
             duration = timedelta(hours=6)
-        elif var == "total_precipitation_cumsum":
+        elif var == STR.total_precipitation_cumsum:
             duration = timedelta(hours=lead)
         # Create GRIB2 message.
         msg = grib2io.Grib2Message(
             section3=SECTION3,
-            pdtn=self.attrs[var]["templates"]["pdtn"],
-            drtn=self.attrs[var]["templates"]["drtn"],
+            pdtn=self.attrs[var][STR.templates][STR.pdtn],
+            drtn=self.attrs[var][STR.templates][STR.drtn],
         )
         # Set GRIB2 attributes from json table.
-        for k, v in self.attrs[var]["attrs"].items():
+        for k, v in self.attrs[var][STR.attrs].items():
             setattr(msg, k, v)
         # Set GRIB2 attributes for ensemble members.
-        if self.case_name.startswith("aige"):
+        if self.case_name.startswith(STR.aige):
             number = int(self.case_name[-2:])
             msg.perturbationNumber = number
             if "c00" in self.case_name:
@@ -89,7 +91,7 @@ class Grib2Writer:
                 msg.typeOfData = 4
         # Update decScaleFactor for specific humidity:
         # 12 for [5000, 10000]Pa, 10 for [15000, ..., 40000]Pa, 8 for [50000, ..., 100000]Pa
-        if var == "specific_humidity":
+        if var == STR.specific_humidity:
             assert level is not None
             if level >= 5000 and level <= 10000:
                 msg.decScaleFactor = 12
@@ -110,27 +112,27 @@ class Grib2Writer:
         return msg
 
     def save_grib2(self, ds: xr.Dataset, outdir: Path) -> None:
-        prefix = "aigefs" if self.case_name.startswith("aige") else "aigfs"
+        prefix = STR.aigefs if self.case_name.startswith(STR.aige) else STR.aigfs
         # Convert geopotential to geopotential height.
-        ds["geopotential"] = ds["geopotential"] / 9.80665
-        # Update total_precipitation_6h unit to (kg/m^2) and set min to zero.
-        if "total_precipitation_6hr" in ds:
-            ds["total_precipitation_6hr"] = ds["total_precipitation_6hr"].clip(min=0) * 1000
+        ds[STR.geopotential] = ds[STR.geopotential] / 9.80665
+        # Update total_precipitation_6hr unit to (kg/m^2) and set min to zero.
+        if STR.total_precipitation_6hr in ds:
+            ds[STR.total_precipitation_6hr] = ds[STR.total_precipitation_6hr].clip(min=0) * 1000
         # Drop total_precipitation_cumsum for AIGEFS. Otherwise update unit to (kg/m^2) and set min
         # to zero.
-        if "total_precipitation_cumsum" in ds:
-            if self.case_name.startswith("aige"):
-                ds = ds.drop_vars("total_precipitation_cumsum")
+        if STR.total_precipitation_cumsum in ds:
+            if self.case_name.startswith(STR.aige):
+                ds = ds.drop_vars(STR.total_precipitation_cumsum)
             else:
-                ds["total_precipitation_cumsum"] = (
-                    ds["total_precipitation_cumsum"].clip(min=0) * 1000
+                ds[STR.total_precipitation_cumsum] = (
+                    ds[STR.total_precipitation_cumsum].clip(min=0) * 1000
                 )
         # Set min spfh to zero.
-        if "specific_humidity" in ds:
-            ds["specific_humidity"] = ds["specific_humidity"].clip(min=0)
+        if STR.specific_humidity in ds:
+            ds[STR.specific_humidity] = ds[STR.specific_humidity].clip(min=0)
         # Convert levels values from mb to Pa.
-        ds["level"] = ds["level"] * 100  # mb to Pa
-        ds = ds.squeeze(dim="batch")
+        ds[STR.level] = ds[STR.level] * 100  # mb to Pa
+        ds = ds.squeeze(dim=STR.batch)
         # Reverse lat.
         ds = ds.reindex(lat=ds.lat[::-1])
         # Set output GRIB2 file.
@@ -142,15 +144,15 @@ class Grib2Writer:
         for outfile in [outfile_sfc, outfile_pres]:
             outfile.unlink(missing_ok=True)
         logging.info("Writing surface variables to %s", outfile_sfc)
-        logging.info("Writing pressure-level varibles to %s", outfile_pres)
+        logging.info("Writing pressure-level variables to %s", outfile_pres)
         # Write to temporary GRIB2 files, then atomically rename them:
         with atomic(outfile_sfc) as tmp_sfc, atomic(outfile_pres) as tmp_pres:
             grib2_out_sfc = grib2io.open(tmp_sfc, mode="w")
             grib2_out_pres = grib2io.open(tmp_pres, mode="w")
             for var in sorted(ds.data_vars):
                 da: xr.DataArray = ds[var]
-                if "level" in da.coords:
-                    for level in da.coords["level"]:
+                if STR.level in da.coords:
+                    for level in da.coords[STR.level]:
                         msg = self.create_grib2_message(var, lead, level=level)
                         msg.data = da.sel(level=level).isel(time=0).values
                         msg.pack()

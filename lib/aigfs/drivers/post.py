@@ -7,6 +7,8 @@ from iotaa import Asset, Node, collection, external, task
 from uwtools.api.driver import DriverCycleLeadtimeBased
 from uwtools.api.utils import atomic, run_shell_cmd
 
+from aigfs.strings import STR
+
 
 class AIGFSPost(DriverCycleLeadtimeBased):
     """
@@ -85,20 +87,20 @@ class AIGFSPost(DriverCycleLeadtimeBased):
         """
         Returns the name of this driver.
         """
-        return "aigfs_post"
+        return STR.aigfs_post
 
     @property
     def output(self) -> dict[str, Path] | dict[str, list[Path]]:
         """
         Returns a description of the file(s) created when this component runs.
         """
-        return {"idx": [Path(x) for x in self._idx2grib]}
+        return {STR.idx: [Path(x) for x in self._idx2grib]}
 
     # Private helper methods
 
     @cached_property
     def _deliver_to(self) -> Path | Node:
-        key = "deliver_to"
+        key = STR.deliver_to
         if key in self.config:
             return Path(self.config[key])
         reason = f"Definition of '{key}' in 'delivery' task config block"
@@ -120,6 +122,6 @@ class AIGFSPost(DriverCycleLeadtimeBased):
         """
         A mapping from generated GRIB index paths to their source GRIB files.
         """
-        srcs = [Path(x) for x in self.config["inputfiles"]]
-        dsts = [Path(self.config["outputdir"], f"{x.name}.idx") for x in srcs]
+        srcs = [Path(x) for x in self.config[STR.inputfiles]]
+        dsts = [Path(self.config[STR.outputdir], f"{x.name}.idx") for x in srcs]
         return dict(zip(dsts, srcs, strict=True))

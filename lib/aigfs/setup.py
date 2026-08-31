@@ -13,6 +13,7 @@ from uwtools.api.config import YAMLConfig, compose_to_dict
 from uwtools.api.logging import use_uwtools_logger
 
 from aigfs.common import ETCDIR, HOMEDIR, PLATFORMDIR, platforms
+from aigfs.strings import STR
 from aigfs.validation import validate
 
 
@@ -22,10 +23,12 @@ def compose_configs(workflow: str, platform: str, user_config_files: list[Path])
     """
     with NamedTemporaryFile(delete=True) as tmp:
         reserved = Path(tmp.name)
-        YAMLConfig({"app": {"home": str(HOMEDIR), "platform": {"name": platform}}}).dump(reserved)
+        YAMLConfig({STR.app: {STR.home: str(HOMEDIR), STR.platform: {STR.name: platform}}}).dump(
+            reserved
+        )
         configs: list[str | Path] = [
-            ETCDIR / "base.yaml",
-            ETCDIR / "workflow" / workflow / "base.yaml",
+            ETCDIR / STR.base_yaml,
+            ETCDIR / STR.workflow / workflow / STR.base_yaml,
             PLATFORMDIR / f"{platform}.yaml",
             *user_config_files,
             reserved,
@@ -77,14 +80,14 @@ def set_up_rundir(config: dict, workflow: str = "rocoto") -> None:
     """
     Create and populate the run directory.
     """
-    rundir = Path(config["app"]["rundir"])
+    rundir = Path(config[STR.app][STR.rundir])
     logging.info("AIGFS will be set up here: %s", rundir)
     rundir.mkdir(parents=True, exist_ok=True)
-    final = rundir / "aigfs.yaml"
+    final = rundir / STR.aigfs_yaml
     YAMLConfig(config).dump(final)
     if workflow == "ecflow":
         ecflow.realize(YAMLConfig(config), rundir, scripts_path=rundir / "ecf")
-    elif not rocoto.realize(YAMLConfig(config), rundir / "rocoto.xml"):
+    elif not rocoto.realize(YAMLConfig(config), rundir / STR.rocoto_xml):
         logging.error("Invalid Rocoto XML")
         sys.exit(1)
 

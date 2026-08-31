@@ -51,10 +51,10 @@
   loop: "{{ rtaigfs_bb_installer_artifacts.files }}"
   when: not rtaigfs_bb.stat.exists
 
-- name: Install rtaigfs launcher
+- name: Install run launcher
   ansible.builtin.copy:
-    src: rtaigfs
-    dest: "{{ rtaigfs_bin_dir }}/rtaigfs"
+    src: run
+    dest: "{{ rtaigfs_bin_dir }}/run"
     mode: "0755"
 
 - name: Install report launcher
