@@ -58,7 +58,7 @@ Several `make` targets are available in an activated `aigfs` development environ
 | `make unittest`  | Run unit tests and report coverage with [pytest](https://docs.pytest.org/) and [coverage](https://coverage.readthedocs.io/en/)                                                          |
 | `make test`      | Equivalent to `make lint && make typecheck && make unittest`                                                                                                                            |
 
-Configuration for `ruff`, `mypy`, `pytest`, and `coverage` is provided by `pyproject.toml`, `shellcheck` by `.shellcheckrc`, and `yamllint` by `.yamllint.yaml`, and in the repo root.
+Configuration for `ruff`, `mypy`, `pytest`, and `coverage` is provided by `pyproject.toml`, `shellcheck` by `.shellcheckrc`, and `yamllint` by `.yamllint.yaml`, all in the repo root.
 
 A useful development idiom is:
 
@@ -153,7 +153,7 @@ Use the _Conversation_ tab of your PR to ask for help with any difficulties you 
 │       └── rocoto                 # Rocoto workflow support
 ├── lib                            # Python library code
 │   └── aigfs                      # The AIGFS python package
-│       ├── conftest.py            # Unit-tests fixtures
+│       ├── conftest.py            # Unit-test fixtures
 │       ├── drivers                # AIGFS component drivers
 │       │   ├── *.jsonschema       # Config schema
 │       │   ├── *.py               # AIGFS component driver

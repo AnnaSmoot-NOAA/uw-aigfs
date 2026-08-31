@@ -12,6 +12,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, ValidationError, field_validator, model_validator
 
 from aigfs.common import platforms
+from aigfs.strings import STR
 
 # Validation classes
 
@@ -58,7 +59,7 @@ class Platform(BaseModel):
     partition: Partition | None = None
     scheduler: Scheduler
 
-    @field_validator("name")
+    @field_validator(STR.name)
     @classmethod
     def validate_name(cls, val: str) -> str:
         if val not in platforms():

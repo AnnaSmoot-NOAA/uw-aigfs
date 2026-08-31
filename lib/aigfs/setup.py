@@ -13,6 +13,7 @@ from uwtools.api.config import YAMLConfig, compose_to_dict
 from uwtools.api.logging import use_uwtools_logger
 
 from aigfs.common import ETCDIR, HOMEDIR, PLATFORMDIR, platforms
+from aigfs.strings import STR
 from aigfs.validation import validate
 
 
@@ -22,10 +23,12 @@ def compose_configs(platform: str, user_config_files: list[Path]) -> dict:
     """
     with NamedTemporaryFile(delete=True) as tmp:
         reserved = Path(tmp.name)
-        YAMLConfig({"app": {"home": str(HOMEDIR), "platform": {"name": platform}}}).dump(reserved)
+        YAMLConfig({STR.app: {STR.home: str(HOMEDIR), STR.platform: {STR.name: platform}}}).dump(
+            reserved
+        )
         configs: list[str | Path] = [
-            ETCDIR / "base.yaml",
-            ETCDIR / "workflow" / "rocoto" / "base.yaml",
+            ETCDIR / STR.base_yaml,
+            ETCDIR / STR.workflow / STR.rocoto / STR.base_yaml,
             PLATFORMDIR / f"{platform}.yaml",
             *user_config_files,
             reserved,
@@ -70,12 +73,12 @@ def set_up_rundir(config: dict) -> None:
     """
     Create and populate the run directory.
     """
-    rundir = Path(config["app"]["rundir"])
+    rundir = Path(config[STR.app][STR.rundir])
     logging.info("AIGFS will be set up here: %s", rundir)
     rundir.mkdir(parents=True, exist_ok=True)
-    final = rundir / "aigfs.yaml"
+    final = rundir / STR.aigfs_yaml
     YAMLConfig(config).dump(final)
-    if not rocoto.realize(YAMLConfig(config), rundir / "rocoto.xml"):
+    if not rocoto.realize(YAMLConfig(config), rundir / STR.rocoto_xml):
         logging.error("Invalid Rocoto XML")
         sys.exit(1)
 

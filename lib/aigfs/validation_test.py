@@ -4,6 +4,7 @@ from pydantic import ValidationError
 from pytest import fixture, mark, raises
 
 from aigfs import validation
+from aigfs.strings import STR
 
 
 @fixture
@@ -99,7 +100,7 @@ def test_validation_Platform(args_platform):
 
 def test_validation_Platform_bad_name(args_platform, with_set):
     with raises(ValidationError) as e:
-        validation.Platform(**with_set(args_platform, "foo", "name"))
+        validation.Platform(**with_set(args_platform, "foo", STR.name))
     assert e.value.error_count() == 1
     msg = "Platform name must be one of"
     assert msg in e.value.errors()[0]["msg"]
@@ -156,9 +157,9 @@ def test_validation_validate(args_config, with_set):
 
 
 def test_validation_validate_fail(args_app, logcap):
-    del args_app["rundir"]
+    del args_app[STR.rundir]
     with raises(SystemExit) as e:
-        validation.validate({"app": args_app})
+        validation.validate({STR.app: args_app})
     assert e.value.code == 1
     assert "Config validation failed:" in logcap.text
     assert "'loc': ('app', 'rundir')" in logcap.text

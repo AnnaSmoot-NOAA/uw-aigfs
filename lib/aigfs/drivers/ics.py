@@ -10,6 +10,8 @@ from uwtools.api.config import get_yaml_config
 from uwtools.api.driver import DriverCycleBased, FileStager
 from uwtools.api.utils import atomic, run_shell_cmd
 
+from aigfs.strings import STR
+
 
 class AIGFSICs(DriverCycleBased, FileStager):
     """
@@ -30,49 +32,49 @@ class AIGFSICs(DriverCycleBased, FileStager):
         yield reqs
         datasets = map(xr.open_dataset, reqs.ref)
         ds = xr.merge(datasets, compat="no_conflicts", join="outer")
-        ds = ds.drop_dims("level")
+        ds = ds.drop_dims(STR.level)
         ds = ds.rename(
             {
-                "APCP_surface": "total_precipitation_6hr",
-                "HGT": "geopotential",
-                "HGT_surface": "geopotential_at_surface",
-                "LAND_surface": "land_sea_mask",
-                "PRMSL_meansealevel": "mean_sea_level_pressure",
-                "SPFH": "specific_humidity",
-                "TMP": "temperature",
-                "TMP_2maboveground": "2m_temperature",
-                "UGRD": "u_component_of_wind",
-                "UGRD_10maboveground": "10m_u_component_of_wind",
-                "VGRD": "v_component_of_wind",
-                "VGRD_10maboveground": "10m_v_component_of_wind",
-                "VVEL": "vertical_velocity",
-                "latitude": "lat",
-                "longitude": "lon",
-                "plevel": "level",
+                STR.APCP_surface: STR.total_precipitation_6hr,
+                STR.HGT: STR.geopotential,
+                STR.HGT_surface: STR.geopotential_at_surface,
+                STR.LAND_surface: STR.land_sea_mask,
+                STR.PRMSL_meansealevel: STR.mean_sea_level_pressure,
+                STR.SPFH: STR.specific_humidity,
+                STR.TMP: STR.temperature,
+                STR.TMP_2maboveground: STR.two_m_temperature,
+                STR.UGRD: STR.u_component_of_wind,
+                STR.UGRD_10maboveground: STR.ten_m_u_component_of_wind,
+                STR.VGRD: STR.v_component_of_wind,
+                STR.VGRD_10maboveground: STR.ten_m_v_component_of_wind,
+                STR.VVEL: STR.vertical_velocity,
+                STR.latitude: STR.lat,
+                STR.longitude: STR.lon,
+                STR.plevel: STR.level,
             }
         )
         ds = ds.assign_coords(datetime=ds.time)
-        ds["lat"] = ds["lat"].astype("float32")
-        ds["lon"] = ds["lon"].astype("float32")
-        ds["level"] = ds["level"].astype("int32")
-        ds["time"] = ds["time"] - ds.time[0]  # time now relative to the first time step
-        ds = ds.expand_dims(dim="batch")
-        ds["datetime"] = ds["datetime"].expand_dims(dim="batch")
-        sfc_geop = ds["geopotential_at_surface"].squeeze("batch")
+        ds[STR.lat] = ds[STR.lat].astype("float32")
+        ds[STR.lon] = ds[STR.lon].astype("float32")
+        ds[STR.level] = ds[STR.level].astype("int32")
+        ds[STR.time] = ds[STR.time] - ds.time[0]  # time now relative to the first time step
+        ds = ds.expand_dims(dim=STR.batch)
+        ds[STR.datetime] = ds[STR.datetime].expand_dims(dim=STR.batch)
+        sfc_geop = ds[STR.geopotential_at_surface].squeeze(STR.batch)
         sfc_geop = (
             sfc_geop.isel(time=1) if sfc_geop.isel(time=0).isnull().all() else sfc_geop.isel(time=0)
         )
-        ds["geopotential_at_surface"] = sfc_geop
-        ls_mask = ds["land_sea_mask"].squeeze("batch")
+        ds[STR.geopotential_at_surface] = sfc_geop
+        ls_mask = ds[STR.land_sea_mask].squeeze(STR.batch)
         ls_mask = (
             ls_mask.isel(time=0) if ls_mask.isel(time=1).isnull().all() else ls_mask.isel(time=1)
         )
-        ds["land_sea_mask"] = ls_mask
+        ds[STR.land_sea_mask] = ls_mask
         # Update geopotential unit to m2/s2 by multiplying 9.80665.
-        ds["geopotential_at_surface"] = ds["geopotential_at_surface"] * 9.80665
-        ds["geopotential"] = ds["geopotential"] * 9.80665
+        ds[STR.geopotential_at_surface] = ds[STR.geopotential_at_surface] * 9.80665
+        ds[STR.geopotential] = ds[STR.geopotential] * 9.80665
         # Update total_precipitation_6hr unit to (m) from (kg/m^2) by dividing it by 1000kg/m³.
-        ds["total_precipitation_6hr"] = ds["total_precipitation_6hr"] / 1000
+        ds[STR.total_precipitation_6hr] = ds[STR.total_precipitation_6hr] / 1000
         ds.to_netcdf(path)
 
     @collection
@@ -115,7 +117,7 @@ class AIGFSICs(DriverCycleBased, FileStager):
         """
         Returns the name of this driver.
         """
-        return "aigfs_ics"
+        return STR.aigfs_ics
 
     # Private helper methods
 
@@ -124,27 +126,27 @@ class AIGFSICs(DriverCycleBased, FileStager):
         """
         A mapping from netCDF file paths to the commands that create them.
         """
-        datadir = self.rundir / "data"
+        datadir = self.rundir / STR.data
         paths = [
             self.rundir / dst
-            for section in ("files_to_copy", "files_to_hardlink", "files_to_link")
+            for section in (STR.files_to_copy, STR.files_to_hardlink, STR.files_to_link)
             for dst in self.config.get(section, [])
             if Path(dst).parts[0] == datadir.name
         ]
         paths = sorted(set(paths), reverse=True)
         mapping: dict[Path, str] = {}
-        for suffix, cfgs in get_yaml_config(self.config["variable_extraction_yaml"]).items():
+        for suffix, cfgs in get_yaml_config(self.config[STR.variable_extraction_yaml]).items():
             for var, cfg in cfgs.items():
-                lev = cfg["levels"][0]
+                lev = cfg[STR.levels][0]
                 for path in filter(lambda x: x.name.endswith(suffix), paths):
-                    if (load_once := cfg.get("load_once")) is False:
+                    if (load_once := cfg.get(STR.load_once)) is False:
                         continue
                     logging.info("Loading %s", var)
                     if not (m := re.match(rf"^.*\.t(\d\d)z{suffix}$", path.name)):
                         msg = "GRIB files don't have names expected by this driver!"
                         raise ValueError(msg)
                     if load_once is True:
-                        cfg["load_once"] = False
+                        cfg[STR.load_once] = False
                     fmt = lambda x: re.sub(r"[|()]", ".", x).replace(":", "")
                     ncfile = datadir / "{var}_{lev}_{hh}{suffix}.nc".format(
                         var=fmt(var),
