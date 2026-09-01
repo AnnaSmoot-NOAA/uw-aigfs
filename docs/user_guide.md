@@ -29,7 +29,7 @@ Welcome to the `uw-aigfs` User Guide. This guide describes how to install, confi
 `uw-aigfs` drives an AI-based medium-range global forecast using the [GraphCast](https://github.com/noaa-emc/graphcast) model, orchestrated via [uwtools](https://uwtools.readthedocs.io/en/main/) with either the [Rocoto](https://github.com/christopherwharrop/rocoto) or [ecFlow](https://ecflow.readthedocs.io) workflow manager. The workflow consists of three sequential stages per forecast cycle:
 
 1. **Prep** — Extract variables from GFS GRIB2 files and produce a netCDF initial-conditions file for GraphCast.
-2. **Forecast** — Run GraphCast inference to produce GRIB2 output files at each forecast lead time.
+2. **Forecast** — Run GraphCast inference to produce GRIB2 output files at each forecast leadtime.
 3. **Post** — Generate GRIB2 index files and deliver them to the forecast output directory.
 
 ## Prerequisites
@@ -260,11 +260,11 @@ Task scripts are written to `<rundir>/ecf/` and include the `head.h`, `envir-1.h
 
 **ecFlow task names** (equivalent Rocoto tasks in parentheses):
 
-| ecFlow task           | Rocoto equivalent      | Description                       |
-|-----------------------|------------------------|-----------------------------------|
-| `prep`                | `task_prep`            | ICS generation                    |
-| `forecast`            | `task_forecast`        | GraphCast inference               |
-| `post_f000`…`post_f120` | `task_post_000`…`task_post_120` | Post-processing per lead time |
+| ecFlow task             | Rocoto equivalent               | Description                  |
+|-------------------------|---------------------------------|------------------------------|
+| `prep`                  | `task_prep`                     | ICS generation               |
+| `forecast`              | `task_forecast`                 | GraphCast inference          |
+| `post_f000`…`post_f120` | `task_post_000`…`task_post_120` | Post-processing per leadtime |
 
 ## Workflow Stages
 
@@ -305,7 +305,7 @@ The forecast job requires significant memory (default: 150 GB) due to the size o
 
 ### Post-Processing
 
-The `metatask_post` Rocoto metatask fans out into one `task_post_<fff>` job per forecast lead time. Each post job runs `aigfs.drivers.post` (driver class `AIGFSPost`). It:
+The `metatask_post` Rocoto metatask fans out into one `task_post_<fff>` job per forecast leadtime. Each post job runs `aigfs.drivers.post` (driver class `AIGFSPost`). It:
 
 1. Waits for the corresponding GRIB2 surface and pressure-level files to exist in the forecast directory (or for `task_forecast` to complete, whichever happens first).
 2. Generates a `wgrib2` inventory index (`.idx`) file for each GRIB2 file.

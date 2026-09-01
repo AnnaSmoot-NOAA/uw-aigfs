@@ -2,14 +2,18 @@
   "properties": {
     "aigfs_post": {
       "additionalProperties": false,
+      "description": "Schema for the AIGFSPost driver config",
       "properties": {
         "deliver_to": {
+          "description": "Directory to deliver GRIB index to after creation",
           "type": "string"
         },
         "execution": {
-          "$ref": "urn:uwtools:execution-serial"
+          "$ref": "urn:uwtools:execution-serial",
+          "description": "Settings for driver execution"
         },
         "inputfiles": {
+          "description": "Paths to GRIB files to index",
           "items": {
             "type": "string"
           },
@@ -17,9 +21,11 @@
           "type": "array"
         },
         "outputdir": {
+          "description": "Directory to write GRIB index files to",
           "type": "string"
         },
         "rundir": {
+          "description": "Path to the driver run directory",
           "type": "string"
         }
       },

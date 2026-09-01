@@ -2,35 +2,46 @@
   "properties": {
     "aigfs_inference": {
       "additionalProperties": false,
+      "description": "Schema for the AIGFSInference driver config",
       "properties": {
         "diffs_stddev_path": {
+          "description": "Path to GraphCast netCDF file for scaling predicted residuals",
           "type": "string"
         },
         "execution": {
-          "$ref": "urn:uwtools:execution-parallel"
+          "$ref": "urn:uwtools:execution-serial",
+          "description": "Settings for driver execution"
         },
         "forecast_freq": {
+          "description": "Hours between forecast leadtimes",
           "type": "integer"
         },
         "forecast_length": {
+          "description": "Max forecast leadtime",
           "type": "integer"
         },
         "ics_path": {
+          "description": "Path to AIGFSICs initial conditions netCDF output",
           "type": "string"
         },
         "json_path": {
+          "description": "Path to grib2io GRIB-writing config JSON",
           "type": "string"
         },
         "mean_path": {
+          "description": "Path to GraphCast netCDF for centering inputs",
           "type": "string"
         },
         "model_weights_path": {
+          "description": "Path to GraphCast weights .npz",
           "type": "string"
         },
         "rundir": {
+          "description": "Path to the driver run directory",
           "type": "string"
         },
         "stddev_path": {
+          "description": "Path to GraphCast netCDF for scaling inputs",
           "type": "string"
         }
       },
