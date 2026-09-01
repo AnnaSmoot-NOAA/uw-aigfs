@@ -23,7 +23,7 @@ def args_app(args_platform, args_time, tmp_path, utc):
 
 @fixture
 def args_config(args_app):
-    return dict(app=args_app, forecast={}, post={}, prep={}, user={}, workflow={})
+    return dict(app=args_app, ecflow={}, forecast={}, post={}, prep={}, user={}, workflow={})
 
 
 @fixture

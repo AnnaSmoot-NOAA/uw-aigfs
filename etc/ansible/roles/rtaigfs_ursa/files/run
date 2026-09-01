@@ -35,7 +35,7 @@ go() {
     export CYCLE RUNDIR
     config_yaml=$RUNDIR/aigfs.yaml
     rocoto_xml=$RUNDIR/rocoto.xml
-    test -f $config_yaml -a -f $rocoto_xml || (set -ex && setup ursa $rtdir/rtaigfs.yaml)
+    test -f $config_yaml -a -f $rocoto_xml || (set -ex && setup --platform ursa --workflow rocoto $rtdir/rtaigfs.yaml)
     test -f $config_yaml -a -f $rocoto_xml || exit 1
     (set -ex && rocotorun -d $RUNDIR/rocoto.db -w $rocoto_xml)
   done
