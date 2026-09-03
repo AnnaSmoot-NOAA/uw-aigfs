@@ -7,6 +7,7 @@ ecflow:
         CONFIG: '{{ app.rundir}}/aigfs.yaml'
         ECF_HOME: '{{ app.rundir }}/ecf'
         ECF_INCLUDE: '{{ app.home }}/include'
+        ECF_JOB_CMD: 'sbatch -o %ECF_JOBOUT% %ECF_JOB%'
         PLATFORM: '{{ app.platform.name }}'
       family_datetimes:
         repeat_datetime:
@@ -19,9 +20,9 @@ ecflow:
             script: &script
               includes:
                 entry:
-                  - head.h
+                  - <head.h>
                 exit:
-                  - tail.h
+                  - <tail.h>
               manual: Prepares AIGFS ICS from GFS.
               batchargs: !dict '{{ prep.aigfs_ics.execution.batchargs }}'
               body: |
@@ -60,6 +61,7 @@ ecflow:
                 batchargs: !dict '{{ post.aigfs_post.execution.batchargs }}'
                 body: |
                   source %APPDIR%/bin/activate-%PLATFORM%
+                  export FHR=%FHR%
                   uw execute \
                     --module aigfs.drivers.post \
                     --classname AIGFSPost \
@@ -67,6 +69,6 @@ ecflow:
                     --config %CONFIG% \
                     --cycle $ISOCYCLE \
                     --key-path post \
-                    --leadtime ${FHR#f}
+                    --leadtime %FHR%
               vars:
-                FHR: '{{ ec.fhr }}'
+                FHR: '{{ ec.fhr[1:] }}'

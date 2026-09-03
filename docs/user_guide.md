@@ -229,12 +229,21 @@ Start the ecFlow server if it is not already running.
 Ensure your `aigfs.yaml` contains an `ecflow.server` block (see the [uwtools ecFlow server YAML docs](https://uwtools.readthedocs.io/en/main/sections/user_guide/yaml/ecflow.html#server-configuration)), then run:
 
 ```bash
-uw ecflow server --config-file aigfs.yaml
+uw ecflow server --config-file aigfs.yaml --port <PORT> --report
 ```
 
-See the [uwtools ecFlow server documentation](https://uwtools.readthedocs.io/en/main/sections/user_guide/cli/tools/ecflow.html#server) for options including port and SSL configuration.
+`uw ecflow server` runs in the foreground; leave the shell that started it running for the life of the suite. To keep the server going after logout, run it under `nohup` and redirect output to a log file:
 
-> **Note for RDHPCS users:** The ecFlow server must run on a dedicated ecFlow node, not a login node. Consult your platform documentation for how to access it.
+```bash
+mkdir -p <rundir>/ecf
+nohup uw ecflow server --config-file <rundir>/aigfs.yaml --port <PORT> --report \
+    > <rundir>/ecf/server.log 2>&1 &
+echo $! > <rundir>/ecf/server.pid
+```
+
+See the [uwtools ecFlow server documentation](https://uwtools.readthedocs.io/en/main/sections/user_guide/cli/tools/ecflow.html#server) for options including port and SSL configuration. When `ecflow.server.ECF_SSL` is `true`, every `ecflow_client` call — including those inside task scripts — must pass `--ssl`; the task-side `head.h` and `tail.h` shipped in `include/` already do this.
+
+> **Note for RDHPCS users:** The ecFlow server must run on a dedicated ecFlow node, not a login node. Consult your platform documentation for how to access it. See [Ursa-specific setup](#ursa-specific-setup) below.
 
 **If using a platform-provided or externally installed ecFlow:**
 
@@ -242,21 +251,23 @@ See the [uwtools ecFlow server documentation](https://uwtools.readthedocs.io/en/
 ecflow_start
 ```
 
-Load the suite definition and begin the suite:
+Load the suite definition and begin the suite (drop `--ssl` if the server was started without SSL):
 
 ```bash
 cd <rundir>
-ecflow_client --load suite.def
-ecflow_client --begin retro
+ecflow_client --ssl --load=$(pwd)/suite.def
+ecflow_client --ssl --begin=retro
 ```
 
 Monitor the suite in the ecFlow GUI (`ecflow_ui`) or via the command line:
 
 ```bash
-ecflow_client --get_state /retro
+ecflow_client --ssl --get_state=/retro
 ```
 
-Task scripts are written to `<rundir>/ecf/` and include the `head.h`, `envir-1.h`, and `tail.h` wrappers from the `include/` directory. Task output is captured by ecFlow in each task's job output file.
+Task scripts are written to `<rundir>/ecf/` and include the `head.h` and `tail.h` wrappers from the `include/` directory (using ecFlow's `%include <head.h>` syntax to look them up via `ECF_INCLUDE`). Task output is captured by ecFlow in each task's job output file next to the `.ecf` script.
+
+The suite emits `edit ECF_JOB_CMD 'sbatch -o %ECF_JOBOUT% %ECF_JOB%'`, so tasks are submitted to Slurm using the `#SBATCH` directives at the top of each generated `.ecf` script. `head.h` initializes ecFlow with `${SLURM_JOB_ID:-$$}` so the server's `ECF_RID` matches the Slurm job ID and jobs can be tracked and killed correctly.
 
 **ecFlow task names** (equivalent Rocoto tasks in parentheses):
 
@@ -265,6 +276,50 @@ Task scripts are written to `<rundir>/ecf/` and include the `head.h`, `envir-1.h
 | `prep`                  | `task_prep`                     | ICS generation               |
 | `forecast`              | `task_forecast`                 | GraphCast inference          |
 | `post_f000`…`post_f120` | `task_post_000`…`task_post_120` | Post-processing per leadtime |
+
+#### Ursa-specific setup
+
+On Ursa the ecFlow server must run on the dedicated node `uecflow01` (not on a front-end). The Ursa convention is to pick a per-user port of `$(id -u) + 2000` and to keep `ECF_HOME` on `/scratch3` or `/scratch4`:
+
+```bash
+ssh uecflow01
+cd <rundir>
+source <path-to>/conda/etc/profile.d/conda.sh
+conda activate aigfs
+export PORT=$(($(id -u) + 2000))
+nohup uw ecflow server --config-file aigfs.yaml --port $PORT --report \
+    > ecf/server.log 2>&1 &
+echo $! > ecf/server.pid
+sleep 3 && cat ecf/server.log
+```
+
+From a second `ssh uecflow01` shell, connect the client and drive the suite:
+
+```bash
+cd <rundir>
+source <path-to>/conda/etc/profile.d/conda.sh
+conda activate aigfs
+export ECF_HOST=uecflow01
+export ECF_PORT=$(($(id -u) + 2000))
+ecflow_client --ssl --ping
+ecflow_client --ssl --load=$(pwd)/suite.def
+ecflow_client --ssl --begin=retro
+ecflow_client --ssl --get_state=/retro
+```
+
+When done, stop the server with the recorded PID:
+
+```bash
+kill $(cat ecf/server.pid)
+```
+
+#### Troubleshooting on Ursa
+
+- **`Failed to connect to <host>:<port>. Is the server running?`** — either the server shell was Ctrl-C'd, the wrong `ECF_PORT`/`ECF_HOST` is exported, or you forgot `--ssl` on a client call to an SSL server. Confirm the server is up with `ecflow_client --ssl --ping`.
+- **Suite loaded but `state:queued` never transitions.** — `--stats` reports `Status HALTED`. `uw ecflow server` starts the server halted (or the server halts itself after an error); run `ecflow_client --ssl --restart` to move it to `RUNNING`.
+- **`Could not open include file: head.h`.** — the emitted task script uses `%include <head.h>` which resolves via `ECF_INCLUDE`. Confirm `ECF_INCLUDE` in `suite.def` points at this repo's `include/` directory.
+- **`Stale file handle` when loading `suite.def`.** — NFS handle from a previous rundir. Refresh with `cd / && cd <rundir>`, or pass an absolute path: `ecflow_client --ssl --load=$(pwd)/suite.def`.
+- **Task `state:active` but no matching Slurm job in `squeue`.** — `ECF_JOB_CMD` isn't sbatching. Confirm the emitted `suite.def` contains `edit ECF_JOB_CMD 'sbatch -o %ECF_JOBOUT% %ECF_JOB%'`.
 
 ## Workflow Stages
 
