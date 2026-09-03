@@ -7,14 +7,11 @@ export ECF_NAME=%ECF_NAME%
 export ECF_PASS=%ECF_PASS%
 export ECF_TRYNO=%ECF_TRYNO%
 export ECF_RID=%ECF_RID%
-# Empty unless the server was started with SSL (e.g. via `uw ecflow server`).
-export ECF_SSL=%ECF_SSL:%
-SSL_FLAG=${ECF_SSL:+--ssl}
 
 ERROR() {
     set +e
     wait
-    ecflow_client $SSL_FLAG --abort=trap
+    ecflow_client --ssl --abort=trap
     trap 0
     exit 0
 }
@@ -23,4 +20,8 @@ trap '{ echo "Signal received — aborting task."; ERROR; }' 1 2 3 4 5 6 7 8 10 
 
 # Use the Slurm job ID (not the local shell PID) so the server can identify
 # batch jobs running on a different node than the one that submitted them.
-ecflow_client $SSL_FLAG --init=${SLURM_JOB_ID:-$$}
+ecflow_client --ssl --init=${SLURM_JOB_ID:-$$}
+
+# Convert ecFlow repeat_datetime format (YYYYmmddTHHMMSS) to uwtools cycle format (YYYY-mm-ddTHH:MM:SS).
+ISOCYCLE=$(echo "%CYCLE%" | sed -E 's/([0-9]{4})([0-9]{2})([0-9]{2})T([0-9]{2})([0-9]{2})([0-9]{2})/\1-\2-\3T\4:\5:\6/')
+export ISOCYCLE

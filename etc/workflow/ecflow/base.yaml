@@ -20,7 +20,6 @@ ecflow:
               includes:
                 entry:
                   - head.h
-                  - envir-1.h
                 exit:
                   - tail.h
               manual: Prepares AIGFS ICS from GFS.
@@ -61,9 +60,13 @@ ecflow:
                 batchargs: !dict '{{ post.aigfs_post.execution.batchargs }}'
                 body: |
                   source %APPDIR%/bin/activate-%PLATFORM%
-                  module load wgrib2
-                  export FH=%FHR%
-                  export INPUTDIR={{ forecast.aigfs_inference.rundir }}
-                  %APPDIR%/bin/post
+                  uw execute \
+                    --module aigfs.drivers.post \
+                    --classname AIGFSPost \
+                    --task run \
+                    --config %CONFIG% \
+                    --cycle $ISOCYCLE \
+                    --key-path post \
+                    --leadtime ${FHR#f}
               vars:
                 FHR: '{{ ec.fhr }}'
