@@ -5,7 +5,11 @@ from pytest import mark, raises
 from uwtools.api.config import YAMLConfig
 
 from aigfs import setup
+from aigfs.common import HOMEDIR
 from aigfs.strings import STR
+
+ECFLOW_BASE_YAML = setup.ETCDIR / STR.workflow / "ecflow" / STR.base_yaml
+INCLUDE_DIR = HOMEDIR / "include"
 
 
 @mark.parametrize("workflow", ["rocoto", "ecflow"])
@@ -134,3 +138,33 @@ def test_setup_set_up_rundir_ecflow(logcap, tmp_path):
     YAMLConfig.return_value.dump.assert_called_once_with(rundir / STR.aigfs_yaml)
     ecflow.realize.assert_called_once_with(YAMLConfig(config), rundir, scripts_path=rundir / "ecf")
     assert f"AIGFS will be set up here: {rundir}" in logcap.text
+
+
+def test_ecflow_base_yaml_post_trigger():
+    text = ECFLOW_BASE_YAML.read_text()
+    assert "trigger: prep == complete" in text
+    assert "trigger: '../forecast == complete'" in text
+
+
+def test_ecflow_base_yaml_no_release_events():
+    # aigfs.drivers.inference does not emit per-leadtime release_fXXX events.
+    text = ECFLOW_BASE_YAML.read_text()
+    assert "release_f" not in text
+    assert "events:" not in text
+
+
+def test_ecflow_base_yaml_sbatch_job_cmd():
+    text = ECFLOW_BASE_YAML.read_text()
+    assert "ECF_JOB_CMD: 'sbatch -o %ECF_JOBOUT% %ECF_JOB%'" in text
+
+
+def test_ecflow_head_uses_ssl_and_slurm_job_id():
+    text = (INCLUDE_DIR / "head.h").read_text()
+    assert "ecflow_client --ssl --init=${SLURM_JOB_ID:-$$}" in text
+    assert "ecflow_client --ssl --abort=trap" in text
+
+
+def test_ecflow_tail_uses_ssl():
+    text = (INCLUDE_DIR / "tail.h").read_text()
+    assert "ecflow_client --ssl --complete" in text
+
