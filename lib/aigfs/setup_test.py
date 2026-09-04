@@ -167,4 +167,3 @@ def test_ecflow_head_uses_ssl_and_slurm_job_id():
 def test_ecflow_tail_uses_ssl():
     text = (INCLUDE_DIR / "tail.h").read_text()
     assert "ecflow_client --ssl --complete" in text
-
