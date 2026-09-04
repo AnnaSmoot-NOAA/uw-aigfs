@@ -36,7 +36,6 @@ ecflow:
                   --key-path prep
           task_forecast:
             trigger: prep == complete
-            events: !list '[{% for h in range(0, forecast.aigfs_inference.forecast_length + 1, forecast.aigfs_inference.forecast_freq) %}{{ "release_f%03d" % h }},{% endfor %} ]'
             script:
               <<: *script
               manual: Runs AIGFS forecast.
@@ -54,7 +53,7 @@ ecflow:
             tasks_post_{{ ec.fhr }}:
               expand:
                 fhr: !list '[{% for h in range(0, forecast.aigfs_inference.forecast_length + 1, forecast.aigfs_inference.forecast_freq) %}{{ "f%03d" % h }},{% endfor %} ]'
-              trigger: '../forecast:release_{{ ec.fhr }}'
+              trigger: '../forecast == complete'
               script:
                 <<: *script
                 manual: Runs AIGFS post for {{ ec.fhr }}.
