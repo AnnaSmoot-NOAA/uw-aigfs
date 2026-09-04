@@ -277,6 +277,19 @@ The suite emits `edit ECF_JOB_CMD 'sbatch -o %ECF_JOBOUT% %ECF_JOB%'`, so tasks 
 | `forecast`              | `task_forecast`                 | GraphCast inference          |
 | `post_f000`…`post_f120` | `task_post_000`…`task_post_120` | Post-processing per leadtime |
 
+**Suite control flow.** `forecast` triggers on `prep == complete`; every `post_fXXX` triggers on `../forecast == complete` and fans out in parallel once forecast finishes. This matches the Rocoto suite's behavior and allows any subset of leadtimes to be requeued independently.
+
+**Reloading after editing `base.yaml` or `suite.def`.** Regenerate the rundir (`setup --workflow ecflow …`), then on the ecFlow server host:
+
+```bash
+cd <rundir>
+ecflow_client --ssl --halt=yes
+ecflow_client --ssl --delete=force /retro
+ecflow_client --ssl --restart
+ecflow_client --ssl --load=$(pwd)/suite.def
+ecflow_client --ssl --begin=retro
+```
+
 #### Ursa-specific setup
 
 On Ursa the ecFlow server must run on the dedicated node `uecflow01` (not on a front-end). The Ursa convention is to pick a per-user port of `$(id -u) + 2000` and to keep `ECF_HOME` on `/scratch3` or `/scratch4`:
@@ -319,6 +332,7 @@ kill $(cat ecf/server.pid)
 - **Suite loaded but `state:queued` never transitions.** — `--stats` reports `Status HALTED`. `uw ecflow server` starts the server halted (or the server halts itself after an error); run `ecflow_client --ssl --restart` to move it to `RUNNING`.
 - **`Could not open include file: head.h`.** — the emitted task script uses `%include <head.h>` which resolves via `ECF_INCLUDE`. Confirm `ECF_INCLUDE` in `suite.def` points at this repo's `include/` directory.
 - **`Stale file handle` when loading `suite.def`.** — NFS handle from a previous rundir. Refresh with `cd / && cd <rundir>`, or pass an absolute path: `ecflow_client --ssl --load=$(pwd)/suite.def`.
+- **`suite retro already exists` on `--load`.** — The server still has a prior definition. Halt and delete before reloading: `ecflow_client --ssl --halt=yes && ecflow_client --ssl --delete=force /retro && ecflow_client --ssl --restart` (see the "Reloading after editing" recipe above).
 - **Task `state:active` but no matching Slurm job in `squeue`.** — `ECF_JOB_CMD` isn't sbatching. Confirm the emitted `suite.def` contains `edit ECF_JOB_CMD 'sbatch -o %ECF_JOBOUT% %ECF_JOB%'`.
 
 ## Workflow Stages
