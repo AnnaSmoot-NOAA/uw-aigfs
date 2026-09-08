@@ -339,6 +339,33 @@ def test_drivers_utils_grib2writer_save_grib2_sendecf(writer, ds, tmp_path, logc
     assert "Running shell subprocess" in logcap.text
 
 
+def test_drivers_utils_grib2writer_save_grib2_post_write_hook(
+    json_path, start_date, ds, tmp_path, logcap
+):
+    marker = tmp_path / "hook.log"
+    hook = f"echo fhr={{fhr}} lead={{leadtime}} cycle={{cycle_iso}} >> {marker}"
+    writer = Grib2Writer(
+        start_date=start_date, case_name=STR.aigfs, json_path=json_path, post_write_hook=hook
+    )
+    writer.save_grib2(ds, tmp_path)
+    assert "Running post-write hook" in logcap.text
+    assert marker.read_text().strip() == "fhr=006 lead=6 cycle=2025-10-01T18:00:00"
+
+
+def test_drivers_utils_grib2writer_save_grib2_post_write_hook_failure(
+    json_path, start_date, ds, tmp_path, logcap
+):
+    writer = Grib2Writer(
+        start_date=start_date,
+        case_name=STR.aigfs,
+        json_path=json_path,
+        post_write_hook="false",
+    )
+    # A non-zero exit is logged as a warning and does not raise.
+    writer.save_grib2(ds, tmp_path)
+    assert "post_write_hook exit=1" in logcap.text
+
+
 def test_drivers_utils_grib2writer_save_grib2_spfh_clipped(writer, ds, tmp_path):
     # Set some specific_humidity values negative to test clipping:
     ds[STR.specific_humidity].values[0, 0, 0, 0, 0] = -0.01

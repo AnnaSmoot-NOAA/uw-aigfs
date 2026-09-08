@@ -36,6 +36,10 @@
           "description": "Path to GraphCast weights .npz",
           "type": "string"
         },
+        "post_write_hook": {
+          "description": "Optional shell command run by Grib2Writer after each leadtime's GRIB2 pair is written. Placeholders: {fhr}, {leadtime}, {cycle_iso}, {sfc_path}, {pres_path}. Non-zero exit is logged as a warning and does not abort the forecast.",
+          "type": "string"
+        },
         "rundir": {
           "description": "Path to the driver run directory",
           "type": "string"

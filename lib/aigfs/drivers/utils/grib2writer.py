@@ -44,9 +44,14 @@ SECTION3 = np.array(
 
 class Grib2Writer:
     def __init__(
-        self, start_date: datetime, case_name: str = STR.aigfs, json_path: Path | None = None
+        self,
+        start_date: datetime,
+        case_name: str = STR.aigfs,
+        json_path: Path | None = None,
+        post_write_hook: str | None = None,
     ) -> None:
         self.case_name = case_name
+        self.post_write_hook = post_write_hook
         if self.case_name == STR.aigfs:
             assert json_path
             table_file = json_path / STR.tables_aigfs_json
@@ -172,3 +177,23 @@ class Grib2Writer:
             cmd = [seteventsh, f"{lead:03d}"]
             logging.info("Running shell subprocess %s", cmd)
             subprocess.run(cmd, check=True)
+        # Config-driven post-write hook. Fires after each leadtime's GRIB2 pair is written;
+        # a non-zero exit is logged and the forecast continues.
+        if self.post_write_hook:
+            cmd_str = self.post_write_hook.format(
+                fhr=f"{lead:03d}",
+                leadtime=lead,
+                cycle_iso=self.start_date.strftime("%Y-%m-%dT%H:%M:%S"),
+                sfc_path=str(outfile_sfc),
+                pres_path=str(outfile_pres),
+            )
+            logging.info("Running post-write hook: %s", cmd_str)
+            result = subprocess.run(
+                cmd_str, shell=True, check=False, capture_output=True, text=True
+            )
+            if result.returncode != 0:
+                logging.warning(
+                    "post_write_hook exit=%d stderr=%s",
+                    result.returncode,
+                    result.stderr.strip(),
+                )

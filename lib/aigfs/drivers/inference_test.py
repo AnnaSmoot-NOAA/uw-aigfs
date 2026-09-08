@@ -264,6 +264,7 @@ def test_drivers_AIGFSInference_predictions(driverobj, ds, logcap, mock_mws, utc
         start_date=pd.to_datetime(utc(2025, 10, 2, 0).replace(tzinfo=None)),
         case_name=STR.aigfs,
         json_path=Path(driverobj.config[STR.json_path]),
+        post_write_hook=driverobj.config.get(STR.post_write_hook),
     )
     # rollout.chunked_prediction was called:
     mock_rollout.chunked_prediction.assert_called_once()

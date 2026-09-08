@@ -79,6 +79,7 @@ class _STR(_ValsMatchKeys):
     pdtn: str = _
     platform: str = _
     plevel: str = _
+    post_write_hook: str = _
     pressure: str = _
     PRMSL_meansealevel: str = _
     rocoto: str = _

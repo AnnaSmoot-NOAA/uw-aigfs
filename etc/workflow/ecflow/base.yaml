@@ -1,3 +1,6 @@
+forecast:
+  aigfs_inference:
+    post_write_hook: 'ecflow_client --ssl --event=release_f{fhr}'
 ecflow:
   suitedef:
     scheduler: '{{ app.platform.scheduler.type }}'
@@ -36,6 +39,7 @@ ecflow:
                   --key-path prep
           task_forecast:
             trigger: prep == complete
+            events: !list '[{% for h in range(0, forecast.aigfs_inference.forecast_length + 1, forecast.aigfs_inference.forecast_freq) %}{{ "release_f%03d" % h }},{% endfor %} ]'
             script:
               <<: *script
               manual: Runs AIGFS forecast.
@@ -53,7 +57,7 @@ ecflow:
             tasks_post_{{ ec.fhr }}:
               expand:
                 fhr: !list '[{% for h in range(0, forecast.aigfs_inference.forecast_length + 1, forecast.aigfs_inference.forecast_freq) %}{{ "f%03d" % h }},{% endfor %} ]'
-              trigger: '../forecast == complete'
+              trigger: '../forecast:release_{{ ec.fhr }}'
               script:
                 <<: *script
                 manual: Runs AIGFS post for {{ ec.fhr }}.

@@ -143,14 +143,19 @@ def test_setup_set_up_rundir_ecflow(logcap, tmp_path):
 def test_ecflow_base_yaml_post_trigger():
     text = ECFLOW_BASE_YAML.read_text()
     assert "trigger: prep == complete" in text
-    assert "trigger: '../forecast == complete'" in text
+    assert "trigger: '../forecast:release_{{ ec.fhr }}'" in text
 
 
-def test_ecflow_base_yaml_no_release_events():
-    # aigfs.drivers.inference does not emit per-leadtime release_fXXX events.
+def test_ecflow_base_yaml_release_events():
+    # aigfs.drivers.inference emits per-leadtime release_fXXX events via post_write_hook.
     text = ECFLOW_BASE_YAML.read_text()
-    assert "release_f" not in text
-    assert "events:" not in text
+    assert "release_f%03d" in text
+    assert "events:" in text
+
+
+def test_ecflow_base_yaml_post_write_hook():
+    text = ECFLOW_BASE_YAML.read_text()
+    assert "post_write_hook: 'ecflow_client --ssl --event=release_f{fhr}'" in text
 
 
 def test_ecflow_base_yaml_sbatch_job_cmd():

@@ -277,7 +277,25 @@ The suite emits `edit ECF_JOB_CMD 'sbatch -o %ECF_JOBOUT% %ECF_JOB%'`, so tasks 
 | `forecast`              | `task_forecast`                 | GraphCast inference          |
 | `post_f000`…`post_f120` | `task_post_000`…`task_post_120` | Post-processing per leadtime |
 
-**Suite control flow.** `forecast` triggers on `prep == complete`; every `post_fXXX` triggers on `../forecast == complete` and fans out in parallel once forecast finishes. This matches the Rocoto suite's behavior and allows any subset of leadtimes to be requeued independently.
+**Suite control flow.** `forecast` triggers on `prep == complete`; every `post_fXXX` triggers on `../forecast:release_fXXX`, where the `release_fXXX` events are set from within the forecast task each time that leadtime's GRIB2 pair has been written. This gives per-leadtime pipelined post processing: each `post_fXXX` starts as soon as its inputs land, without waiting for later leadtimes.
+
+The event-firing is wired via the driver's `post_write_hook` config key (see [`etc/workflow/ecflow/base.yaml`](../etc/workflow/ecflow/base.yaml), which defaults it to `ecflow_client --ssl --event=release_f{fhr}` for the ecFlow workflow). See [Post-write hook](#post-write-hook) below for details.
+
+> **Not equivalent to Rocoto.** The Rocoto suite achieves similar per-leadtime scheduling by a different mechanism: cron re-invokes `rocotorun` on a fixed interval (e.g. every 5 minutes on the RTAIGFS Ursa demo) and Rocoto uses filesystem `datadep` checks to submit any post task whose GRIB2 inputs have appeared since the last iteration. ecFlow doesn't watch the filesystem; it schedules on messages sent to its server. The `post_write_hook` mechanism above bridges the two models by having the forecast driver actively notify the ecFlow server as each leadtime completes.
+
+#### Post-write hook
+
+`forecast.aigfs_inference.post_write_hook` is an optional string; when set, it is executed as a shell command by `aigfs.drivers.utils.grib2writer.Grib2Writer` after each leadtime's surface + pressure GRIB2 files have been atomically written. The following placeholders are substituted per invocation:
+
+| Placeholder     | Value                                                     |
+|-----------------|-----------------------------------------------------------|
+| `{fhr}`         | Zero-padded 3-digit leadtime hours (`"000"`, `"006"`, …)  |
+| `{leadtime}`    | Integer leadtime hours (`0`, `6`, …)                      |
+| `{cycle_iso}`   | ISO cycle string, e.g. `2026-09-03T06:00:00`              |
+| `{sfc_path}`    | Absolute path to the just-written `*.sfc.fXXX.grib2` file |
+| `{pres_path}`   | Absolute path to the just-written `*.pres.fXXX.grib2` file |
+
+A non-zero exit from the hook is logged at `WARNING` and does **not** abort the forecast; each leadtime is fired independently. For the ecFlow workflow, [`etc/workflow/ecflow/base.yaml`](../etc/workflow/ecflow/base.yaml) defaults the hook to `ecflow_client --ssl --event=release_f{fhr}`, which uses the task's ambient `ECF_NAME`/`ECF_PASS`/`ECF_RID` env vars (exported by `head.h`) to set the corresponding event on the current forecast task. Rocoto rundirs don't set the key by default.
 
 **Reloading after editing `base.yaml` or `suite.def`.** Regenerate the rundir (`setup --workflow ecflow …`), then on the ecFlow server host:
 
