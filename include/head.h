@@ -16,7 +16,7 @@ ERROR() {
     exit 0
 }
 trap ERROR 0
-trap '{ echo "Signal received — aborting task."; ERROR; }' 1 2 3 4 5 6 7 8 10 12 13 15
+trap '{ echo "Signal received, aborting task."; ERROR; }' 1 2 3 4 5 6 7 8 10 12 13 15
 
 # Use the Slurm job ID (not the local shell PID) so the server can identify
 # batch jobs running on a different node than the one that submitted them.
