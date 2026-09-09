@@ -155,7 +155,10 @@ def test_ecflow_base_yaml_release_events():
 
 def test_ecflow_base_yaml_post_write_hook():
     text = ECFLOW_BASE_YAML.read_text()
-    assert "post_write_hook: 'ecflow_client --ssl --event=release_f{fhr}'" in text
+    assert (
+        "post_write_hook: 'ecflow_client --ssl --alter change event release_f{fhr} set $ECF_NAME'"
+        in text
+    )
 
 
 def test_ecflow_base_yaml_sbatch_job_cmd():

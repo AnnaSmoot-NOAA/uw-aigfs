@@ -37,7 +37,7 @@
           "type": "string"
         },
         "post_write_hook": {
-          "description": "Optional shell command run by Grib2Writer after each leadtime's GRIB2 pair is written. Placeholders: {fhr}, {leadtime}, {cycle_iso}, {sfc_path}, {pres_path}. Non-zero exit is logged as a warning and does not abort the forecast.",
+          "description": "Optional shell command run after each leadtime's GRIB2 pair is written; see user guide for placeholders and failure semantics",
           "type": "string"
         },
         "rundir": {

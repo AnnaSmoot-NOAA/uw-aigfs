@@ -177,23 +177,27 @@ class Grib2Writer:
             cmd = [seteventsh, f"{lead:03d}"]
             logging.info("Running shell subprocess %s", cmd)
             subprocess.run(cmd, check=True)
-        # Config-driven post-write hook. Fires after each leadtime's GRIB2 pair is written;
-        # a non-zero exit is logged and the forecast continues.
-        if self.post_write_hook:
-            cmd_str = self.post_write_hook.format(
-                fhr=f"{lead:03d}",
-                leadtime=lead,
-                cycle_iso=self.start_date.strftime("%Y-%m-%dT%H:%M:%S"),
-                sfc_path=str(outfile_sfc),
-                pres_path=str(outfile_pres),
+        self._run_post_write_hook(lead, outfile_sfc, outfile_pres)
+
+    def _run_post_write_hook(self, lead: int, outfile_sfc: Path, outfile_pres: Path) -> None:
+        if not self.post_write_hook:
+            return
+        cmd = self.post_write_hook.format(
+            fhr=f"{lead:03d}",
+            leadtime=lead,
+            cycle_iso=self.start_date.strftime("%Y-%m-%dT%H:%M:%S"),
+            sfc_path=str(outfile_sfc),
+            pres_path=str(outfile_pres),
+        )
+        logging.info("Running post-write hook: %s", cmd)
+        # shell=True is required to expand env vars like $ECF_NAME in the hook string;
+        # the hook comes from trusted config, not user input.
+        result = subprocess.run(  # noqa: S602
+            cmd, shell=True, check=False, capture_output=True, text=True
+        )
+        if result.returncode != 0:
+            logging.warning(
+                "post_write_hook exit=%d stderr=%s",
+                result.returncode,
+                result.stderr.strip(),
             )
-            logging.info("Running post-write hook: %s", cmd_str)
-            result = subprocess.run(
-                cmd_str, shell=True, check=False, capture_output=True, text=True
-            )
-            if result.returncode != 0:
-                logging.warning(
-                    "post_write_hook exit=%d stderr=%s",
-                    result.returncode,
-                    result.stderr.strip(),
-                )
