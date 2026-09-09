@@ -27,8 +27,8 @@ def config(tmp_path):
                 "data/a.t00z.pgrb2.0p25.f006": str(tmp_path / "fh6.grib2"),
                 "foo/bar": "/baz/quz",
             },
+            STR.grib_in_config: str(tmp_path / "grib-in.yaml"),
             STR.rundir: str(tmp_path / "prep"),
-            STR.variable_extraction_yaml: str(tmp_path / "vars.yaml"),
         }
     }
 
@@ -81,7 +81,7 @@ def varkit(driverobj):
           - ":surface:"
         load_once: false
     """
-    Path(driverobj.config[STR.variable_extraction_yaml]).write_text(dedent(content))
+    Path(driverobj.config[STR.grib_in_config]).write_text(dedent(content))
     d = driverobj.rundir / STR.data
     keys = [
         Path(f"{d}/HGT_surface_00.pgrb2.0p25.f000.nc"),
@@ -316,7 +316,7 @@ def test_drivers_ics_schema_content(config, logcap, tmp_path, validator, with_de
     ok = validator(ics, tmp_path, "properties", STR.aigfs_ics)
     cfg = config[STR.aigfs_ics]
     # Required:
-    for key in ("execution", STR.rundir, STR.variable_extraction_yaml):
+    for key in ("execution", STR.rundir, STR.grib_in_config):
         assert not ok(with_del(cfg, key))
         assert f"'{key}' is a required property" in logcap.text
         logcap.clear()
@@ -325,7 +325,7 @@ def test_drivers_ics_schema_content(config, logcap, tmp_path, validator, with_de
     assert "Additional properties are not allowed" in logcap.text
     logcap.clear()
     # Expecting a string:
-    for key in (STR.rundir, STR.variable_extraction_yaml):
+    for key in (STR.rundir, STR.grib_in_config):
         assert not ok(with_set(cfg, 42, key))
         assert "is not of type 'string'" in logcap.text
         logcap.clear()

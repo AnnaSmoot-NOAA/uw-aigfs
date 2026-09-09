@@ -46,23 +46,16 @@ class Grib2Writer:
     def __init__(
         self,
         start_date: datetime,
-        case_name: str = STR.aigfs,
-        json_path: Path | None = None,
+        case_name: str,
+        grib_out_config: Path,
         post_write_hook: str | None = None,
     ) -> None:
+        if case_name != STR.aigfs and not case_name.startswith(STR.aige):
+            msg = f"name {case_name} is not supported."
+            raise ValueError(msg)
+        self.attrs = json.loads(grib_out_config.read_text())
         self.case_name = case_name
         self.post_write_hook = post_write_hook
-        if self.case_name == STR.aigfs:
-            assert json_path
-            table_file = json_path / STR.tables_aigfs_json
-        elif self.case_name.startswith(STR.aige):
-            assert json_path
-            table_file = json_path / STR.tables_aigefs_json
-        else:
-            msg = f"name {self.case_name} is not supported."
-            raise ValueError(msg)
-        with table_file.open() as f:
-            self.attrs = json.load(f)
         self.start_date = start_date
 
     def create_grib2_message(

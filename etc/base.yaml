@@ -24,8 +24,8 @@ forecast:
       executable: uw execute --module aigfs.drivers.inference --classname AIGFSInference --task predictions -c {{ app.rundir }}/aigfs.yaml --cycle {{ cycle.strftime('%Y-%m-%d_%H:%M:%S') }} --key-path forecast
     forecast_freq: 6
     forecast_length: 120
+    grib_out_config: '{{ app.home }}/etc/grib-out.json'
     ics_path: '{{ prep.aigfs_ics.rundir }}/aigfs.t{{ app.time.hh }}z.ic.nc'
-    json_path: '{{ app.modeldir }}/tables'
     mean_path: '{{ app.modeldir }}/stats/mean_by_level.nc'
     model_weights_path: '{{ app.modeldir }}/params/weights.npz'
     rundir: '{{ app.rundir }}/{{ app.time.yyyymmdd }}{{ app.time.hh }}/forecast'
@@ -66,8 +66,8 @@ prep:
         - source {{ app.home }}/bin/activate-{{ app.platform.name }}
         - module load wgrib2
       executable: uw execute --module aigfs.drivers.ics --classname AIGFSICs --task merged_netcdf_files -c {{ app.rundir }}/aigfs.yaml --cycle {{ cycle.strftime('%Y-%m-%d_%H:%M:%S') }} --key-path prep
+    grib_in_config: '{{ app.home }}/etc/grib-in.yaml'
     rundir: '{{ app.rundir }}/{{ app.time.yyyymmdd }}{{ app.time.hh }}/prep'
-    variable_extraction_yaml: '{{ app.home }}/etc/wgrib2.yaml'
   platform:
     account: '{{ app.platform.scheduler.account }}'
     scheduler: '{{ app.platform.scheduler.type }}'

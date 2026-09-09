@@ -145,9 +145,10 @@ Use the _Conversation_ tab of your PR to ask for help with any difficulties you 
 │   ├── env                        # Conda environment definitions
 │   │   ├── devpkgs.yaml           # Developer packages
 │   │   └── environment.yaml       # Core AIGFS environment definition
+│   ├── grib-in.yaml               # Config for extracting GRIB messages to netCDF ICs
+│   ├── grib-out.json              # Config for writing GRIB forecast data
 │   ├── modulefiles                # System modules
 │   ├── platform                   # Per-platform YAML overrides
-│   ├── wgrib2.yaml                # Variable, and levels to extract from GFS GRIB2
 │   └── workflow                   # Workflow files
 │       ├── ecflow                 # ecFlow workflow support
 │       └── rocoto                 # Rocoto workflow support

@@ -123,7 +123,7 @@ class AIGFSInference(DriverCycleBased):
         converter = Grib2Writer(
             start_date=pd.to_datetime(ds.datetime.to_numpy()[0][-1]),
             case_name=STR.aigfs,
-            json_path=Path(self.config[STR.json_path]),
+            grib_out_config=Path(self.config[STR.grib_out_config]),
             post_write_hook=self.config.get(STR.post_write_hook),
         )
         inputs, targets, forcings = itfs.ref

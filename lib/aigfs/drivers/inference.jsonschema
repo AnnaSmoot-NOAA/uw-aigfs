@@ -20,12 +20,12 @@
           "description": "Max forecast leadtime",
           "type": "integer"
         },
-        "ics_path": {
-          "description": "Path to AIGFSICs initial conditions netCDF output",
+        "grib_out_config": {
+          "description": "Path to grib2io GRIB-writing config JSON",
           "type": "string"
         },
-        "json_path": {
-          "description": "Path to grib2io GRIB-writing config JSON",
+        "ics_path": {
+          "description": "Path to AIGFSICs initial conditions netCDF output",
           "type": "string"
         },
         "mean_path": {
@@ -53,8 +53,8 @@
         "diffs_stddev_path",
         "execution",
         "forecast_length",
+        "grib_out_config",
         "ics_path",
-        "json_path",
         "mean_path",
         "model_weights_path",
         "rundir",

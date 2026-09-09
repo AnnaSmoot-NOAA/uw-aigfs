@@ -55,19 +55,19 @@
           "$ref": "urn:uwtools:files-to-stage",
           "description": "Files to symlink into the driver run directory"
         },
-        "rundir": {
-          "description": "Path to the driver run directory",
+        "grib_in_config": {
+          "description": "Path to the YAML file defining variables for GRIB-to-netCDF extraction",
           "type": "string"
         },
-        "variable_extraction_yaml": {
-          "description": "Path to the YAML file defining variables for GRIB-to-netCDF extraction",
+        "rundir": {
+          "description": "Path to the driver run directory",
           "type": "string"
         }
       },
       "required": [
         "execution",
-        "rundir",
-        "variable_extraction_yaml"
+        "grib_in_config",
+        "rundir"
       ],
       "type": "object"
     }

@@ -1,0 +1,286 @@
+{
+  "10m_u_component_of_wind": {
+    "attrs": {
+      "binScaleFactor": 0,
+      "decScaleFactor": 2,
+      "discipline": 0,
+      "generatingProcess": 137,
+      "localTableInfo": 1,
+      "masterTableInfo": 2,
+      "originatingCenter": 7,
+      "scaledValueOfFirstFixedSurface": 10,
+      "shortName": "UGRD",
+      "significanceOfReferenceTime": 1,
+      "spatialDifferenceOrder": 2,
+      "typeOfData": 1,
+      "typeOfFirstFixedSurface": 103,
+      "typeOfGeneratingProcess": 2,
+      "typeOfSecondFixedSurface": 255
+    },
+    "templates": {
+      "drtn": 3,
+      "pdtn": 0
+    }
+  },
+  "10m_v_component_of_wind": {
+    "attrs": {
+      "binScaleFactor": 0,
+      "decScaleFactor": 2,
+      "discipline": 0,
+      "generatingProcess": 137,
+      "localTableInfo": 1,
+      "masterTableInfo": 2,
+      "originatingCenter": 7,
+      "scaledValueOfFirstFixedSurface": 10,
+      "shortName": "VGRD",
+      "significanceOfReferenceTime": 1,
+      "spatialDifferenceOrder": 2,
+      "typeOfData": 1,
+      "typeOfFirstFixedSurface": 103,
+      "typeOfGeneratingProcess": 2,
+      "typeOfSecondFixedSurface": 255
+    },
+    "templates": {
+      "drtn": 3,
+      "pdtn": 0
+    }
+  },
+  "2m_temperature": {
+    "attrs": {
+      "binScaleFactor": 0,
+      "decScaleFactor": 1,
+      "discipline": 0,
+      "generatingProcess": 137,
+      "localTableInfo": 1,
+      "masterTableInfo": 2,
+      "originatingCenter": 7,
+      "scaledValueOfFirstFixedSurface": 2,
+      "shortName": "TMP",
+      "significanceOfReferenceTime": 1,
+      "spatialDifferenceOrder": 2,
+      "typeOfData": 1,
+      "typeOfFirstFixedSurface": 103,
+      "typeOfGeneratingProcess": 2,
+      "typeOfSecondFixedSurface": 255
+    },
+    "templates": {
+      "drtn": 3,
+      "pdtn": 0
+    }
+  },
+  "geopotential": {
+    "attrs": {
+      "binScaleFactor": 3,
+      "decScaleFactor": 2,
+      "discipline": 0,
+      "generatingProcess": 137,
+      "localTableInfo": 1,
+      "masterTableInfo": 2,
+      "originatingCenter": 7,
+      "scaledValueOfFirstFixedSurface": 5000,
+      "shortName": "HGT",
+      "significanceOfReferenceTime": 1,
+      "spatialDifferenceOrder": 2,
+      "typeOfData": 1,
+      "typeOfFirstFixedSurface": 100,
+      "typeOfGeneratingProcess": 2,
+      "typeOfSecondFixedSurface": 255
+    },
+    "templates": {
+      "drtn": 3,
+      "pdtn": 0
+    }
+  },
+  "mean_sea_level_pressure": {
+    "attrs": {
+      "binScaleFactor": 1,
+      "decScaleFactor": 1,
+      "discipline": 0,
+      "generatingProcess": 137,
+      "localTableInfo": 1,
+      "masterTableInfo": 2,
+      "originatingCenter": 7,
+      "scaledValueOfFirstFixedSurface": 0,
+      "shortName": "PRMSL",
+      "significanceOfReferenceTime": 1,
+      "spatialDifferenceOrder": 2,
+      "typeOfData": 1,
+      "typeOfFirstFixedSurface": 101,
+      "typeOfGeneratingProcess": 2,
+      "typeOfSecondFixedSurface": 255
+    },
+    "templates": {
+      "drtn": 3,
+      "pdtn": 0
+    }
+  },
+  "specific_humidity": {
+    "attrs": {
+      "binScaleFactor": 6,
+      "decScaleFactor": 12,
+      "discipline": 0,
+      "generatingProcess": 137,
+      "localTableInfo": 1,
+      "masterTableInfo": 2,
+      "originatingCenter": 7,
+      "scaledValueOfFirstFixedSurface": 5000,
+      "shortName": "SPFH",
+      "significanceOfReferenceTime": 1,
+      "spatialDifferenceOrder": 2,
+      "typeOfData": 1,
+      "typeOfFirstFixedSurface": 100,
+      "typeOfGeneratingProcess": 2,
+      "typeOfSecondFixedSurface": 255
+    },
+    "templates": {
+      "drtn": 3,
+      "pdtn": 0
+    }
+  },
+  "temperature": {
+    "attrs": {
+      "binScaleFactor": 0,
+      "decScaleFactor": 2,
+      "discipline": 0,
+      "generatingProcess": 137,
+      "localTableInfo": 1,
+      "masterTableInfo": 2,
+      "originatingCenter": 7,
+      "scaledValueOfFirstFixedSurface": 5000,
+      "shortName": "TMP",
+      "significanceOfReferenceTime": 1,
+      "spatialDifferenceOrder": 2,
+      "typeOfData": 1,
+      "typeOfFirstFixedSurface": 100,
+      "typeOfGeneratingProcess": 2,
+      "typeOfSecondFixedSurface": 255
+    },
+    "templates": {
+      "drtn": 3,
+      "pdtn": 0
+    }
+  },
+  "total_precipitation_6hr": {
+    "attrs": {
+      "binScaleFactor": -4,
+      "decScaleFactor": 0,
+      "discipline": 0,
+      "generatingProcess": 137,
+      "localTableInfo": 1,
+      "masterTableInfo": 2,
+      "numberOfTimeRanges": 1,
+      "scaledValueOfFirstFixedSurface": 0,
+      "shortName": "APCP",
+      "significanceOfReferenceTime": 1,
+      "spatialDifferenceOrder": 2,
+      "statisticalProcess": 1,
+      "typeOfData": 1,
+      "typeOfFirstFixedSurface": 1,
+      "typeOfGeneratingProcess": 2,
+      "typeOfSecondFixedSurface": 255,
+      "typeOfTimeIncrementOfStatisticalProcess": 2,
+      "unitOfTimeRangeOfStatisticalProcess": 1,
+      "unitOfTimeRangeOfSuccessiveFields": 255
+    },
+    "templates": {
+      "drtn": 3,
+      "pdtn": 8
+    }
+  },
+  "total_precipitation_cumsum": {
+    "attrs": {
+      "binScaleFactor": -4,
+      "decScaleFactor": 0,
+      "discipline": 0,
+      "generatingProcess": 137,
+      "localTableInfo": 1,
+      "masterTableInfo": 2,
+      "numberOfTimeRanges": 1,
+      "scaledValueOfFirstFixedSurface": 0,
+      "shortName": "APCP",
+      "significanceOfReferenceTime": 1,
+      "spatialDifferenceOrder": 2,
+      "statisticalProcess": 1,
+      "typeOfData": 1,
+      "typeOfFirstFixedSurface": 1,
+      "typeOfGeneratingProcess": 2,
+      "typeOfSecondFixedSurface": 255,
+      "typeOfTimeIncrementOfStatisticalProcess": 2,
+      "unitOfTimeRangeOfStatisticalProcess": 1,
+      "unitOfTimeRangeOfSuccessiveFields": 255
+    },
+    "templates": {
+      "drtn": 3,
+      "pdtn": 8
+    }
+  },
+  "u_component_of_wind": {
+    "attrs": {
+      "binScaleFactor": 0,
+      "decScaleFactor": 4,
+      "discipline": 0,
+      "generatingProcess": 137,
+      "localTableInfo": 1,
+      "masterTableInfo": 2,
+      "originatingCenter": 7,
+      "scaledValueOfFirstFixedSurface": 5000,
+      "shortName": "UGRD",
+      "significanceOfReferenceTime": 1,
+      "spatialDifferenceOrder": 2,
+      "typeOfData": 1,
+      "typeOfFirstFixedSurface": 100,
+      "typeOfGeneratingProcess": 2,
+      "typeOfSecondFixedSurface": 255
+    },
+    "templates": {
+      "drtn": 3,
+      "pdtn": 0
+    }
+  },
+  "v_component_of_wind": {
+    "attrs": {
+      "binScaleFactor": 0,
+      "decScaleFactor": 2,
+      "discipline": 0,
+      "generatingProcess": 137,
+      "localTableInfo": 1,
+      "masterTableInfo": 2,
+      "originatingCenter": 7,
+      "scaledValueOfFirstFixedSurface": 5000,
+      "shortName": "VGRD",
+      "significanceOfReferenceTime": 1,
+      "spatialDifferenceOrder": 2,
+      "typeOfData": 1,
+      "typeOfFirstFixedSurface": 100,
+      "typeOfGeneratingProcess": 2,
+      "typeOfSecondFixedSurface": 255
+    },
+    "templates": {
+      "drtn": 3,
+      "pdtn": 0
+    }
+  },
+  "vertical_velocity": {
+    "attrs": {
+      "binScaleFactor": 0,
+      "decScaleFactor": 2,
+      "discipline": 0,
+      "generatingProcess": 137,
+      "localTableInfo": 1,
+      "masterTableInfo": 2,
+      "originatingCenter": 7,
+      "scaledValueOfFirstFixedSurface": 5000,
+      "shortName": "VVEL",
+      "significanceOfReferenceTime": 1,
+      "spatialDifferenceOrder": 2,
+      "typeOfData": 1,
+      "typeOfFirstFixedSurface": 100,
+      "typeOfGeneratingProcess": 2,
+      "typeOfSecondFixedSurface": 255
+    },
+    "templates": {
+      "drtn": 3,
+      "pdtn": 0
+    }
+  }
+}

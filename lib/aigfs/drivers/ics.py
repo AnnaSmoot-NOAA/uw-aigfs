@@ -135,7 +135,7 @@ class AIGFSICs(DriverCycleBased, FileStager):
         ]
         paths = sorted(set(paths), reverse=True)
         mapping: dict[Path, str] = {}
-        for suffix, cfgs in get_yaml_config(self.config[STR.variable_extraction_yaml]).items():
+        for suffix, cfgs in get_yaml_config(self.config[STR.grib_in_config]).items():
             for var, cfg in cfgs.items():
                 lev = cfg[STR.levels][0]
                 for path in filter(lambda x: x.name.endswith(suffix), paths):

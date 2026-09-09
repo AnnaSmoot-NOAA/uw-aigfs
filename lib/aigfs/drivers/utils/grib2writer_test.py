@@ -54,7 +54,7 @@ def ds() -> xr.Dataset:
 
 
 @fixture
-def json_path(tmp_path):
+def grib_out_config(tmp_path):
     table = {
         STR.temperature: {
             STR.templates: {STR.pdtn: 0, STR.drtn: 40},
@@ -81,9 +81,9 @@ def json_path(tmp_path):
             STR.attrs: {STR.discipline: 0, STR.parameter_category: 0, STR.parameter_number: 0},
         },
     }
-    (tmp_path / STR.tables_aigfs_json).write_text(json.dumps(table))
-    (tmp_path / STR.tables_aigefs_json).write_text(json.dumps(table))
-    return tmp_path
+    path = tmp_path / "grib-out.json"
+    path.write_text(json.dumps(table))
+    return path
 
 
 @fixture
@@ -92,18 +92,18 @@ def start_date(utc):
 
 
 @fixture
-def writer(json_path, start_date):
-    return Grib2Writer(start_date=start_date, case_name=STR.aigfs, json_path=json_path)
+def writer(grib_out_config, start_date):
+    return Grib2Writer(start_date=start_date, case_name=STR.aigfs, grib_out_config=grib_out_config)
 
 
 @fixture
-def writer_ens(json_path, start_date):
-    return Grib2Writer(start_date=start_date, case_name="aigep01", json_path=json_path)
+def writer_ens(grib_out_config, start_date):
+    return Grib2Writer(start_date=start_date, case_name="aigep01", grib_out_config=grib_out_config)
 
 
 @fixture
-def writer_ens_ctrl(json_path, start_date):
-    return Grib2Writer(start_date=start_date, case_name="aigec00", json_path=json_path)
+def writer_ens_ctrl(grib_out_config, start_date):
+    return Grib2Writer(start_date=start_date, case_name="aigec00", grib_out_config=grib_out_config)
 
 
 # Tests
@@ -178,9 +178,9 @@ def test_drivers_utils_grib2writer_init_aigefs(writer_ens):
     assert STR.temperature in writer_ens.attrs
 
 
-def test_drivers_utils_grib2writer_init_unsupported_case(json_path, start_date):
+def test_drivers_utils_grib2writer_init_unsupported_case(grib_out_config, start_date):
     with raises(ValueError, match="not supported"):
-        Grib2Writer(start_date=start_date, case_name="badname", json_path=json_path)
+        Grib2Writer(start_date=start_date, case_name="badname", grib_out_config=grib_out_config)
 
 
 def test_drivers_utils_grib2writer_save_grib2(writer, ds, tmp_path, logcap):
@@ -340,12 +340,15 @@ def test_drivers_utils_grib2writer_save_grib2_sendecf(writer, ds, tmp_path, logc
 
 
 def test_drivers_utils_grib2writer_save_grib2_post_write_hook(
-    json_path, start_date, ds, tmp_path, logcap
+    grib_out_config, start_date, ds, tmp_path, logcap
 ):
     marker = tmp_path / "hook.log"
     hook = f"echo fhr={{fhr}} lead={{leadtime}} cycle={{cycle_iso}} >> {marker}"
     writer = Grib2Writer(
-        start_date=start_date, case_name=STR.aigfs, json_path=json_path, post_write_hook=hook
+        start_date=start_date,
+        case_name=STR.aigfs,
+        grib_out_config=grib_out_config,
+        post_write_hook=hook,
     )
     writer.save_grib2(ds, tmp_path)
     assert "Running post-write hook" in logcap.text
@@ -353,12 +356,12 @@ def test_drivers_utils_grib2writer_save_grib2_post_write_hook(
 
 
 def test_drivers_utils_grib2writer_save_grib2_post_write_hook_failure(
-    json_path, start_date, ds, tmp_path, logcap
+    grib_out_config, start_date, ds, tmp_path, logcap
 ):
     writer = Grib2Writer(
         start_date=start_date,
         case_name=STR.aigfs,
-        json_path=json_path,
+        grib_out_config=grib_out_config,
         post_write_hook="false",
     )
     # A non-zero exit is logged as a warning and does not raise.
