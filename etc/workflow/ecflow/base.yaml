@@ -10,7 +10,9 @@ ecflow:
         CONFIG: '{{ app.rundir}}/aigfs.yaml'
         ECF_HOME: '{{ app.rundir }}/ecf'
         ECF_INCLUDE: '{{ app.home }}/include'
-        ECF_JOB_CMD: 'sbatch -o %ECF_JOBOUT% %ECF_JOB%'
+        ECF_JOB_CMD: 'ecflow_client --ssl --alter=add variable ECF_RID $(sbatch --parsable -o %ECF_JOBOUT% %ECF_JOB%) %ECF_NAME%'
+        ECF_KILL_CMD: 'scancel %ECF_RID%'
+        ECF_STATUS_CMD: 'sacct -lj %ECF_RID%'
         PLATFORM: '{{ app.platform.name }}'
       family_datetimes:
         repeat_datetime:

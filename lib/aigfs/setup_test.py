@@ -163,7 +163,12 @@ def test_ecflow_base_yaml_post_write_hook():
 
 def test_ecflow_base_yaml_sbatch_job_cmd():
     text = ECFLOW_BASE_YAML.read_text()
-    assert "ECF_JOB_CMD: 'sbatch -o %ECF_JOBOUT% %ECF_JOB%'" in text
+    assert (
+        "ECF_JOB_CMD: 'ecflow_client --ssl --alter=add variable ECF_RID "
+        "$(sbatch --parsable -o %ECF_JOBOUT% %ECF_JOB%) %ECF_NAME%'"
+    ) in text
+    assert "ECF_KILL_CMD: 'scancel %ECF_RID%'" in text
+    assert "ECF_STATUS_CMD: 'sacct -lj %ECF_RID%'" in text
 
 
 def test_ecflow_head_uses_ssl_and_slurm_job_id():
