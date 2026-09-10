@@ -227,7 +227,7 @@ Start the ecFlow server if it is not already running.
 
 **If using the `aigfs` conda environment**, `ecflow` is automatically available once that environment has been activated.
 
-Ensure your `aigfs.yaml` contains an `ecflow.server` block (see the [uwtools ecFlow server YAML docs](https://uwtools.readthedocs.io/en/main/sections/user_guide/yaml/ecflow.html#server-configuration)), then run:
+Your `aigfs.yaml` will have an `ecflow.server` block if you generated the rundir with `setup --workflow ecflow` (see [Setting Up the Final Config](#setting-up-the-final-config)); the block's content is described in the [uwtools ecFlow server YAML docs](https://uwtools.readthedocs.io/en/main/sections/user_guide/yaml/ecflow.html#server-configuration). Then run:
 
 ```bash
 uw ecflow server --config-file aigfs.yaml --report
