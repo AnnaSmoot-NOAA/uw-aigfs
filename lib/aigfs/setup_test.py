@@ -173,7 +173,8 @@ def test_ecflow_base_yaml_sbatch_job_cmd():
 
 def test_ecflow_head_uses_ssl_and_slurm_job_id():
     text = (INCLUDE_DIR / "head.h").read_text()
-    assert "ecflow_client --ssl --init=${SLURM_JOB_ID:-$$}" in text
+    assert "export ECF_RID=${SLURM_JOB_ID:-$$}" in text
+    assert "ecflow_client --ssl --init=$ECF_RID" in text
     assert "ecflow_client --ssl --abort=trap" in text
 
 

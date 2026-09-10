@@ -18,9 +18,11 @@ ERROR() {
 trap ERROR 0
 trap '{ echo "Signal received, aborting task."; ERROR; }' 1 2 3 4 5 6 7 8 10 12 13 15
 
-# Use the Slurm job ID (not the local shell PID) so the server can identify
-# batch jobs running on a different node than the one that submitted them.
-ecflow_client --ssl --init=${SLURM_JOB_ID:-$$}
+# Overwrite ECF_RID with the live Slurm job ID: on retries the baked-in %ECF_RID%
+# is one submission behind the server's current value, and ecflow_client rejects
+# --init if the argument disagrees with the env.
+export ECF_RID=${SLURM_JOB_ID:-$$}
+ecflow_client --ssl --init=$ECF_RID
 
 # Convert ecFlow repeat_datetime format (YYYYmmddTHHMMSS) to uwtools cycle format (YYYY-mm-ddTHH:MM:SS).
 ISOCYCLE=$(echo "%CYCLE%" | sed -E 's/([0-9]{4})([0-9]{2})([0-9]{2})T([0-9]{2})([0-9]{2})([0-9]{2})/\1-\2-\3T\4:\5:\6/')
