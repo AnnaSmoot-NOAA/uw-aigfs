@@ -261,7 +261,7 @@ ecflow_client --ssl --get_state=/retro
 
 Task scripts are written to `<rundir>/ecf/` and include the `head.h` and `tail.h` wrappers from the `include/` directory (using ecFlow's `%include <head.h>` syntax to look them up via `ECF_INCLUDE`). Task output is captured by ecFlow in each task's job output file next to the `.ecf` script.
 
-The suite emits `edit ECF_JOB_CMD 'sbatch -o %ECF_JOBOUT% %ECF_JOB%'`, so tasks are submitted to Slurm using the `#SBATCH` directives at the top of each generated `.ecf` script. `head.h` initializes ecFlow with `${SLURM_JOB_ID:-$$}` so the server's `ECF_RID` matches the Slurm job ID and jobs can be tracked and killed correctly.
+The suite emits `edit ECF_JOB_CMD` wrapping `sbatch --parsable` in `ecflow_client --alter=add variable ECF_RID …` (the pattern from cell `[14]` of the [uwtools ecFlow demo notebook](https://uwtools.readthedocs.io/en/main/_static/ecflow.html)), so tasks are submitted to Slurm using the `#SBATCH` directives at the top of each generated `.ecf` script and the resulting Slurm job ID is recorded as `ECF_RID` on the task node at submission time. `head.h` re-exports `ECF_RID=$SLURM_JOB_ID` inside the running task and calls `ecflow_client --init=$ECF_RID` so the server's view of the job ID stays consistent across retries.
 
 **ecFlow task names** (equivalent Rocoto tasks in parentheses):
 
@@ -338,7 +338,7 @@ When done, stop the backgrounded server (`kill` its PID, or `screen`-attach and 
 - **`Could not open include file: head.h`.** — the emitted task script uses `%include <head.h>` which resolves via `ECF_INCLUDE`. Confirm `ECF_INCLUDE` in `suite.def` points at this repo's `include/` directory.
 - **`Stale file handle` when loading `suite.def`.** — NFS handle from a previous rundir. Refresh with `cd / && cd <rundir>` before retrying `ecflow_client --ssl --load=suite.def`.
 - **`suite retro already exists` on `--load`.** — The server still has a prior definition. Halt and delete before reloading: `ecflow_client --ssl --halt=yes && ecflow_client --ssl --delete=force /retro && ecflow_client --ssl --restart` (see the "Reloading after editing" recipe above).
-- **Task `state:active` but no matching Slurm job in `squeue`.** — `ECF_JOB_CMD` isn't sbatching. Confirm the emitted `suite.def` contains `edit ECF_JOB_CMD 'sbatch -o %ECF_JOBOUT% %ECF_JOB%'`.
+- **Task `state:active` but no matching Slurm job in `squeue`.** — `ECF_JOB_CMD` isn't configured to submit a job via `sbatch`. Confirm the emitted `suite.def` has an `sbatch --parsable` invocation in `ECF_JOB_CMD`.
 
 ## Workflow Stages
 
