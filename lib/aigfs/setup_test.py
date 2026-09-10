@@ -157,7 +157,7 @@ def test_ecflow_base_yaml_post_write_hook():
     text = ECFLOW_BASE_YAML.read_text()
     ssl = '{{ "--ssl " if ecflow.server.ECF_SSL | default(true) else "" }}'
     assert (
-        f"post_write_hook: 'ecflow_client {ssl}--alter change event release_f{{fhr}} set $ECF_NAME'"
+        f"post_write_hook: 'ecflow_client {ssl}--alter change event release_f{{fff}} set $ECF_NAME'"
         in text
     )
 
@@ -175,10 +175,7 @@ def test_ecflow_base_yaml_sbatch_job_cmd():
     )
     assert "ECF_STATUS_CMD: 'sacct -lj %ECF_RID%'" in text
     # Suite SSL variable drives the include-file %SSL% preprocessor substitution.
-    assert (
-        'SSL: \'{{ "--ssl" if ecflow.server.ECF_SSL | default(true) else "" }}\''
-        in text
-    )
+    assert 'SSL: \'{{ "--ssl" if ecflow.server.ECF_SSL | default(true) else "" }}\'' in text
 
 
 def test_ecflow_head_uses_ssl_and_slurm_job_id():

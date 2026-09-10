@@ -273,7 +273,7 @@ The suite emits `edit ECF_JOB_CMD 'sbatch -o %ECF_JOBOUT% %ECF_JOB%'`, so tasks 
 
 **Suite control flow.** `forecast` triggers on `prep == complete`; every `post_fXXX` triggers on `../forecast:release_fXXX`, where the `release_fXXX` events are set from within the forecast task each time that leadtime's GRIB2 pair has been written. This gives per-leadtime pipelined post-processing: each `post_fXXX` starts as soon as its inputs are available on disk, without waiting for later leadtimes.
 
-The event-firing is wired via the driver's `post_write_hook` config key (see [`etc/workflow/ecflow/base.yaml`](../etc/workflow/ecflow/base.yaml), which defaults it to `ecflow_client --ssl --alter change event release_f{fhr} set $ECF_NAME` for the ecFlow workflow). See [Post-write hook](#post-write-hook) below for details.
+The event-firing is wired via the driver's `post_write_hook` config key (see [`etc/workflow/ecflow/base.yaml`](../etc/workflow/ecflow/base.yaml), which defaults it to `ecflow_client --ssl --alter change event release_f{fff} set $ECF_NAME` for the ecFlow workflow). See [Post-write hook](#post-write-hook) below for details.
 
 > **Not equivalent to Rocoto.** The Rocoto suite achieves similar per-leadtime scheduling by a different mechanism: cron re-invokes `rocotorun` on a fixed interval (e.g. every 5 minutes on the RTAIGFS Ursa demo) and Rocoto uses filesystem `datadep` checks to submit any post task whose GRIB2 inputs have appeared since the last iteration. ecFlow doesn't watch the filesystem; it schedules on messages sent to its server. The `post_write_hook` mechanism above bridges the two models by having the forecast driver actively notify the ecFlow server as each leadtime completes.
 
@@ -283,13 +283,13 @@ The event-firing is wired via the driver's `post_write_hook` config key (see [`e
 
 | Placeholder     | Value                                                     |
 |-----------------|-----------------------------------------------------------|
-| `{fhr}`         | Zero-padded 3-digit leadtime hours (`"000"`, `"006"`, …)  |
+| `{fff}`         | Zero-padded 3-digit leadtime hours (`"000"`, `"006"`, …)  |
 | `{leadtime}`    | Integer leadtime hours (`0`, `6`, …)                      |
 | `{cycle_iso}`   | ISO cycle string with `T` separator, e.g. `2026-09-03T06:00:00`. Note that `uw execute --cycle` expects an underscore between date and time. |
 | `{sfc_path}`    | Absolute path to the just-written `*.sfc.fXXX.grib2` file |
 | `{pres_path}`   | Absolute path to the just-written `*.pres.fXXX.grib2` file |
 
-A non-zero exit from the hook is logged at `WARNING` and does **not** abort the forecast; each leadtime is fired independently. For the ecFlow workflow, [`etc/workflow/ecflow/base.yaml`](../etc/workflow/ecflow/base.yaml) defaults the hook to `ecflow_client --ssl --alter change event release_f{fhr} set $ECF_NAME`. `$ECF_NAME` and `$ECF_PASS` are exported by `head.h`, so the client authenticates as the current forecast task and updates its own `release_fXXX` event. Rocoto rundirs don't set the key by default.
+A non-zero exit from the hook is logged at `WARNING` and does **not** abort the forecast; each leadtime is fired independently. For the ecFlow workflow, [`etc/workflow/ecflow/base.yaml`](../etc/workflow/ecflow/base.yaml) defaults the hook to `ecflow_client --ssl --alter change event release_f{fff} set $ECF_NAME`. `$ECF_NAME` and `$ECF_PASS` are exported by `head.h`, so the client authenticates as the current forecast task and updates its own `release_fXXX` event. Rocoto rundirs don't set the key by default.
 
 **Reloading after editing `base.yaml` or `suite.def`.** Regenerate the rundir (`setup --workflow ecflow …`), then on the ecFlow server host, from a shell with `ECF_HOST` and `ECF_PORT` exported (or supply `--host=<HOST> --port=<PORT>` on each `ecflow_client` call):
 

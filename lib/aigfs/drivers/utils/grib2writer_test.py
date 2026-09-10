@@ -343,7 +343,7 @@ def test_drivers_utils_grib2writer_save_grib2_post_write_hook(
     grib_out_config, start_date, ds, tmp_path, logcap
 ):
     marker = tmp_path / "hook.log"
-    hook = f"echo fhr={{fhr}} lead={{leadtime}} cycle={{cycle_iso}} >> {marker}"
+    hook = f"echo fff={{fff}} lead={{leadtime}} cycle={{cycle_iso}} >> {marker}"
     writer = Grib2Writer(
         start_date=start_date,
         case_name=STR.aigfs,
@@ -352,7 +352,7 @@ def test_drivers_utils_grib2writer_save_grib2_post_write_hook(
     )
     writer.save_grib2(ds, tmp_path)
     assert "Running post-write hook" in logcap.text
-    assert marker.read_text().strip() == "fhr=006 lead=6 cycle=2025-10-01T18:00:00"
+    assert marker.read_text().strip() == "fff=006 lead=6 cycle=2025-10-01T18:00:00"
 
 
 def test_drivers_utils_grib2writer_save_grib2_post_write_hook_failure(

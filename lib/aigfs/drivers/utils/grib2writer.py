@@ -176,7 +176,7 @@ class Grib2Writer:
         if not self.post_write_hook:
             return
         cmd = self.post_write_hook.format(
-            fhr=f"{lead:03d}",
+            fff=f"{lead:03d}",
             leadtime=lead,
             cycle_iso=self.start_date.strftime("%Y-%m-%dT%H:%M:%S"),
             sfc_path=str(outfile_sfc),
