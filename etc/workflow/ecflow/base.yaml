@@ -76,4 +76,4 @@ ecflow:
                     --key-path post \
                     --leadtime %FHR%
               vars:
-                FHR: '{{ ec.fhr[1:] }}'
+                FHR: '{{ ec.fhr | replace("f", "") | int }}'
