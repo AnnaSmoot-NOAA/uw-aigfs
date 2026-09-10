@@ -179,6 +179,8 @@ def test_ecflow_head_uses_ssl_and_slurm_job_id():
     assert "export ECF_RID=${SLURM_JOB_ID:-$$}" in text
     assert "ecflow_client --ssl --init=$ECF_RID" in text
     assert "ecflow_client --ssl --abort=trap" in text
+    # Server has no meaningful value for ECF_RID at preprocessing time.
+    assert "export ECF_RID=%ECF_RID%" not in text
 
 
 def test_ecflow_tail_uses_ssl():
