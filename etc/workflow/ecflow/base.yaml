@@ -1,6 +1,6 @@
 forecast:
   aigfs_inference:
-    post_write_hook: 'ecflow_client --ssl --alter change event release_f{fhr} set $ECF_NAME'
+    post_write_hook: 'ecflow_client {{ "--ssl " if ecflow.server.ECF_SSL | default(true) else "" }}--alter change event release_f{fhr} set $ECF_NAME'
 ecflow:
   suitedef:
     scheduler: '{{ app.platform.scheduler.type }}'
@@ -10,10 +10,11 @@ ecflow:
         CONFIG: '{{ app.rundir}}/aigfs.yaml'
         ECF_HOME: '{{ app.rundir }}/ecf'
         ECF_INCLUDE: '{{ app.home }}/include'
-        ECF_JOB_CMD: 'ecflow_client --ssl --alter=add variable ECF_RID $(sbatch --parsable -o %ECF_JOBOUT% %ECF_JOB%) %ECF_NAME%'
-        ECF_KILL_CMD: 'scancel %ECF_RID% && ecflow_client --ssl --force=aborted %ECF_NAME%'
+        ECF_JOB_CMD: 'ecflow_client {{ "--ssl " if ecflow.server.ECF_SSL | default(true) else "" }}--alter=add variable ECF_RID $(sbatch --parsable -o %ECF_JOBOUT% %ECF_JOB%) %ECF_NAME%'
+        ECF_KILL_CMD: 'scancel %ECF_RID% && ecflow_client {{ "--ssl " if ecflow.server.ECF_SSL | default(true) else "" }}--force=aborted %ECF_NAME%'
         ECF_STATUS_CMD: 'sacct -lj %ECF_RID%'
         PLATFORM: '{{ app.platform.name }}'
+        SSL: '{{ "--ssl" if ecflow.server.ECF_SSL | default(true) else "" }}'
       family_datetimes:
         repeat_datetime:
           variable: CYCLE

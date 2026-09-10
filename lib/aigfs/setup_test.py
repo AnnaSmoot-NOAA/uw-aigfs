@@ -155,34 +155,41 @@ def test_ecflow_base_yaml_release_events():
 
 def test_ecflow_base_yaml_post_write_hook():
     text = ECFLOW_BASE_YAML.read_text()
+    ssl = '{{ "--ssl " if ecflow.server.ECF_SSL | default(true) else "" }}'
     assert (
-        "post_write_hook: 'ecflow_client --ssl --alter change event release_f{fhr} set $ECF_NAME'"
+        f"post_write_hook: 'ecflow_client {ssl}--alter change event release_f{{fhr}} set $ECF_NAME'"
         in text
     )
 
 
 def test_ecflow_base_yaml_sbatch_job_cmd():
     text = ECFLOW_BASE_YAML.read_text()
+    ssl = '{{ "--ssl " if ecflow.server.ECF_SSL | default(true) else "" }}'
     assert (
-        "ECF_JOB_CMD: 'ecflow_client --ssl --alter=add variable ECF_RID "
+        f"ECF_JOB_CMD: 'ecflow_client {ssl}--alter=add variable ECF_RID "
         "$(sbatch --parsable -o %ECF_JOBOUT% %ECF_JOB%) %ECF_NAME%'"
     ) in text
     assert (
-        "ECF_KILL_CMD: 'scancel %ECF_RID% && ecflow_client --ssl --force=aborted %ECF_NAME%'"
+        f"ECF_KILL_CMD: 'scancel %ECF_RID% && ecflow_client {ssl}--force=aborted %ECF_NAME%'"
         in text
     )
     assert "ECF_STATUS_CMD: 'sacct -lj %ECF_RID%'" in text
+    # Suite SSL variable drives the include-file %SSL% preprocessor substitution.
+    assert (
+        'SSL: \'{{ "--ssl" if ecflow.server.ECF_SSL | default(true) else "" }}\''
+        in text
+    )
 
 
 def test_ecflow_head_uses_ssl_and_slurm_job_id():
     text = (INCLUDE_DIR / "head.h").read_text()
     assert "export ECF_RID=$SLURM_JOB_ID" in text
-    assert "ecflow_client --ssl --init=$ECF_RID" in text
-    assert "ecflow_client --ssl --abort=trap" in text
+    assert "ecflow_client %SSL% --init=$ECF_RID" in text
+    assert "ecflow_client %SSL% --abort=trap" in text
     # Server has no meaningful value for ECF_RID at preprocessing time.
     assert "export ECF_RID=%ECF_RID%" not in text
 
 
 def test_ecflow_tail_uses_ssl():
     text = (INCLUDE_DIR / "tail.h").read_text()
-    assert "ecflow_client --ssl --complete" in text
+    assert "ecflow_client %SSL% --complete" in text

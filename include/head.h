@@ -9,7 +9,7 @@ export ECF_TRYNO=%ECF_TRYNO%
 
 ERROR() {
     set +e
-    ecflow_client --ssl --abort=trap
+    ecflow_client %SSL% --abort=trap
     trap 0
     exit 0
 }
@@ -20,7 +20,7 @@ trap '{ echo "Signal received, aborting task."; ERROR; }' 1 2 3 4 5 6 7 8 10 12 
 # at runtime. Bare $SLURM_JOB_ID (not defaulted) so we fail loudly if head.h is
 # ever included in something that isn't a Slurm-submitted task.
 export ECF_RID=$SLURM_JOB_ID
-ecflow_client --ssl --init=$ECF_RID
+ecflow_client %SSL% --init=$ECF_RID
 
 # Convert ecFlow repeat_datetime format (YYYYmmddTHHMMSS) to uwtools cycle format (YYYY-mm-ddTHH:MM:SS).
 ISOCYCLE=$(echo "%CYCLE%" | sed -E 's/([0-9]{4})([0-9]{2})([0-9]{2})T([0-9]{2})([0-9]{2})([0-9]{2})/\1-\2-\3T\4:\5:\6/')

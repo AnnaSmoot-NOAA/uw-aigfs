@@ -221,9 +221,11 @@ The `uwtools` package provides a tool to help iterate through the entire workflo
 
 ### Running with ecFlow
 
+> **Note for RDHPCS users:** The ecFlow server must run on a dedicated ecFlow node, not a login node. Consult your platform documentation for how to access it. See [Ursa-specific setup](#ursa-specific-setup) below.
+
 Start the ecFlow server if it is not already running.
 
-**If using the `aigfs` conda environment** (ecFlow is pre-installed — this includes all RDHPCS platforms, where ecFlow is not available as a system module):
+**If using the `aigfs` conda environment**, `ecflow` is automatically available once that environment has been activated.
 
 Ensure your `aigfs.yaml` contains an `ecflow.server` block (see the [uwtools ecFlow server YAML docs](https://uwtools.readthedocs.io/en/main/sections/user_guide/yaml/ecflow.html#server-configuration)), then run:
 
@@ -235,9 +237,7 @@ uw ecflow server --config-file aigfs.yaml --report
 
 `uw ecflow server` runs in the foreground; leave the shell that started it running for the life of the suite. To maintain a long-running server process that continues after disconnect, consider a tool like [`nohup`](https://en.wikipedia.org/wiki/Nohup) or [`screen`](https://en.wikipedia.org/wiki/GNU_Screen). Whichever approach you use, redirecting `stdout` to a log file lets you read back the `--report` JSON to configure client-side `ECF_HOST`/`ECF_PORT`.
 
-See the [uwtools ecFlow server documentation](https://uwtools.readthedocs.io/en/main/sections/user_guide/cli/tools/ecflow.html#server) for options including port and SSL configuration. When `ecflow.server.ECF_SSL` is `true`, every `ecflow_client` call — including those inside task scripts — must pass `--ssl`; the task-side `head.h` and `tail.h` shipped in `include/` already do this.
-
-> **Note for RDHPCS users:** The ecFlow server must run on a dedicated ecFlow node, not a login node. Consult your platform documentation for how to access it. See [Ursa-specific setup](#ursa-specific-setup) below.
+See the [uwtools ecFlow server documentation](https://uwtools.readthedocs.io/en/main/sections/user_guide/cli/tools/ecflow.html#server) for options including port and SSL configuration. `ecflow.server.ECF_SSL` (default `true`) drives whether `--ssl` is added to every generated `ecflow_client` call — the emitted `suite.def`, `head.h`/`tail.h` preprocessing, and the `post_write_hook` all honor the same knob, so users can flip it off by setting `ECF_SSL: false` in the config without editing include files.
 
 **If using a platform-provided or externally installed ecFlow:**
 
