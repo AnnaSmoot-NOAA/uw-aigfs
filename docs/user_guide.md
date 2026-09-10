@@ -265,11 +265,11 @@ The suite emits `edit ECF_JOB_CMD 'sbatch -o %ECF_JOBOUT% %ECF_JOB%'`, so tasks 
 
 **ecFlow task names** (equivalent Rocoto tasks in parentheses):
 
-| ecFlow task             | Rocoto equivalent               | Description                  |
-|-------------------------|---------------------------------|------------------------------|
-| `prep`                  | `task_prep`                     | ICS generation               |
-| `forecast`              | `task_forecast`                 | GraphCast inference          |
-| `post_f000`…`post_f120` | `task_post_000`…`task_post_120` | Post-processing per leadtime |
+| ecFlow task             | Rocoto equivalent          | Description                  |
+|-------------------------|----------------------------|------------------------------|
+| `prep`                  | `prep`                     | ICS generation               |
+| `forecast`              | `forecast`                 | GraphCast inference          |
+| `post_f000`…`post_f120` | `post_000`…`post_120`      | Post-processing per leadtime |
 
 **Suite control flow.** `forecast` triggers on `prep == complete`; every `post_fXXX` triggers on `../forecast:release_fXXX`, where the `release_fXXX` events are set from within the forecast task each time that leadtime's GRIB2 pair has been written. This gives per-leadtime pipelined post processing: each `post_fXXX` starts as soon as its inputs land, without waiting for later leadtimes.
 
