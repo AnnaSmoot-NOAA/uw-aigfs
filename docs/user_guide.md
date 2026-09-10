@@ -312,28 +312,38 @@ ecflow_client --ssl --begin=retro
 
 #### Ursa-specific setup
 
-On Ursa the ecFlow server must run on the dedicated node `uecflow01` (not on a front-end). The Ursa convention is to pick a per-user port of `$(id -u) + 2000` and to keep `ECF_HOME` on `/scratch3` or `/scratch4`:
+On Ursa the ecFlow server must run on the dedicated node `uecflow01` (not on a front-end), and `ECF_HOME` must live on `/scratch3` or `/scratch4`.
+
+**Starting the server on `uecflow01`.** The recommended approach is the same as the general recipe above — let `uw ecflow server --report` pick a free port and record it in the log:
 
 ```bash
 ssh uecflow01
 cd <rundir>
 source <path-to>/conda/etc/profile.d/conda.sh
 conda activate aigfs
-export PORT=$(($(id -u) + 2000))
-nohup uw ecflow server --config-file aigfs.yaml --port $PORT \
+nohup uw ecflow server --config-file aigfs.yaml --report \
     > ecf/server.log 2>&1 &
 echo $! > ecf/server.pid
 sleep 3 && cat ecf/server.log
 ```
 
-From a second `ssh uecflow01` shell, connect the client and drive the suite:
+Note the `ECF_PORT` value in the emitted JSON — you'll need it for the client shell below. If you'd rather use a deterministic port so both shells can compute it without parsing the JSON, an Ursa convention is `$(id -u) + 2000`:
+
+```bash
+export PORT=$(($(id -u) + 2000))
+nohup uw ecflow server --config-file aigfs.yaml --port $PORT \
+    > ecf/server.log 2>&1 &
+echo $! > ecf/server.pid
+```
+
+**Connecting the client.** From a second `ssh uecflow01` shell, set `ECF_HOST`/`ECF_PORT` to match the server and drive the suite:
 
 ```bash
 cd <rundir>
 source <path-to>/conda/etc/profile.d/conda.sh
 conda activate aigfs
 export ECF_HOST=uecflow01
-export ECF_PORT=$(($(id -u) + 2000))
+export ECF_PORT=<port from server.log, or $(($(id -u) + 2000)) if you used the deterministic form>
 ecflow_client --ssl --ping
 ecflow_client --ssl --load=$(pwd)/suite.def
 ecflow_client --ssl --begin=retro
