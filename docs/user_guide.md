@@ -316,32 +316,20 @@ conda activate aigfs
 uw ecflow server --config-file aigfs.yaml --report
 ```
 
-See [Running with ecFlow](#running-with-ecflow) above for suggestions on keeping the server running after disconnect (e.g. `nohup`, `screen`). Note the `ECF_PORT` value in the emitted JSON — you'll need it for the client shell below. If you'd rather use a deterministic port so both shells can compute it without parsing the JSON, an Ursa convention is `$(id -u) + 2000`:
+If you need the shell back to drive the client (or want the server to survive disconnect), background the process using [`nohup`](https://en.wikipedia.org/wiki/Nohup) or [`screen`](https://en.wikipedia.org/wiki/GNU_Screen), redirecting `stdout` so you can read back the `--report` JSON.
+
+**Connecting the client.** In the same session (once the server is backgrounded) or a second `ssh uecflow01` session (if the server is running in the foreground), export `ECF_HOST`/`ECF_PORT` to match what the server printed and drive the suite:
 
 ```bash
-export PORT=$(($(id -u) + 2000))
-uw ecflow server --config-file aigfs.yaml --port $PORT
-```
-
-**Connecting the client.** From a second `ssh uecflow01` shell, set `ECF_HOST`/`ECF_PORT` to match the server and drive the suite:
-
-```bash
-cd <rundir>
-source <path-to>/conda/etc/profile.d/conda.sh
-conda activate aigfs
 export ECF_HOST=uecflow01
-export ECF_PORT=<port from server.log, or $(($(id -u) + 2000)) if you used the deterministic form>
+export ECF_PORT=<port from the server's --report JSON>
 ecflow_client --ssl --ping
 ecflow_client --ssl --load=suite.def
 ecflow_client --ssl --begin=retro
 ecflow_client --ssl --get_state=/retro
 ```
 
-When done, stop the server with the recorded PID:
-
-```bash
-kill $(cat ecf/server.pid)
-```
+When done, stop the backgrounded server (`kill` its PID, or `screen`-attach and Ctrl-C).
 
 #### Troubleshooting on Ursa
 
