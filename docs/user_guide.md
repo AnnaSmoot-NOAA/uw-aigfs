@@ -233,15 +233,7 @@ uw ecflow server --config-file aigfs.yaml --report
 
 `uw ecflow server` selects a free TCP port automatically and, with `--report`, prints server metadata (host, port, SSL flag) as JSON to `stdout`. See the [uwtools ecFlow server documentation](https://uwtools.readthedocs.io/en/main/sections/user_guide/cli/tools/ecflow.html#server) for details, and the [uwtools ecFlow demo notebook](https://uwtools.readthedocs.io/en/main/_static/ecflow.html) for an example of parsing the JSON report to configure client-side env vars. Pass `--port <PORT>` if you need a specific port instead — for example the [Ursa recipe](#ursa-specific-setup) below uses a deterministic per-user port so a second shell can connect without parsing the report.
 
-`uw ecflow server` runs in the foreground; leave the shell that started it running for the life of the suite. To keep the server going after logout, run it under `nohup` and redirect output to a log file:
-
-```bash
-mkdir -p <rundir>/ecf
-nohup uw ecflow server --config-file <rundir>/aigfs.yaml --report \
-    > <rundir>/ecf/server.log 2>&1 &
-echo $! > <rundir>/ecf/server.pid
-sleep 3 && cat <rundir>/ecf/server.log   # read the JSON report to learn ECF_HOST/ECF_PORT
-```
+`uw ecflow server` runs in the foreground; leave the shell that started it running for the life of the suite. To maintain a long-running server process that continues after disconnect, consider a tool like [`nohup`](https://en.wikipedia.org/wiki/Nohup) or [`screen`](https://en.wikipedia.org/wiki/GNU_Screen). Whichever approach you use, redirecting `stdout` to a log file lets you read back the `--report` JSON to configure client-side `ECF_HOST`/`ECF_PORT`.
 
 See the [uwtools ecFlow server documentation](https://uwtools.readthedocs.io/en/main/sections/user_guide/cli/tools/ecflow.html#server) for options including port and SSL configuration. When `ecflow.server.ECF_SSL` is `true`, every `ecflow_client` call — including those inside task scripts — must pass `--ssl`; the task-side `head.h` and `tail.h` shipped in `include/` already do this.
 
@@ -314,26 +306,21 @@ ecflow_client --ssl --begin=retro
 
 On Ursa the ecFlow server must run on the dedicated node `uecflow01` (not on a front-end), and `ECF_HOME` must live on `/scratch3` or `/scratch4`.
 
-**Starting the server on `uecflow01`.** The recommended approach is the same as the general recipe above — let `uw ecflow server --report` pick a free port and record it in the log:
+**Starting the server on `uecflow01`.** The recommended approach is the same as the general recipe above — let `uw ecflow server --report` pick a free port and print the JSON to `stdout`:
 
 ```bash
 ssh uecflow01
 cd <rundir>
 source <path-to>/conda/etc/profile.d/conda.sh
 conda activate aigfs
-nohup uw ecflow server --config-file aigfs.yaml --report \
-    > ecf/server.log 2>&1 &
-echo $! > ecf/server.pid
-sleep 3 && cat ecf/server.log
+uw ecflow server --config-file aigfs.yaml --report
 ```
 
-Note the `ECF_PORT` value in the emitted JSON — you'll need it for the client shell below. If you'd rather use a deterministic port so both shells can compute it without parsing the JSON, an Ursa convention is `$(id -u) + 2000`:
+See [Running with ecFlow](#running-with-ecflow) above for suggestions on keeping the server running after disconnect (e.g. `nohup`, `screen`). Note the `ECF_PORT` value in the emitted JSON — you'll need it for the client shell below. If you'd rather use a deterministic port so both shells can compute it without parsing the JSON, an Ursa convention is `$(id -u) + 2000`:
 
 ```bash
 export PORT=$(($(id -u) + 2000))
-nohup uw ecflow server --config-file aigfs.yaml --port $PORT \
-    > ecf/server.log 2>&1 &
-echo $! > ecf/server.pid
+uw ecflow server --config-file aigfs.yaml --port $PORT
 ```
 
 **Connecting the client.** From a second `ssh uecflow01` shell, set `ECF_HOST`/`ECF_PORT` to match the server and drive the suite:
