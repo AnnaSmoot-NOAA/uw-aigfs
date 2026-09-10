@@ -348,7 +348,7 @@ kill $(cat ecf/server.pid)
 - **`Failed to connect to <host>:<port>. Is the server running?`** — either the server shell was Ctrl-C'd, the wrong `ECF_PORT`/`ECF_HOST` is exported, or you forgot `--ssl` on a client call to an SSL server. Confirm the server is up with `ecflow_client --ssl --ping`.
 - **Suite loaded but `state:queued` never transitions.** — `--stats` reports `Status HALTED`. `uw ecflow server` starts the server halted (or the server halts itself after an error); run `ecflow_client --ssl --restart` to move it to `RUNNING`.
 - **`Could not open include file: head.h`.** — the emitted task script uses `%include <head.h>` which resolves via `ECF_INCLUDE`. Confirm `ECF_INCLUDE` in `suite.def` points at this repo's `include/` directory.
-- **`Stale file handle` when loading `suite.def`.** — NFS handle from a previous rundir. Refresh with `cd / && cd <rundir>`, or pass an absolute path: `ecflow_client --ssl --load=$(pwd)/suite.def`.
+- **`Stale file handle` when loading `suite.def`.** — NFS handle from a previous rundir. Refresh with `cd / && cd <rundir>` before retrying `ecflow_client --ssl --load=suite.def`.
 - **`suite retro already exists` on `--load`.** — The server still has a prior definition. Halt and delete before reloading: `ecflow_client --ssl --halt=yes && ecflow_client --ssl --delete=force /retro && ecflow_client --ssl --restart` (see the "Reloading after editing" recipe above).
 - **Task `state:active` but no matching Slurm job in `squeue`.** — `ECF_JOB_CMD` isn't sbatching. Confirm the emitted `suite.def` contains `edit ECF_JOB_CMD 'sbatch -o %ECF_JOBOUT% %ECF_JOB%'`.
 
