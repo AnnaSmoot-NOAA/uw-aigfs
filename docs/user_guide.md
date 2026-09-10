@@ -228,16 +228,19 @@ Start the ecFlow server if it is not already running.
 Ensure your `aigfs.yaml` contains an `ecflow.server` block (see the [uwtools ecFlow server YAML docs](https://uwtools.readthedocs.io/en/main/sections/user_guide/yaml/ecflow.html#server-configuration)), then run:
 
 ```bash
-uw ecflow server --config-file aigfs.yaml --port <PORT> --report
+uw ecflow server --config-file aigfs.yaml --report
 ```
+
+`uw ecflow server` selects a free TCP port automatically and, with `--report`, prints server metadata (host, port, SSL flag) as JSON to `stdout`. See the [uwtools ecFlow server documentation](https://uwtools.readthedocs.io/en/main/sections/user_guide/cli/tools/ecflow.html#server) for details, and the [uwtools ecFlow demo notebook](https://uwtools.readthedocs.io/en/main/_static/ecflow.html) for an example of parsing the JSON report to configure client-side env vars. Pass `--port <PORT>` if you need a specific port instead — for example the [Ursa recipe](#ursa-specific-setup) below uses a deterministic per-user port so a second shell can connect without parsing the report.
 
 `uw ecflow server` runs in the foreground; leave the shell that started it running for the life of the suite. To keep the server going after logout, run it under `nohup` and redirect output to a log file:
 
 ```bash
 mkdir -p <rundir>/ecf
-nohup uw ecflow server --config-file <rundir>/aigfs.yaml --port <PORT> --report \
+nohup uw ecflow server --config-file <rundir>/aigfs.yaml --report \
     > <rundir>/ecf/server.log 2>&1 &
 echo $! > <rundir>/ecf/server.pid
+sleep 3 && cat <rundir>/ecf/server.log   # read the JSON report to learn ECF_HOST/ECF_PORT
 ```
 
 See the [uwtools ecFlow server documentation](https://uwtools.readthedocs.io/en/main/sections/user_guide/cli/tools/ecflow.html#server) for options including port and SSL configuration. When `ecflow.server.ECF_SSL` is `true`, every `ecflow_client` call — including those inside task scripts — must pass `--ssl`; the task-side `head.h` and `tail.h` shipped in `include/` already do this.
@@ -317,7 +320,7 @@ cd <rundir>
 source <path-to>/conda/etc/profile.d/conda.sh
 conda activate aigfs
 export PORT=$(($(id -u) + 2000))
-nohup uw ecflow server --config-file aigfs.yaml --port $PORT --report \
+nohup uw ecflow server --config-file aigfs.yaml --port $PORT \
     > ecf/server.log 2>&1 &
 echo $! > ecf/server.pid
 sleep 3 && cat ecf/server.log
