@@ -10,7 +10,6 @@ export ECF_RID=%ECF_RID%
 
 ERROR() {
     set +e
-    wait
     ecflow_client --ssl --abort=trap
     trap 0
     exit 0

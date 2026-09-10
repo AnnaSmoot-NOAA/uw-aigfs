@@ -11,7 +11,7 @@ ecflow:
         ECF_HOME: '{{ app.rundir }}/ecf'
         ECF_INCLUDE: '{{ app.home }}/include'
         ECF_JOB_CMD: 'ecflow_client --ssl --alter=add variable ECF_RID $(sbatch --parsable -o %ECF_JOBOUT% %ECF_JOB%) %ECF_NAME%'
-        ECF_KILL_CMD: 'scancel %ECF_RID%'
+        ECF_KILL_CMD: 'scancel %ECF_RID% && ecflow_client --ssl --force=aborted %ECF_NAME%'
         ECF_STATUS_CMD: 'sacct -lj %ECF_RID%'
         PLATFORM: '{{ app.platform.name }}'
       family_datetimes:

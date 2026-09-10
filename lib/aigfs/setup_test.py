@@ -167,7 +167,10 @@ def test_ecflow_base_yaml_sbatch_job_cmd():
         "ECF_JOB_CMD: 'ecflow_client --ssl --alter=add variable ECF_RID "
         "$(sbatch --parsable -o %ECF_JOBOUT% %ECF_JOB%) %ECF_NAME%'"
     ) in text
-    assert "ECF_KILL_CMD: 'scancel %ECF_RID%'" in text
+    assert (
+        "ECF_KILL_CMD: 'scancel %ECF_RID% && ecflow_client --ssl --force=aborted %ECF_NAME%'"
+        in text
+    )
     assert "ECF_STATUS_CMD: 'sacct -lj %ECF_RID%'" in text
 
 
