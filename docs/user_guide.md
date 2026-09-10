@@ -249,7 +249,7 @@ Load the suite definition and begin the suite (drop `--ssl` if the server was st
 
 ```bash
 cd <rundir>
-ecflow_client --ssl --load=$(pwd)/suite.def
+ecflow_client --ssl --load=suite.def
 ecflow_client --ssl --begin=retro
 ```
 
@@ -298,7 +298,7 @@ cd <rundir>
 ecflow_client --ssl --halt=yes
 ecflow_client --ssl --delete=force /retro
 ecflow_client --ssl --restart
-ecflow_client --ssl --load=$(pwd)/suite.def
+ecflow_client --ssl --load=suite.def
 ecflow_client --ssl --begin=retro
 ```
 
@@ -332,7 +332,7 @@ conda activate aigfs
 export ECF_HOST=uecflow01
 export ECF_PORT=<port from server.log, or $(($(id -u) + 2000)) if you used the deterministic form>
 ecflow_client --ssl --ping
-ecflow_client --ssl --load=$(pwd)/suite.def
+ecflow_client --ssl --load=suite.def
 ecflow_client --ssl --begin=retro
 ecflow_client --ssl --get_state=/retro
 ```
