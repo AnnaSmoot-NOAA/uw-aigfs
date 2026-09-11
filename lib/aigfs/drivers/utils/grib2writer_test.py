@@ -340,7 +340,7 @@ def test_drivers_utils_grib2writer_save_grib2_sendecf(writer, ds, tmp_path, logc
 
 
 def test_drivers_utils_grib2writer_save_grib2_post_write_hook(
-    grib_out_config, start_date, ds, tmp_path, logcap
+    grib_out_config, start_date, ds, tmp_path
 ):
     marker = tmp_path / "hook.log"
     hook = f"echo fff={{fff}} lead={{leadtime}} cycle={{cycle_iso}} >> {marker}"
