@@ -237,7 +237,7 @@ uw ecflow server --config-file aigfs.yaml --report
 
 `uw ecflow server` runs in the foreground; leave the shell that started it running for the life of the suite. To maintain a long-running server process that continues after disconnect, consider a tool like [`nohup`](https://en.wikipedia.org/wiki/Nohup) or [`screen`](https://en.wikipedia.org/wiki/GNU_Screen). Whichever approach you use, redirect `stdout` to a file so you can read back the `--report` JSON to configure the client — `uw`'s own log messages are emitted on `stderr` and can be captured separately, e.g. `uw ecflow server --config-file aigfs.yaml --report >server.json 2>server.log`.
 
-**Configure the client from the report.** Every `ecflow_client` call needs to know which host/port to talk to and whether the server uses SSL. Rather than pass those on every call, export them from the report once (cell `[9]` of the [uwtools ecFlow demo notebook](https://uwtools.readthedocs.io/en/main/_static/ecflow.html) shows a similar pattern):
+**Configure the client from the report.** Every `ecflow_client` call needs to know which host/port to talk to and whether the server uses SSL. Rather than pass those on every call, export them from the report once (the [uwtools ecFlow demo notebook](https://uwtools.readthedocs.io/en/main/_static/ecflow.html) shows a similar pattern):
 
 ```bash
 # Reading the report from stdout of the foreground server, or from the saved JSON file if backgrounded:
@@ -276,7 +276,7 @@ ecflow_client --get_state=/retro
 
 Task scripts are written to `<rundir>/ecf/` and include the `head.h` and `tail.h` wrappers from the `include/` directory (using ecFlow's `%include <head.h>` syntax to look them up via `ECF_INCLUDE`). Task output is captured by ecFlow in each task's job output file next to the `.ecf` script.
 
-The suite emits `edit ECF_JOB_CMD` wrapping `sbatch --parsable` in `ecflow_client --alter=add variable ECF_RID …` (the pattern from cell `[14]` of the [uwtools ecFlow demo notebook](https://uwtools.readthedocs.io/en/main/_static/ecflow.html)), so tasks are submitted to Slurm using the `#SBATCH` directives at the top of each generated `.ecf` script and the resulting Slurm job ID is recorded as `ECF_RID` on the task node at submission time. `head.h` re-exports `ECF_RID=$SLURM_JOB_ID` inside the running task and calls `ecflow_client --init=$ECF_RID` so the server's view of the job ID stays consistent across retries.
+The suite emits `edit ECF_JOB_CMD` wrapping `sbatch --parsable` in `ecflow_client --alter=add variable ECF_RID ...`, so tasks are submitted to Slurm using the `#SBATCH` directives at the top of each generated `.ecf` script and the server records the resulting Slurm job ID as `ECF_RID` at submission time. `head.h` exports `ECF_RID=$SLURM_JOB_ID` inside the running task and calls `ecflow_client --init=$ECF_RID` so the server's view of the job ID stays consistent across retries.
 
 **ecFlow task names** (equivalent Rocoto tasks in parentheses):
 
@@ -344,7 +344,7 @@ ecflow_client --begin=retro
 ecflow_client --get_state=/retro
 ```
 
-When done, stop the backgrounded server (`kill` its PID, or `screen`-attach and Ctrl-C).
+When done, return to the shell where the ecFlow server is running and Ctrl-C to stop it.
 
 #### Troubleshooting on Ursa
 

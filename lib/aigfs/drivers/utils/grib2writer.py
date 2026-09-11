@@ -8,7 +8,7 @@ from pathlib import Path
 import grib2io  # type: ignore[import-untyped]
 import numpy as np
 import xarray as xr
-from uwtools.api.utils import atomic
+from uwtools.api.utils import atomic, run_shell_cmd
 
 from aigfs.strings import STR
 
@@ -182,15 +182,6 @@ class Grib2Writer:
             sfc_path=str(outfile_sfc),
             pres_path=str(outfile_pres),
         )
-        logging.info("Running post-write hook: %s", cmd)
-        # shell=True is required to expand env vars like $ECF_NAME in the hook string;
-        # the hook comes from trusted config, not user input.
-        result = subprocess.run(  # noqa: S602
-            cmd, shell=True, check=False, capture_output=True, text=True
-        )
-        if result.returncode != 0:
-            logging.warning(
-                "post_write_hook exit=%d stderr=%s",
-                result.returncode,
-                result.stderr.strip(),
-            )
+        success, _ = run_shell_cmd(cmd, taskname="post_write_hook")
+        if not success:
+            logging.warning("post_write_hook failed")

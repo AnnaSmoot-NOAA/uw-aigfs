@@ -351,7 +351,6 @@ def test_drivers_utils_grib2writer_save_grib2_post_write_hook(
         post_write_hook=hook,
     )
     writer.save_grib2(ds, tmp_path)
-    assert "Running post-write hook" in logcap.text
     assert marker.read_text().strip() == "fff=006 lead=6 cycle=2025-10-01T18:00:00"
 
 
@@ -366,7 +365,7 @@ def test_drivers_utils_grib2writer_save_grib2_post_write_hook_failure(
     )
     # A non-zero exit is logged as a warning and does not raise.
     writer.save_grib2(ds, tmp_path)
-    assert "post_write_hook exit=1" in logcap.text
+    assert "post_write_hook failed" in logcap.text
 
 
 def test_drivers_utils_grib2writer_save_grib2_spfh_clipped(writer, ds, tmp_path):

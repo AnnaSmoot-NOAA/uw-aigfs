@@ -37,7 +37,7 @@
           "type": "string"
         },
         "post_write_hook": {
-          "description": "Optional shell command run after each leadtime's GRIB2 pair is written; see user guide for placeholders and failure semantics",
+          "description": "Optional shell command run after each leadtime's GRIB2 pair is written",
           "type": "string"
         },
         "rundir": {
