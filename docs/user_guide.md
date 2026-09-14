@@ -354,6 +354,7 @@ When done, return to the shell where the ecFlow server is running and Ctrl-C to 
 - **`Stale file handle` when loading `suite.def`.** — NFS handle from a previous rundir. Refresh with `cd / && cd <rundir>` before retrying `ecflow_client --load=suite.def`.
 - **`suite retro already exists` on `--load`.** — The server still has a prior definition. Halt and delete before reloading: `ecflow_client --halt=yes && ecflow_client --delete=force /retro && ecflow_client --restart` (see the "Reloading after editing" recipe above).
 - **Task `state:active` but no matching Slurm job in `squeue`.** — `ECF_JOB_CMD` isn't configured to submit a job via `sbatch`. Confirm the emitted `suite.def` has an `sbatch --parsable` invocation in `ECF_JOB_CMD`.
+- **`ECF_JOB_CMD` aborts immediately with `sbatch: error: getcwd failed: No such file or directory`.** — The ecFlow server process is holding a stale working directory whose inode was destroyed (typically by `rm -rf` on a subtree containing the server's CWD, then re-creating it under the same path). `sbatch` refuses to run in a shell whose `getcwd()` fails, so the composite `ecflow_client --alter=add variable ECF_RID $(sbatch …)` gets an empty `ECF_RID` and exits nonzero. Stop the server, `cd` to a directory that will persist (e.g. the repo root), and restart it. Prefer starting `uw ecflow server` from a stable directory outside the rundir tree.
 
 ## Workflow Stages
 
