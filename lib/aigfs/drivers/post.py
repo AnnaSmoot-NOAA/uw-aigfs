@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Iterator
 from functools import cached_property
 from pathlib import Path
 from shutil import copy
@@ -18,7 +19,7 @@ class AIGFSPost(DriverCycleLeadtimeBased):
     # Public tasks
 
     @collection
-    def delivery(self):
+    def delivery(self) -> Iterator:
         """
         GRIB index files copied to destination.
         """
@@ -30,7 +31,7 @@ class AIGFSPost(DriverCycleLeadtimeBased):
             yield d
 
     @collection
-    def indexes(self):
+    def indexes(self) -> Iterator:
         """
         GRIB index files.
         """
@@ -38,22 +39,30 @@ class AIGFSPost(DriverCycleLeadtimeBased):
         yield [self._idx(path) for path in self._idx2grib]
 
     @collection
-    def provisioned_rundir(self):
+    def provisioned_rundir(self) -> Iterator:
         """
         Run directory provisioned with all required content.
         """
         yield self.taskname("provisioned run directory")
-        yield self.runscript()
+        yield None
+
+    @collection
+    def run(self) -> Iterator:
+        """
+        An AIGFSPost run.
+        """
+        yield "AIGFSPost run"
+        yield self.delivery()
 
     # Private tasks
 
     @external
-    def _gribfile(self, path: Path):
+    def _gribfile(self, path: Path) -> Iterator:
         yield f"GRIB file {path}"
         yield Asset(path, path.is_file)
 
     @task
-    def _idx(self, path: Path):
+    def _idx(self, path: Path) -> Iterator:
         taskname = f"GRIB index {path}"
         yield taskname
         yield Asset(path, path.is_file)
@@ -65,7 +74,7 @@ class AIGFSPost(DriverCycleLeadtimeBased):
             run_shell_cmd(cmd, cwd=path.parent, taskname=taskname)
 
     @task
-    def _idx_delivered(self, path: Path):
+    def _idx_delivered(self, path: Path) -> Iterator:
         taskname = f"Delivered GRIB index {path}"
         yield taskname
         yield Asset(path, path.is_file)
@@ -76,7 +85,7 @@ class AIGFSPost(DriverCycleLeadtimeBased):
         logging.info("%s: Copied %s -> %s", taskname, req.ref, path)
 
     @external
-    def _valid_driver_config(self, reason: str):
+    def _valid_driver_config(self, reason: str) -> Iterator:
         yield reason
         yield Asset(None, lambda: False)
 

@@ -79,12 +79,18 @@ def test_drivers_AIGFSPost_indexes(driverobj, logcap, touch):
     assert "GRIB indexes" in logcap.text
 
 
-def test_drivers_AIGFSPost_provisioned_rundir(driverobj, logcap):
-    path = driverobj.rundir / "runscript.aigfs_post"
-    assert not path.exists()
-    assert driverobj.provisioned_rundir().ready
-    assert path.is_file()
-    assert "provisioned run directory" in logcap.text
+def test_drivers_AIGFSPost_provisioned_rundir(driverobj):
+    node = driverobj.provisioned_rundir()
+    assert node.req is None
+    assert node.ready
+
+
+def test_drivers_AIGFSPost_run(atask, driverobj):
+    delivery = Mock(wraps=atask(ready=True))
+    with patch.object(driverobj, "delivery", delivery):
+        node = driverobj.run()
+    delivery.assert_called_once_with()
+    assert node.ready
 
 
 def test_drivers_AIGFSPost__gribfile(driverobj, logcap, touch):

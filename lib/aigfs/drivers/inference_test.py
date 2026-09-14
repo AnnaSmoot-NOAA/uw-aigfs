@@ -1,4 +1,3 @@
-from itertools import product
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -7,7 +6,7 @@ import pandas as pd
 import xarray as xr
 from graphcast import checkpoint, graphcast  # type: ignore[import-untyped]
 from iotaa import Asset, task
-from pytest import fixture, mark
+from pytest import fixture
 
 from aigfs.drivers import inference
 from aigfs.strings import STR
@@ -191,15 +190,18 @@ def test_drivers_AIGFSInference_model_weights(driverobj, logcap, weights):
     assert "model weights" in logcap.text
 
 
-@mark.parametrize("ready", list(product([True, False], repeat=1)))
-def test_drivers_AIGFSInference_provisioned_rundir(atask, driverobj, logcap, ready):
-    mocks = [Mock(wraps=atask(x)) for x in ready]
-    with patch.object(driverobj, "runscript", mocks[0]) as runscript:
-        node = driverobj.provisioned_rundir()
-    for x in [runscript]:
-        x.assert_called_once_with()
-    assert node.ready is all(ready)
-    assert "provisioned run directory" in logcap.text
+def test_drivers_AIGFSInference_provisioned_rundir(driverobj):
+    node = driverobj.provisioned_rundir()
+    assert node.req is None
+    assert node.ready
+
+
+def test_drivers_AIGFSInference_run(atask, driverobj):
+    predictions = Mock(wraps=atask(ready=True))
+    with patch.object(driverobj, "predictions", predictions):
+        node = driverobj.run()
+    predictions.assert_called_once_with()
+    assert node.ready
 
 
 def test_drivers_AIGFSInference_driver_name(driverobj):

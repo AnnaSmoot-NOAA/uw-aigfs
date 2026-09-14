@@ -1,6 +1,6 @@
 import dataclasses
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from datetime import timedelta
 from functools import partial
 from pathlib import Path
@@ -37,7 +37,7 @@ class AIGFSInference(DriverCycleBased):
     # Public tasks
 
     @task
-    def initial_conditions(self):
+    def initial_conditions(self) -> Iterator:
         """
         Initial conditions.
         """
@@ -56,7 +56,7 @@ class AIGFSInference(DriverCycleBased):
         ds.attrs.update(src.attrs)
 
     @task
-    def inputs_targets_forcings(self):
+    def inputs_targets_forcings(self) -> Iterator:
         """
         Inputs, targets, and forcings.
         """
@@ -79,7 +79,7 @@ class AIGFSInference(DriverCycleBased):
         )
 
     @task
-    def normalization_stats(self):
+    def normalization_stats(self) -> Iterator:
         """
         Normalization stats.
         """
@@ -94,7 +94,7 @@ class AIGFSInference(DriverCycleBased):
         datasets.extend([xr.load_dataset(p) for p in paths])
 
     @task
-    def model_weights(self):
+    def model_weights(self) -> Iterator:
         """
         Load the pre-trained model weights.
         """
@@ -107,7 +107,7 @@ class AIGFSInference(DriverCycleBased):
             weights.append(checkpoint.load(f, graphcast.CheckPoint))
 
     @task
-    def predictions(self):
+    def predictions(self) -> Iterator:
         """
         Predictions.
         """
@@ -152,12 +152,20 @@ class AIGFSInference(DriverCycleBased):
         path.touch()
 
     @collection
-    def provisioned_rundir(self):
+    def provisioned_rundir(self) -> Iterator:
         """
         Run directory provisioned with all required content.
         """
         yield self.taskname("provisioned run directory")
-        yield [self.runscript()]
+        yield None
+
+    @collection
+    def run(self) -> Iterator:
+        """
+        An AIGFSInference run.
+        """
+        yield "AIGFSInference run"
+        yield self.predictions()
 
     # Public helper methods
 

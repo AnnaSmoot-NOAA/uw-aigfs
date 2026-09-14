@@ -9,13 +9,14 @@ app:
   rundir: '{{ "RUNDIR" | env }}'
 forecast:
   aigfs_inference:
+    forecast_length: 120
     rundir: '{{ app.rundir }}/forecast'
 post:
   aigfs_post:
     rundir: '{{ app.rundir }}/post_{{ app.time.fff }}'
 prep:
   aigfs_ics:
-    files_to_hardlink:
+    files_to_copy:
       data/{{ app.time.m1_yyyymmdd }}-gfs.t{{ app.time.m1_hh }}z.pgrb2.0p25.f000: '{{ user.gfs_data }}/{{ user.m1_yyjjjhh }}000000'
       data/{{ app.time.m1_yyyymmdd }}-gfs.t{{ app.time.m1_hh }}z.pgrb2.0p25.f006: '{{ user.gfs_data }}/{{ user.m1_yyjjjhh }}000006'
       data/{{ app.time.m2_yyyymmdd }}-gfs.t{{ app.time.m2_hh }}z.pgrb2.0p25.f006: '{{ user.gfs_data }}/{{ user.m2_yyjjjhh }}000006'
@@ -25,6 +26,7 @@ user:
   m1_yyjjjhh: '{{ (cycle - app.time.m6h).strftime("%y%j%H") }}'
   m2_yyjjjhh: '{{ (cycle - 2 * app.time.m6h).strftime("%y%j%H") }}'
   yyjjjhh: '{{ cycle.strftime("%y%j%H") }}'
+  gfs_data: /public/data/grids/gfs/0p25deg/grib2
 workflow:
   attrs:
     realtime: true

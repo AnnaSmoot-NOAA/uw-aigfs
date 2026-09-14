@@ -239,20 +239,18 @@ def test_drivers_AIGFSICs_ncfiles(varkit):
         _ncfile.assert_any_call(path, cmd)
 
 
-@mark.parametrize("ready", list(product([True, False], repeat=4)))
-def test_drivers_AIGFSICs_provisioned_rundir(atask, ready, driverobj, logcap):
-    mocks = [Mock(wraps=atask(x)) for x in ready]
-    with (
-        patch.object(driverobj, "files_copied", mocks[0]) as files_copied,
-        patch.object(driverobj, "files_hardlinked", mocks[1]) as files_hardlinked,
-        patch.object(driverobj, "files_linked", mocks[2]) as files_linked,
-        patch.object(driverobj, "runscript", mocks[3]) as runscript,
-    ):
-        node = driverobj.provisioned_rundir()
-    assert "provisioned run directory" in logcap.text
-    for x in [files_copied, files_hardlinked, files_linked, runscript]:
-        x.assert_called_once_with()
-    assert node.ready is all(ready)
+def test_drivers_AIGFSICs_provisioned_rundir(driverobj):
+    node = driverobj.provisioned_rundir()
+    assert node.req is None
+    assert node.ready
+
+
+def test_drivers_AIGFSICs_run(atask, driverobj):
+    merged_netcdf_files = Mock(wraps=atask(ready=True))
+    with patch.object(driverobj, "merged_netcdf_files", merged_netcdf_files):
+        node = driverobj.run()
+    merged_netcdf_files.assert_called_once_with()
+    assert node.ready
 
 
 @mark.parametrize("ready", list(product([True, False], repeat=3)))

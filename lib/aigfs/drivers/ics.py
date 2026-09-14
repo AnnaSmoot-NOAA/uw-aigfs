@@ -91,13 +91,15 @@ class AIGFSICs(DriverCycleBased, FileStager):
         Run directory provisioned with all required content.
         """
         yield self.taskname("provisioned run directory")
-        required = [
-            self.files_copied(),
-            self.files_hardlinked(),
-            self.files_linked(),
-            self.runscript(),
-        ]
-        yield required
+        yield None
+
+    @collection
+    def run(self) -> Iterator:
+        """
+        An AIGFSICs run.
+        """
+        yield "AIGFSICs run"
+        yield self.merged_netcdf_files()
 
     # Private tasks
 
