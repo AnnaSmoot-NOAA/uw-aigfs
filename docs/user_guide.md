@@ -237,12 +237,15 @@ uw ecflow server --config-file aigfs.yaml --report
 
 `uw ecflow server` runs in the foreground; leave the shell that started it running for the life of the suite. To maintain a long-running server process that continues after disconnect, consider a tool like [`nohup`](https://en.wikipedia.org/wiki/Nohup) or [`screen`](https://en.wikipedia.org/wiki/GNU_Screen). Whichever approach you use, redirect `stdout` to a file so you can read back the `--report` JSON to configure the client — `uw`'s own log messages are emitted on `stderr` and can be captured separately, e.g. `uw ecflow server --config-file aigfs.yaml --report >server.json 2>server.log`.
 
-**Configure the client from the report.** Every `ecflow_client` call needs to know which host/port to talk to and whether the server uses SSL. Rather than pass those on every call, export them from the report once (the [uwtools ecFlow demo notebook](https://uwtools.readthedocs.io/en/main/_static/ecflow.html) shows a similar pattern):
+**Configure the client from the report.** Every `ecflow_client` call needs to know which host/port to talk to and whether the server uses SSL. Rather than pass those on every call, export them from the report once. Start the server with `stdout` captured to a file, then use [`jq`](https://jqlang.github.io/jq/) to turn each JSON key into an `export`:
 
 ```bash
-# Reading the report from stdout of the foreground server, or from the saved JSON file if backgrounded:
-eval $(uw ecflow server --config-file aigfs.yaml --report | python -c 'import json,sys; d=json.load(sys.stdin); [print(f"export {k}={v}") for k,v in d.items()]')
+uw ecflow server --config-file aigfs.yaml --report >server.json 2>server.log &
+eval "$(jq -r 'to_entries | .[] | "export \(.key)=\(.value)"' server.json)"
+env | sort | grep ^ECF_   # optional: confirm what was set
 ```
+
+`jq` is a system utility on Ursa and most RDHPCS machines. If it's unavailable on a target platform, it can be added to the `aigfs` conda environment via `etc/env/environment.yaml`.
 
 Once `ECF_HOST`/`ECF_PORT`/`ECF_SSL` are exported, subsequent `ecflow_client` calls read them from the environment — no `--host`, `--port`, or `--ssl` needed on each call.
 
