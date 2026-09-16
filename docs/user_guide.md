@@ -220,14 +220,11 @@ The `uwtools` package provides a tool to help iterate through the entire workflo
 
 ### Running with ecFlow
 
-> **Note for RDHPCS users:** The ecFlow server must run on a dedicated ecFlow node, not a login node. On Ursa this is `uecflow01` — see [Quickstart (Ursa)](#quickstart-ursa) below.
+> **Note for RDHPCS users:** The ecFlow server must run on a dedicated ecFlow node, not a front end node. On Ursa this is `uecflow01` — see [Quickstart (Ursa)](#quickstart-ursa) below.
 
 #### Quickstart (Ursa)
 
-Assumes you've followed [Installing](#installing) and [Setting Up the Final Config](#setting-up-the-final-config), i.e. `<rundir>/aigfs.yaml` and `<rundir>/suite.def` exist. Two Ursa constraints:
-
-1. The ecFlow server must run on the dedicated node `uecflow01`.
-2. `ECF_HOME` must live on `/scratch3` or `/scratch4` (default `{{ app.rundir }}/ecf`, so put `rundir` there).
+Assumes you've followed [Installing](#installing) and [Setting Up the Final Config](#setting-up-the-final-config), i.e. `<rundir>/aigfs.yaml` and `<rundir>/suite.def` exist. On Ursa the ecFlow server must run on the dedicated node `uecflow01`, not on a front end node.
 
 **1. Start the server on `uecflow01`.**
 
@@ -309,13 +306,11 @@ Regenerate the rundir and every consumer above (server startup, suite emission, 
 
 **Suite control flow.** `forecast` triggers on `prep == complete`; every `post_fXXX` triggers on `../forecast:release_fXXX`, where the `release_fXXX` events are set from within the forecast task each time that leadtime's GRIB2 pair has been written. This gives per-leadtime pipelined post-processing: each `post_fXXX` starts as soon as its inputs are on disk, without waiting for later leadtimes. The event-firing is wired via the driver's `post_write_hook` config key — see [Post-write hook](#post-write-hook) below.
 
-> **Not equivalent to Rocoto.** Rocoto achieves similar per-leadtime scheduling by a different mechanism: cron re-invokes `rocotorun` on a fixed interval and Rocoto uses filesystem `datadep` checks. ecFlow doesn't watch the filesystem; it schedules on messages. The `post_write_hook` bridges the two by having the forecast driver actively notify the ecFlow server as each leadtime completes.
-
 **Task-script layout.** Task scripts are written to `<rundir>/ecf/` and include the `head.h` and `tail.h` wrappers from the `include/` directory (using ecFlow's `%include <head.h>` syntax to look them up via `ECF_INCLUDE`). Task output is captured by ecFlow in each task's job output file next to the `.ecf` script.
 
 **Slurm submission (`ECF_JOB_CMD`).** The suite emits `edit ECF_JOB_CMD` wrapping `sbatch --parsable` in `ecflow_client --alter=add variable ECF_RID ...`, so tasks are submitted to Slurm using the `#SBATCH` directives at the top of each generated `.ecf` script and the server records the resulting Slurm job ID as `ECF_RID` at submission time. `head.h` exports `ECF_RID=$SLURM_JOB_ID` inside the running task and calls `ecflow_client --init=$ECF_RID` so the server's view of the job ID stays consistent across retries.
 
-**Configuring the client — details.** `uw ecflow server` selects a free TCP port automatically and, with `--report`, prints server metadata as JSON to `stdout`. Pass `--port <PORT>` if you need a specific port instead. If you don't background it, `uw ecflow server` runs in the foreground; use [`nohup`](https://en.wikipedia.org/wiki/Nohup) or [`screen`](https://en.wikipedia.org/wiki/GNU_Screen) to keep it alive across disconnect. `jq` is a system utility on Ursa and most RDHPCS machines; if it's unavailable elsewhere, add it to the `aigfs` conda environment via `etc/env/environment.yaml`.
+**Configuring the client — details.** `uw ecflow server` selects a free TCP port automatically and, with `--report`, prints server metadata as JSON to `stdout`. Pass `--port <PORT>` if you need a specific port instead. `jq` is a system utility on Ursa and most RDHPCS machines; if it's unavailable elsewhere, add it to the `aigfs` conda environment via `etc/env/environment.yaml`.
 
 **Alternative servers.** If you're using a platform-provided or externally installed ecFlow (not `uw ecflow server`), replace quickstart step 1 with `ecflow_start` (or the equivalent) and export `ECF_HOST`/`ECF_PORT`/`ECF_SSL` by hand rather than parsing `server.json`. Steps 2 onward are unchanged.
 
@@ -345,7 +340,7 @@ The suite appears in the tree view; right-click nodes for state, job output, req
 | `{sfc_path}`    | Absolute path to the just-written `*.sfc.fXXX.grib2` file |
 | `{pres_path}`   | Absolute path to the just-written `*.pres.fXXX.grib2` file |
 
-A non-zero exit from the hook is logged at `WARNING` and does **not** abort the forecast; each leadtime is fired independently. For the ecFlow workflow, `setup --workflow ecflow` seeds the hook to `ecflow_client --ssl --alter change event release_f{fff} set $ECF_NAME`. `$ECF_NAME` and `$ECF_PASS` are exported by `head.h`, so the client authenticates as the current forecast task and updates its own `release_fXXX` event. To override, set `forecast.aigfs_inference.post_write_hook` in your user config before `setup`. Rocoto rundirs don't set the key by default.
+A non-zero exit from the hook is logged at `WARNING` and does **not** abort the forecast; each leadtime is fired independently.
 
 #### Troubleshooting on Ursa
 
