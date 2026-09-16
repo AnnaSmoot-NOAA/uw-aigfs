@@ -38,7 +38,7 @@ Before using `uw-aigfs`, ensure the following are available on your system:
 
 | Requirement                   | Description                                         |
 |-------------------------------|-----------------------------------------------------|
-| Supported platform            | Ursa or WCOSS2                                      |
+| Supported platform            | Ursa (preconfigured); other Slurm-based systems by configuration |
 | GraphCast model weights       | See your platform config for the expected path      |
 | GFS GRIB2 input data          | 0.25° analysis and short-range forecast files       |
 | `git`                         | For cloning the repository                          |
@@ -83,10 +83,9 @@ source bin/activate-<platform>
 
 Supported values for `<platform>`:
 
-| Platform | Description                                                |
-|----------|------------------------------------------------------------|
-| `ursa`   | Activates the locally installed conda `aigfs` environment  |
-| `wcoss2` | Loads the `workflow-wcoss2` module from `env/modulefiles/` |
+| Platform | Description                                               |
+|----------|-----------------------------------------------------------|
+| `ursa`   | Activates the locally installed conda `aigfs` environment |
 
 > **Tip:** This `source` command must be run each time you open a new shell. The platform-specific environment it activates is also the one used by the workflow jobs at runtime, but the run automation performs its own activation.
 
@@ -221,70 +220,86 @@ The `uwtools` package provides a tool to help iterate through the entire workflo
 
 ### Running with ecFlow
 
-> **Note for RDHPCS users:** The ecFlow server must run on a dedicated ecFlow node, not a login node. Consult your platform documentation for how to access it. See [Ursa-specific setup](#ursa-specific-setup) below.
+> **Note for RDHPCS users:** The ecFlow server must run on a dedicated ecFlow node, not a login node. On Ursa this is `uecflow01` — see [Quickstart (Ursa)](#quickstart-ursa) below.
 
-Start the ecFlow server if it is not already running.
+#### Quickstart (Ursa)
 
-**If using the `aigfs` conda environment**, `ecflow` is automatically available once that environment has been activated.
+Assumes you've followed [Installing](#installing) and [Setting Up the Final Config](#setting-up-the-final-config), i.e. `<rundir>/aigfs.yaml` and `<rundir>/suite.def` exist. Two Ursa constraints:
 
-Your `aigfs.yaml` will have an `ecflow.server` block when generated with `setup --workflow ecflow` — the ecFlow workflow config seeds it with defaults (`ECF_HOME: {app.rundir}/ecf`, `ECF_SSL: true`), and any values you set under `ecflow.server:` in your user config override those. The block's content is described in the [uwtools ecFlow server YAML docs](https://uwtools.readthedocs.io/en/main/sections/user_guide/yaml/ecflow.html#server-configuration). Then run:
+1. The ecFlow server must run on the dedicated node `uecflow01`.
+2. `ECF_HOME` must live on `/scratch3` or `/scratch4` (default `{{ app.rundir }}/ecf`, so put `rundir` there).
+
+**1. Start the server on `uecflow01`.**
 
 ```bash
-uw ecflow server --config-file aigfs.yaml --report
+ssh uecflow01
+cd <rundir>
+source <path-to>/bin/activate-ursa
+uw ecflow server --config-file aigfs.yaml --report >server.json 2>server.log &
 ```
 
-`uw ecflow server` selects a free TCP port automatically and, with `--report`, prints server metadata (host, port, SSL flag) as JSON to `stdout`. See the [uwtools ecFlow server documentation](https://uwtools.readthedocs.io/en/main/sections/user_guide/cli/tools/ecflow.html#server) for details. Pass `--port <PORT>` if you need a specific port instead.
+`stdout` (the JSON `--report`) goes to `server.json`; `stderr` (uwtools log messages) goes to `server.log`.
 
-`uw ecflow server` runs in the foreground; leave the shell that started it running for the life of the suite. To maintain a long-running server process that continues after disconnect, consider a tool like [`nohup`](https://en.wikipedia.org/wiki/Nohup) or [`screen`](https://en.wikipedia.org/wiki/GNU_Screen). Whichever approach you use, redirect `stdout` to a file so you can read back the `--report` JSON to configure the client — `uw`'s own log messages are emitted on `stderr` and can be captured separately, e.g. `uw ecflow server --config-file aigfs.yaml --report >server.json 2>server.log`.
-
-**Configure the client from the report.** Every `ecflow_client` call needs to know which host/port to talk to and whether the server uses SSL. Rather than pass those on every call, export them from the report once. Start the server with `stdout` captured to a file, then use [`jq`](https://jqlang.github.io/jq/) to turn each JSON key into an `export`:
+**2. Configure the client env from the report.**
 
 ```bash
-uw ecflow server --config-file aigfs.yaml --report >server.json 2>server.log &
 eval "$(jq -r 'to_entries | .[] | "export \(.key)=\(.value)"' server.json)"
 env | sort | grep ^ECF_   # optional: confirm what was set
 ```
 
-`jq` is a system utility on Ursa and most RDHPCS machines. If it's unavailable on a target platform, it can be added to the `aigfs` conda environment via `etc/env/environment.yaml`.
-
 Once `ECF_HOST`/`ECF_PORT`/`ECF_SSL` are exported, subsequent `ecflow_client` calls read them from the environment — no `--host`, `--port`, or `--ssl` needed on each call.
 
-`ecflow.server.ECF_SSL` in `aigfs.yaml` controls SSL end-to-end. The ecFlow workflow YAML seeds it to `true` — **SSL is on by default** — and the same value drives three things at once:
-
-- The server starts with SSL (via `uw ecflow server`).
-- The `--report` block emits it, so the recipe above exports `ECF_SSL` alongside `ECF_HOST`/`ECF_PORT` and user-typed `ecflow_client` calls pick it up from the environment.
-- Suite-generated `ecflow_client` invocations (the `ECF_JOB_CMD`/`ECF_KILL_CMD` edits in `suite.def`, the `%SSL%` substitutions in `head.h`/`tail.h`, and the default `post_write_hook`) get `--ssl` inserted at rendering time by the same setting.
-
-To run against an insecure (non-SSL) server, explicitly set `ecflow.server.ECF_SSL: false` in your user config before `setup`. This is opt-in and should be used only when the environment demands it — the workflow's `head.h`/`tail.h` preprocessing, `ECF_JOB_CMD`, `ECF_KILL_CMD`, and `post_write_hook` all pick up the new value automatically; no include-file or workflow-YAML edits are needed.
-
-**If using a platform-provided or externally installed ecFlow:**
+**3. Load the suite, move the server to `RUNNING`, and begin.**
 
 ```bash
-ecflow_start
-```
-
-Load the suite definition, move the server to `RUNNING`, and begin the suite:
-
-```bash
-cd <rundir>
 ecflow_client --load=suite.def
 ecflow_client --restart
 ecflow_client --begin=retro
 ```
 
-(`uw ecflow server` starts the server in the `halted` state — no scheduling happens until `--restart` moves it to `RUNNING`. See the [ecFlow glossary → server states](https://ecflow.readthedocs.io/en/latest/glossary.html#term-server-states) for the state-machine details.)
-
-Monitor the suite in the ecFlow GUI (`ecflow_ui`) or via the command line:
+**4. Monitor.**
 
 ```bash
 ecflow_client --get_state=/retro
 ```
 
-Task scripts are written to `<rundir>/ecf/` and include the `head.h` and `tail.h` wrappers from the `include/` directory (using ecFlow's `%include <head.h>` syntax to look them up via `ECF_INCLUDE`). Task output is captured by ecFlow in each task's job output file next to the `.ecf` script.
+Or use the ecFlow GUI — see [ecFlow GUI (`ecflow_ui`)](#ecflow-gui-ecflow_ui) in the reference below.
 
-The suite emits `edit ECF_JOB_CMD` wrapping `sbatch --parsable` in `ecflow_client --alter=add variable ECF_RID ...`, so tasks are submitted to Slurm using the `#SBATCH` directives at the top of each generated `.ecf` script and the server records the resulting Slurm job ID as `ECF_RID` at submission time. `head.h` exports `ECF_RID=$SLURM_JOB_ID` inside the running task and calls `ecflow_client --init=$ECF_RID` so the server's view of the job ID stays consistent across retries.
+**5. Reload after editing `base.yaml` or `suite.def`.** Regenerate the rundir with `setup --workflow ecflow ...` first, then:
 
-**ecFlow task names** (equivalent Rocoto tasks in parentheses):
+```bash
+ecflow_client --halt=yes
+ecflow_client --delete=force /retro
+ecflow_client --restart
+ecflow_client --load=suite.def
+ecflow_client --begin=retro
+```
+
+**6. Shut down.** Return to the shell running the server and Ctrl-C.
+
+#### Reference
+
+**Server states.** `uw ecflow server` starts the server in the `halted` state — no scheduling happens until `--restart` moves it to `RUNNING`. See the [ecFlow glossary → server states](https://ecflow.readthedocs.io/en/latest/glossary.html#term-server-states) for the state-machine details.
+
+**The `ecflow.server` block in `aigfs.yaml`.** `setup --workflow ecflow` always emits this block — the ecFlow workflow config seeds it with defaults (`ECF_HOME: {{ app.rundir }}/ecf`, `ECF_SSL: true`), and any values you set under `ecflow.server:` in your user config override those. Block content is described in the [uwtools ecFlow server YAML docs](https://uwtools.readthedocs.io/en/main/sections/user_guide/yaml/ecflow.html#server-configuration).
+
+**SSL configuration.** `ecflow.server.ECF_SSL` in `aigfs.yaml` controls SSL end-to-end. The workflow YAML seeds it to `true` — SSL is on by default — and the same value drives:
+
+- The server starts with SSL.
+- The `--report` block emits it, so `ECF_SSL` is exported alongside `ECF_HOST`/`ECF_PORT` and user-typed `ecflow_client` calls pick it up from the environment.
+- Suite-generated `ecflow_client` invocations (`ECF_JOB_CMD`/`ECF_KILL_CMD` in `suite.def`, `%SSL%` in `head.h`/`tail.h`, and the default `post_write_hook`) get `--ssl` inserted at rendering time.
+
+To run against an insecure (non-SSL) server, set `ecflow.server.ECF_SSL: false` in your user config **before** running `setup`:
+
+```yaml
+ecflow:
+  server:
+    ECF_SSL: false
+```
+
+Regenerate the rundir and every consumer above (server startup, suite emission, task-side `%SSL%` substitution) picks up the new value automatically. As a CLI shortcut for a one-off insecure server without regenerating, pass `uw ecflow server --insecure ...` — but note that if the suite was generated with `ECF_SSL: true`, the baked-in `--ssl` on `ECF_JOB_CMD`/`head.h` calls will fail against the insecure server. Keep the config value and the server flag consistent.
+
+**ecFlow task names** (Rocoto equivalents in parentheses):
 
 | ecFlow task             | Rocoto equivalent          | Description                  |
 |-------------------------|----------------------------|------------------------------|
@@ -292,13 +307,33 @@ The suite emits `edit ECF_JOB_CMD` wrapping `sbatch --parsable` in `ecflow_clien
 | `forecast`              | `forecast`                 | GraphCast inference          |
 | `post_f000`…`post_f120` | `post_000`…`post_120`      | Post-processing per leadtime |
 
-**Suite control flow.** `forecast` triggers on `prep == complete`; every `post_fXXX` triggers on `../forecast:release_fXXX`, where the `release_fXXX` events are set from within the forecast task each time that leadtime's GRIB2 pair has been written. This gives per-leadtime pipelined post-processing: each `post_fXXX` starts as soon as its inputs are available on disk, without waiting for later leadtimes.
+**Suite control flow.** `forecast` triggers on `prep == complete`; every `post_fXXX` triggers on `../forecast:release_fXXX`, where the `release_fXXX` events are set from within the forecast task each time that leadtime's GRIB2 pair has been written. This gives per-leadtime pipelined post-processing: each `post_fXXX` starts as soon as its inputs are on disk, without waiting for later leadtimes. The event-firing is wired via the driver's `post_write_hook` config key (defined in [`etc/workflow/ecflow/base.yaml`](../etc/workflow/ecflow/base.yaml); see [Post-write hook](#post-write-hook) below).
 
-The event-firing is wired via the driver's `post_write_hook` config key (see [`etc/workflow/ecflow/base.yaml`](../etc/workflow/ecflow/base.yaml), which defaults it to `ecflow_client --ssl --alter change event release_f{fff} set $ECF_NAME` for the ecFlow workflow). See [Post-write hook](#post-write-hook) below for details.
+> **Not equivalent to Rocoto.** Rocoto achieves similar per-leadtime scheduling by a different mechanism: cron re-invokes `rocotorun` on a fixed interval and Rocoto uses filesystem `datadep` checks. ecFlow doesn't watch the filesystem; it schedules on messages. The `post_write_hook` bridges the two by having the forecast driver actively notify the ecFlow server as each leadtime completes.
 
-> **Not equivalent to Rocoto.** The Rocoto suite achieves similar per-leadtime scheduling by a different mechanism: cron re-invokes `rocotorun` on a fixed interval (e.g. every 5 minutes on the RTAIGFS Ursa demo) and Rocoto uses filesystem `datadep` checks to submit any post task whose GRIB2 inputs have appeared since the last iteration. ecFlow doesn't watch the filesystem; it schedules on messages sent to its server. The `post_write_hook` mechanism above bridges the two models by having the forecast driver actively notify the ecFlow server as each leadtime completes.
+**Task-script layout.** Task scripts are written to `<rundir>/ecf/` and include the `head.h` and `tail.h` wrappers from the `include/` directory (using ecFlow's `%include <head.h>` syntax to look them up via `ECF_INCLUDE`). Task output is captured by ecFlow in each task's job output file next to the `.ecf` script.
 
-#### Post-write hook
+**Slurm submission (`ECF_JOB_CMD`).** The suite emits `edit ECF_JOB_CMD` wrapping `sbatch --parsable` in `ecflow_client --alter=add variable ECF_RID ...`, so tasks are submitted to Slurm using the `#SBATCH` directives at the top of each generated `.ecf` script and the server records the resulting Slurm job ID as `ECF_RID` at submission time. `head.h` exports `ECF_RID=$SLURM_JOB_ID` inside the running task and calls `ecflow_client --init=$ECF_RID` so the server's view of the job ID stays consistent across retries.
+
+**Configuring the client — details.** `uw ecflow server` selects a free TCP port automatically and, with `--report`, prints server metadata as JSON to `stdout`. Pass `--port <PORT>` if you need a specific port instead. If you don't background it, `uw ecflow server` runs in the foreground; use [`nohup`](https://en.wikipedia.org/wiki/Nohup) or [`screen`](https://en.wikipedia.org/wiki/GNU_Screen) to keep it alive across disconnect. `jq` is a system utility on Ursa and most RDHPCS machines; if it's unavailable elsewhere, add it to the `aigfs` conda environment via `etc/env/environment.yaml`.
+
+**Alternative servers.** If you're using a platform-provided or externally installed ecFlow (not `uw ecflow server`), replace quickstart step 1 with `ecflow_start` (or the equivalent) and export `ECF_HOST`/`ECF_PORT`/`ECF_SSL` by hand rather than parsing `server.json`. Steps 2 onward are unchanged.
+
+##### ecFlow GUI (`ecflow_ui`)
+
+The GUI ships with the `ecflow` package (available in the `aigfs` conda env). Launch it from a shell where the client env is configured — the GUI reads `ECF_HOST`/`ECF_PORT`/`ECF_SSL` from the environment on startup, just like `ecflow_client`:
+
+```bash
+ssh -X uecflow01                     # X forwarding required
+cd <rundir>
+source <path-to>/bin/activate-ursa
+eval "$(jq -r 'to_entries | .[] | "export \(.key)=\(.value)"' server.json)"
+ecflow_ui &
+```
+
+The suite appears in the tree view; right-click nodes for state, job output, requeue, and kill actions. If your ssh doesn't support X, you can run `ecflow_ui` locally on a workstation and add the server manually via *Servers → Manage Servers* using the values from `server.json` (host, port, SSL on/off).
+
+##### Post-write hook
 
 `forecast.aigfs_inference.post_write_hook` is an optional string; when set, it is executed as a shell command by `aigfs.drivers.utils.grib2writer.Grib2Writer` after each leadtime's surface + pressure GRIB2 files have been atomically written. The following placeholders are substituted per invocation:
 
@@ -312,52 +347,13 @@ The event-firing is wired via the driver's `post_write_hook` config key (see [`e
 
 A non-zero exit from the hook is logged at `WARNING` and does **not** abort the forecast; each leadtime is fired independently. For the ecFlow workflow, [`etc/workflow/ecflow/base.yaml`](../etc/workflow/ecflow/base.yaml) defaults the hook to `ecflow_client --ssl --alter change event release_f{fff} set $ECF_NAME`. `$ECF_NAME` and `$ECF_PASS` are exported by `head.h`, so the client authenticates as the current forecast task and updates its own `release_fXXX` event. Rocoto rundirs don't set the key by default.
 
-**Reloading after editing `base.yaml` or `suite.def`.** Regenerate the rundir (`setup --workflow ecflow …`), then on the ecFlow server host, from a shell where `ECF_HOST`/`ECF_PORT`/`ECF_SSL` are exported (see "Configure the client from the report" above):
-
-```bash
-cd <rundir>
-ecflow_client --halt=yes
-ecflow_client --delete=force /retro
-ecflow_client --restart
-ecflow_client --load=suite.def
-ecflow_client --begin=retro
-```
-
-#### Ursa-specific setup
-
-On Ursa the ecFlow server must run on the dedicated node `uecflow01` (not on a front-end), and `ECF_HOME` must live on `/scratch3` or `/scratch4`.
-
-**Starting the server on `uecflow01`.** The recommended approach is the same as the general recipe above — let `uw ecflow server --report` pick a free port and print the JSON to `stdout`:
-
-```bash
-ssh uecflow01
-cd <rundir>
-source <path-to>/bin/activate-ursa
-uw ecflow server --config-file aigfs.yaml --report >server.json 2>server.log &
-```
-
-If you need the shell back to drive the client (or want the server to survive disconnect), background the process using [`nohup`](https://en.wikipedia.org/wiki/Nohup) or [`screen`](https://en.wikipedia.org/wiki/GNU_Screen), redirecting `stdout` (the JSON report) and `stderr` (`uw`'s log messages) to separate files.
-
-**Connecting the client.** In the same session (once the server is backgrounded) or a second `ssh uecflow01` session, use the [Configure the client from the report](#configure-the-client-from-the-report) recipe above to export `ECF_HOST`/`ECF_PORT`/`ECF_SSL` from `server.json`, then drive the suite:
-
-```bash
-eval "$(jq -r 'to_entries | .[] | "export \(.key)=\(.value)"' server.json)"
-ecflow_client --ping
-ecflow_client --load=suite.def
-ecflow_client --restart
-ecflow_client --begin=retro
-ecflow_client --get_state=/retro
-```
-
-When done, return to the shell where the ecFlow server is running and Ctrl-C to stop it.
-
 #### Troubleshooting on Ursa
 
 - **`Failed to connect to <host>:<port>. Is the server running?`** — either the server shell was Ctrl-C'd, or `ECF_HOST`/`ECF_PORT`/`ECF_SSL` in the environment don't match the running server. Re-parse the `--report` JSON to refresh them, then confirm with `ecflow_client --ping`.
 - **Suite loaded but `state:queued` never transitions.** — `--stats` reports `Status HALTED`. `uw ecflow server` starts the server in a "halted" state (or the server halts itself after an error); run `ecflow_client --restart` to move it to a `RUNNING` state.
 - **`Could not open include file: head.h`.** — the emitted task script uses `%include <head.h>` which resolves via `ECF_INCLUDE`. Confirm `ECF_INCLUDE` in `suite.def` points at this repo's `include/` directory.
 - **`Stale file handle` when loading `suite.def`.** — NFS handle from a previous rundir. Refresh with `cd / && cd <rundir>` before retrying `ecflow_client --load=suite.def`.
-- **`suite retro already exists` on `--load`.** — The server still has a prior definition. Halt and delete before reloading: `ecflow_client --halt=yes && ecflow_client --delete=force /retro && ecflow_client --restart` (see the "Reloading after editing" recipe above).
+- **`suite retro already exists` on `--load`.** — The server still has a prior definition. Halt and delete before reloading: `ecflow_client --halt=yes && ecflow_client --delete=force /retro && ecflow_client --restart` (see the "Reloading" step of the quickstart above).
 - **Task `state:active` but no matching Slurm job in `squeue`.** — `ECF_JOB_CMD` isn't configured to submit a job via `sbatch`. Confirm the emitted `suite.def` has an `sbatch --parsable` invocation in `ECF_JOB_CMD`.
 - **`ECF_JOB_CMD` aborts immediately with `sbatch: error: getcwd failed: No such file or directory`.** — The ecFlow server process is holding a stale working directory whose inode was destroyed (typically by `rm -rf` on a subtree containing the server's CWD, then re-creating it under the same path). `sbatch` refuses to run in a shell whose `getcwd()` fails, so the composite `ecflow_client --alter=add variable ECF_RID $(sbatch …)` gets an empty `ECF_RID` and exits nonzero. Stop the server, `cd` to a directory that will persist (e.g. the repo root), and restart it. Prefer starting `uw ecflow server` from a stable directory outside the rundir tree.
 
