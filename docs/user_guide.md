@@ -249,13 +249,13 @@ env | sort | grep ^ECF_   # optional: confirm what was set
 
 Once `ECF_HOST`/`ECF_PORT`/`ECF_SSL` are exported, subsequent `ecflow_client` calls read them from the environment — no `--host`, `--port`, or `--ssl` needed on each call.
 
-`ecflow.server.ECF_SSL` in `aigfs.yaml` (default `true`) is the single setting controlling SSL end-to-end:
+`ecflow.server.ECF_SSL` in `aigfs.yaml` controls SSL end-to-end. The ecFlow workflow YAML seeds it to `true` — **SSL is on by default** — and the same value drives three things at once:
 
-- The server starts with (or without) SSL according to this value.
+- The server starts with SSL (via `uw ecflow server`).
 - The `--report` block emits it, so the recipe above exports `ECF_SSL` alongside `ECF_HOST`/`ECF_PORT` and user-typed `ecflow_client` calls pick it up from the environment.
 - Suite-generated `ecflow_client` invocations (the `ECF_JOB_CMD`/`ECF_KILL_CMD` edits in `suite.def`, the `%SSL%` substitutions in `head.h`/`tail.h`, and the default `post_write_hook`) get `--ssl` inserted at rendering time by the same setting.
 
-Users can disable SSL by setting `ECF_SSL: false` in the config — no include-file edits needed.
+To run against an insecure (non-SSL) server, explicitly set `ecflow.server.ECF_SSL: false` in your user config before `setup`. This is opt-in and should be used only when the environment demands it — the workflow's `head.h`/`tail.h` preprocessing, `ECF_JOB_CMD`, `ECF_KILL_CMD`, and `post_write_hook` all pick up the new value automatically; no include-file or workflow-YAML edits are needed.
 
 **If using a platform-provided or externally installed ecFlow:**
 
