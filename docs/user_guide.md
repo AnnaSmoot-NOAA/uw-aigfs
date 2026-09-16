@@ -263,13 +263,16 @@ To run against an insecure (non-SSL) server, explicitly set `ecflow.server.ECF_S
 ecflow_start
 ```
 
-Load the suite definition and begin the suite:
+Load the suite definition, move the server to `RUNNING`, and begin the suite:
 
 ```bash
 cd <rundir>
 ecflow_client --load=suite.def
+ecflow_client --restart
 ecflow_client --begin=retro
 ```
+
+(`uw ecflow server` starts the server in the `halted` state — no scheduling happens until `--restart` moves it to `RUNNING`. See the [ecFlow glossary → server states](https://ecflow.readthedocs.io/en/latest/glossary.html#term-server-states) for the state-machine details.)
 
 Monitor the suite in the ecFlow GUI (`ecflow_ui`) or via the command line:
 
@@ -329,20 +332,19 @@ On Ursa the ecFlow server must run on the dedicated node `uecflow01` (not on a f
 ```bash
 ssh uecflow01
 cd <rundir>
-source <path-to>/conda/etc/profile.d/conda.sh
-conda activate aigfs
-uw ecflow server --config-file aigfs.yaml --report
+source <path-to>/bin/activate-ursa
+uw ecflow server --config-file aigfs.yaml --report >server.json 2>server.log &
 ```
 
 If you need the shell back to drive the client (or want the server to survive disconnect), background the process using [`nohup`](https://en.wikipedia.org/wiki/Nohup) or [`screen`](https://en.wikipedia.org/wiki/GNU_Screen), redirecting `stdout` (the JSON report) and `stderr` (`uw`'s log messages) to separate files.
 
-**Connecting the client.** In the same session (once the server is backgrounded) or a second `ssh uecflow01` session (if the server is running in the foreground), export `ECF_HOST`/`ECF_PORT` to match what the server printed and drive the suite:
+**Connecting the client.** In the same session (once the server is backgrounded) or a second `ssh uecflow01` session, use the [Configure the client from the report](#configure-the-client-from-the-report) recipe above to export `ECF_HOST`/`ECF_PORT`/`ECF_SSL` from `server.json`, then drive the suite:
 
 ```bash
-export ECF_HOST=uecflow01
-export ECF_PORT=<port from the server's --report JSON>
+eval "$(jq -r 'to_entries | .[] | "export \(.key)=\(.value)"' server.json)"
 ecflow_client --ping
 ecflow_client --load=suite.def
+ecflow_client --restart
 ecflow_client --begin=retro
 ecflow_client --get_state=/retro
 ```
