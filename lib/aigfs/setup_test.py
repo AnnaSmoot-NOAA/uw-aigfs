@@ -162,6 +162,11 @@ def test_ecflow_base_yaml_post_write_hook():
     )
 
 
+def test_ecflow_base_yaml_server_defaults():
+    text = ECFLOW_BASE_YAML.read_text()
+    assert "  server:\n    ECF_HOME: '{{ app.rundir }}/ecf'\n    ECF_SSL: true\n" in text
+
+
 def test_ecflow_base_yaml_sbatch_job_cmd():
     text = ECFLOW_BASE_YAML.read_text()
     ssl = '{{ "--ssl " if ecflow.server.ECF_SSL | default(true) else "" }}'

@@ -1,0 +1,23 @@
+app:
+  cycle_freq: !timedelta 6
+  first_cycle: !datetime 2026-09-13T00:00:00
+  last_cycle: !datetime 2026-09-13T06:00:00
+  home: /scratch3/NCEPDEV/global/Anna.Smoot/uw-aigfs
+  platform:
+    scheduler:
+      account: fv3-cpu
+  rundir: /scratch3/NCEPDEV/global/Anna.Smoot/uw-aigfs/demo
+forecast:
+  aigfs_inference:
+    execution:
+      executable: uw execute -h  # placeholder; #71 nulled it but uwtools schema still requires a string
+    forecast_length: 6
+    forecast_freq: 6
+post:
+  aigfs_post:
+    execution:
+      executable: uw execute -h
+prep:
+  aigfs_ics:
+    execution:
+      executable: uw execute -h

@@ -2,6 +2,9 @@ forecast:
   aigfs_inference:
     post_write_hook: 'ecflow_client {{ "--ssl " if ecflow.server.ECF_SSL | default(true) else "" }}--alter change event release_f{fff} set $ECF_NAME'
 ecflow:
+  server:
+    ECF_HOME: '{{ app.rundir }}/ecf'
+    ECF_SSL: true
   suitedef:
     scheduler: '{{ app.platform.scheduler.type }}'
     suite_retro:
