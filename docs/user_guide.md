@@ -271,7 +271,7 @@ ecflow_client --load=suite.def
 ecflow_client --begin=retro
 ```
 
-**6. Shut down.** Return to the shell running the server and Ctrl-C.
+**6. Shut down.** Return to the shell running the server by pressing Ctrl-C.
 
 #### Reference
 
