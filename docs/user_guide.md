@@ -261,7 +261,7 @@ ecflow_client --get_state=/retro
 
 Or use the ecFlow GUI — see [ecFlow GUI (`ecflow_ui`)](#ecflow-gui-ecflow_ui) in the reference below.
 
-**5. Reload after editing `base.yaml` or `suite.def`.** Regenerate the rundir with `setup --workflow ecflow ...` first, then:
+**5. To delete the loaded suite configuration and load an updated version** after re-running the `setup` command from [Setting Up the Final Config](#setting-up-the-final-config) to recreate the run directory, or after manually editing `suite.def`:
 
 ```bash
 ecflow_client --halt=yes
