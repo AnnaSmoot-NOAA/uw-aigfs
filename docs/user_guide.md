@@ -339,7 +339,7 @@ The suite appears in the tree view; right-click nodes for state, job output, req
 | `{sfc_path}`    | Absolute path to the just-written `*.sfc.fXXX.grib2` file |
 | `{pres_path}`   | Absolute path to the just-written `*.pres.fXXX.grib2` file |
 
-A non-zero exit from the hook is logged at `WARNING` and does **not** abort the forecast; each leadtime is fired independently.
+A non-zero exit from the hook is logged at `WARNING` level and does **not** abort the forecast; each leadtime is processed independently.
 
 #### Troubleshooting on Ursa
 
