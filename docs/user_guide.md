@@ -275,7 +275,7 @@ ecflow_client --begin=retro
 
 #### Reference
 
-**Server states.** `uw ecflow server` starts the server in the `halted` state — no scheduling happens until `--restart` moves it to `RUNNING`. See the [ecFlow glossary → server states](https://ecflow.readthedocs.io/en/latest/glossary.html#term-server-states) for the state-machine details.
+**Server states.** `uw ecflow server` starts the server in the `halted` state — no scheduling happens until `--restart` moves it to `running`. See the [ecFlow glossary → server states](https://ecflow.readthedocs.io/en/latest/glossary.html#term-server-states) for the state-machine details.
 
 **The `ecflow.server` block in `aigfs.yaml`.** `setup --workflow ecflow` always emits this block — the ecFlow workflow config seeds it with defaults (`ECF_HOME: {{ app.rundir }}/ecf`, `ECF_SSL: true`), and any values you set under `ecflow.server:` in your user config override those. Block content is described in the [uwtools ecFlow server YAML docs](https://uwtools.readthedocs.io/en/main/sections/user_guide/yaml/ecflow.html#server-configuration).
 
