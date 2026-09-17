@@ -1,4 +1,10 @@
+forecast:
+  aigfs_inference:
+    post_write_hook: 'ecflow_client {{ "--ssl " if ecflow.server.ECF_SSL | default(true) else "" }}--alter change event release_f{fff} set $ECF_NAME'
 ecflow:
+  server:
+    ECF_HOME: '{{ app.rundir }}/ecf'
+    ECF_SSL: true
   suitedef:
     scheduler: '{{ app.platform.scheduler.type }}'
     suite_retro:
@@ -7,22 +13,25 @@ ecflow:
         CONFIG: '{{ app.rundir}}/aigfs.yaml'
         ECF_HOME: '{{ app.rundir }}/ecf'
         ECF_INCLUDE: '{{ app.home }}/include'
+        ECF_JOB_CMD: 'ecflow_client {{ "--ssl " if ecflow.server.ECF_SSL | default(true) else "" }}--alter=add variable ECF_RID $(sbatch --parsable -o %ECF_JOBOUT% %ECF_JOB%) %ECF_NAME%'
+        ECF_KILL_CMD: 'scancel %ECF_RID% && ecflow_client {{ "--ssl " if ecflow.server.ECF_SSL | default(true) else "" }}--force=aborted %ECF_NAME%'
+        ECF_STATUS_CMD: 'sacct -lj %ECF_RID%'
         PLATFORM: '{{ app.platform.name }}'
+        SSL: '{{ "--ssl" if ecflow.server.ECF_SSL | default(true) else "" }}'
       family_datetimes:
         repeat_datetime:
           variable: CYCLE
           start: '{{ app.first_cycle.strftime("%Y%m%dT%H%M%S") }}'
           end: '{{ app.last_cycle.strftime("%Y%m%dT%H%M%S") }}'
           step: '{% set f = app.cycle_freq.total_seconds() %}{{ "%02d:%02d:%02d" % (f // 3600, (f % 3600) / 60, f % 60 ) }}'
-        family_forecast:
+        family_cycle:
           task_prep:
             script: &script
               includes:
                 entry:
-                  - head.h
-                  - envir-1.h
+                  - <head.h>
                 exit:
-                  - tail.h
+                  - <tail.h>
               manual: Prepares AIGFS ICS from GFS.
               batchargs: !dict '{{ prep.aigfs_ics.execution.batchargs }}'
               body: |
@@ -61,9 +70,14 @@ ecflow:
                 batchargs: !dict '{{ post.aigfs_post.execution.batchargs }}'
                 body: |
                   source %APPDIR%/bin/activate-%PLATFORM%
-                  module load wgrib2
-                  export FH=%FHR%
-                  export INPUTDIR={{ forecast.aigfs_inference.rundir }}
-                  %APPDIR%/bin/post
+                  export FHR=%FHR%
+                  uw execute \
+                    --module aigfs.drivers.post \
+                    --classname AIGFSPost \
+                    --task run \
+                    --config %CONFIG% \
+                    --cycle $ISOCYCLE \
+                    --key-path post \
+                    --leadtime %FHR%
               vars:
-                FHR: '{{ ec.fhr }}'
+                FHR: '{{ ec.fhr | replace("f", "") | int }}'

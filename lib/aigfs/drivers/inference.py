@@ -124,6 +124,7 @@ class AIGFSInference(DriverCycleBased):
             start_date=pd.to_datetime(ds.datetime.to_numpy()[0][-1]),
             case_name=STR.aigfs,
             grib_out_config=Path(self.config[STR.grib_out_config]),
+            post_write_hook=self.config.get(STR.post_write_hook),
         )
         inputs, targets, forcings = itfs.ref
         diffs_stddev, mean, stddev = norm_stats.ref

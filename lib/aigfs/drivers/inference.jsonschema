@@ -36,6 +36,10 @@
           "description": "Path to GraphCast weights .npz",
           "type": "string"
         },
+        "post_write_hook": {
+          "description": "Optional shell command run after each leadtime's GRIB2 pair is written",
+          "type": "string"
+        },
         "rundir": {
           "description": "Path to the driver run directory",
           "type": "string"
