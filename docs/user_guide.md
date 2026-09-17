@@ -245,7 +245,7 @@ env | sort | grep ^ECF_   # optional: confirm what was set
 
 Once `ECF_HOST`/`ECF_PORT`/`ECF_SSL` are exported, subsequent `ecflow_client` calls read them from the environment — no `--host`, `--port`, or `--ssl` needed on each call.
 
-**3. Load the suite, move the server to `RUNNING`, and begin.**
+**3. Load the suite, move the server to `running`, and begin.**
 
 ```bash
 ecflow_client --load=suite.def
