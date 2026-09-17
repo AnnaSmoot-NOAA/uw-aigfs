@@ -231,7 +231,6 @@ Assumes you've followed [Installing](#installing) and [Setting Up the Final Conf
 ```bash
 ssh uecflow01
 cd <rundir>
-source <path-to>/bin/activate-ursa
 uw ecflow server --config-file aigfs.yaml --report >server.json 2>server.log &
 ```
 
