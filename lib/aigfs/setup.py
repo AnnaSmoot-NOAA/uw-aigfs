@@ -28,7 +28,7 @@ def compose_configs(workflow: str, platform: str, user_config_files: list[Path])
         )
         configs: list[str | Path] = [
             ETCDIR / STR.base_yaml,
-            ETCDIR / STR.workflow / workflow / STR.base_yaml,
+            ETCDIR / STR.workflow / f"{workflow}.yaml",
             PLATFORMDIR / f"{platform}.yaml",
             *user_config_files,
             reserved,

@@ -5,7 +5,7 @@ from functools import cached_property
 from pathlib import Path
 
 import xarray as xr
-from iotaa import Asset, collection, task
+from iotaa import Asset, collection, external, task
 from uwtools.api.config import get_yaml_config
 from uwtools.api.driver import DriverCycleBased, FileStager
 from uwtools.api.utils import atomic, run_shell_cmd
@@ -83,7 +83,10 @@ class AIGFSICs(DriverCycleBased, FileStager):
         netCDF files comprising extracted GRIB variables at various levels.
         """
         yield "netCDF files from GRIB inputs"
-        yield [self._ncfile(path, cmd) for path, cmd in self._ncfiles_to_cmds.items()]
+        if (paths_cmds := self._ncfiles_to_cmds) is None:
+            yield self._no_ncfiles()
+        else:
+            yield [self._ncfile(path, cmd) for path, cmd in paths_cmds.items()]
 
     @collection
     def provisioned_rundir(self) -> Iterator:
@@ -112,6 +115,11 @@ class AIGFSICs(DriverCycleBased, FileStager):
         with atomic(path) as tmp:
             run_shell_cmd(cmd=cmd.format(ncfile=tmp), cwd=self.rundir, taskname=taskname)
 
+    @external
+    def _no_ncfiles(self) -> Iterator:
+        yield "Missing netCDF files"
+        yield Asset(None, lambda: False)
+
     # Public helper methods
 
     @classmethod
@@ -124,7 +132,7 @@ class AIGFSICs(DriverCycleBased, FileStager):
     # Private helper methods
 
     @cached_property
-    def _ncfiles_to_cmds(self) -> dict[Path, str]:
+    def _ncfiles_to_cmds(self) -> dict[Path, str] | None:
         """
         A mapping from netCDF file paths to the commands that create them.
         """
@@ -146,7 +154,8 @@ class AIGFSICs(DriverCycleBased, FileStager):
                     logging.info("Loading %s", var)
                     if not (m := re.match(rf"^.*\.t(\d\d)z{suffix}$", path.name)):
                         msg = "GRIB files don't have names expected by this driver!"
-                        raise ValueError(msg)
+                        logging.error(msg)
+                        return None
                     if load_once is True:
                         cfg[STR.load_once] = False
                     fmt = lambda x: re.sub(r"[|()]", ".", x).replace(":", "")

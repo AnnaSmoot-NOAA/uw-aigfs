@@ -152,8 +152,8 @@ Use the _Conversation_ tab of your PR to ask for help with any difficulties you 
 │   ├── modulefiles                # System modules
 │   ├── platform                   # Per-platform YAML overrides
 │   └── workflow                   # Workflow files
-│       ├── ecflow                 # ecFlow workflow support
-│       └── rocoto                 # Rocoto workflow support
+│       ├── ecflow.yaml            # ecFlow base config
+│       └── rocoto.yaml            # Rocoto base config
 ├── lib                            # Python library code
 │   └── aigfs                      # The AIGFS python package
 │       ├── conftest.py            # Unit-test fixtures
@@ -179,7 +179,7 @@ Additionally, each Python `.py` module is accompanied by a `_test.py` unit-test 
 
 **Configuration** follows the `uwtools` YAML model. `etc/base.yaml` is the baseline; it is merged with workflow and platform configs, then with any user-provided YAML configs by `bin/setup` using `uwtools.api.config.compose`. The resulting `aigfs.yaml` is the single source of truth at runtime.
 
-**Workflow** is managed by [Rocoto](https://github.com/NOAA-GSL/rocoto). The `etc/workflow/rocoto/base.yaml` template is realized by `uwtools` to produce `rocoto.xml`. Task dependencies (prep → forecast → post) are expressed in that template.
+**Workflow** is managed by [Rocoto](https://github.com/NOAA-GSL/rocoto). The `etc/workflow/rocoto.yaml` template is realized by `uwtools` to produce `rocoto.xml`. Task dependencies (prep → forecast → post) are expressed in that template.
 
 When adding a new workflow stage, you will typically need to:
 
@@ -187,7 +187,7 @@ When adding a new workflow stage, you will typically need to:
 1. Add a unit-test module alongside the driver module.
 1. Add a `.jsonschema` file for validation of the driver's config alongside the driver module.
 1. Add corresponding configuration block(s) in `etc/base.yaml` and potentially in the `etc/platform/<system>.yaml` configs.
-1. Add new workflow configuration in `etc/workflow/<engine>/base.yaml`.
+1. Add new workflow configuration in `etc/workflow/<engine>.yaml`.
 1. Update this documentation.
 
 ## Deploying Realtime AIGFS on Ursa

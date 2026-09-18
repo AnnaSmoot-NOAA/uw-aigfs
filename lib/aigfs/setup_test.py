@@ -8,7 +8,7 @@ from aigfs import setup
 from aigfs.common import HOMEDIR
 from aigfs.strings import STR
 
-ECFLOW_BASE_YAML = setup.ETCDIR / STR.workflow / "ecflow" / STR.base_yaml
+ECFLOW_BASE_YAML = setup.ETCDIR / STR.workflow / "ecflow.yaml"
 INCLUDE_DIR = HOMEDIR / "include"
 
 
@@ -69,7 +69,7 @@ def test_setup_compose_configs(tmp_path, workflow):
     compose_to_dict.assert_called_once_with(
         [
             setup.ETCDIR / STR.base_yaml,
-            setup.ETCDIR / STR.workflow / workflow / STR.base_yaml,
+            setup.ETCDIR / STR.workflow / f"{workflow}.yaml",
             setup.PLATFORMDIR / "ursa.yaml",
             Path("/path/to/a.yaml"),
             reserved_path,

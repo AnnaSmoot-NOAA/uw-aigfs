@@ -1,12 +1,12 @@
 from itertools import product
 from pathlib import Path
 from textwrap import dedent
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, PropertyMock, patch
 
 import numpy as np
 import xarray as xr
 from iotaa import Asset, external, task
-from pytest import fixture, mark, raises
+from pytest import fixture, mark
 
 from aigfs.drivers import ics
 from aigfs.strings import STR
@@ -239,6 +239,12 @@ def test_drivers_AIGFSICs_ncfiles(varkit):
         _ncfile.assert_any_call(path, cmd)
 
 
+def test_drivers_AIGFSICs_ncfiles__no_ncfiles(driverobj):
+    with patch.object(type(driverobj), "_ncfiles_to_cmds", PropertyMock(return_value=None)):
+        node = driverobj.ncfiles()
+    assert not node.ready
+
+
 def test_drivers_AIGFSICs_provisioned_rundir(driverobj):
     node = driverobj.provisioned_rundir()
     assert node.req is None
@@ -279,13 +285,13 @@ def test_drivers_AIGFSICs__ncfiles_to_cmds(varkit):
     assert mapping == expected
 
 
-def test_drivers_AIGFSICs__ncfiles_to_cmds__bad_grib_filenames(varkit):
+def test_drivers_AIGFSICs__ncfiles_to_cmds__bad_grib_filenames(varkit, logcap):
     driverobj, _ = varkit
     config = driverobj._config[STR.files_to_link]
     key = next(iter(config))
     config[key.replace("t00z", "z00t")] = config[key]
-    with raises(ValueError, match="GRIB files don't have names expected by this driver!"):
-        assert driverobj._ncfiles_to_cmds
+    assert driverobj._ncfiles_to_cmds is None
+    assert "GRIB files don't have names expected by this driver!" in logcap.text
 
 
 # Schema tests
