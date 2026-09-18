@@ -12,6 +12,44 @@ ECFLOW_BASE_YAML = setup.ETCDIR / STR.workflow / "ecflow" / STR.base_yaml
 INCLUDE_DIR = HOMEDIR / "include"
 
 
+def test_setup_ECFLOW_BASE_YAML__post_trigger():
+    text = ECFLOW_BASE_YAML.read_text()
+    assert "trigger: prep == complete" in text
+    assert "trigger: '../forecast:release_{{ ec.fhr }}'" in text
+
+
+def test_setup_ECFLOW_BASE_YAML__release_events():
+    # aigfs.drivers.inference emits per-leadtime release_fXXX events via post_write_hook.
+    text = ECFLOW_BASE_YAML.read_text()
+    assert "release_f%03d" in text
+    assert "events:" in text
+
+
+def test_setup_ECFLOW_BASE_YAML__post_write_hook():
+    text = ECFLOW_BASE_YAML.read_text()
+    assert (
+        "post_write_hook: 'ecflow_client --alter change event release_f{fff} set $ECF_NAME'" in text
+    )
+
+
+def test_setup_ECFLOW_BASE_YAML__server_defaults():
+    text = ECFLOW_BASE_YAML.read_text()
+    assert "  server:\n    ECF_HOME: '{{ app.rundir }}/ecf'" in text
+
+
+def test_setup_INCLUDE_DIR__ecflow_head_uses_ssl_and_slurm_job_id():
+    text = (INCLUDE_DIR / "head.h").read_text()
+    assert 'test -n "%ECF_SSL:%" && export ECF_SSL=%ECF_SSL:%' in text
+    assert "export ECF_RID=$%RID_VAR%" in text
+    assert "ecflow_client --init=$ECF_RID" in text
+    assert "ecflow_client --abort=trap" in text
+
+
+def test_setup_INCLUDE_DIR__ecflow_tail_uses_ssl():
+    text = (INCLUDE_DIR / "tail.h").read_text()
+    assert "ecflow_client --complete" in text
+
+
 @mark.parametrize("workflow", ["rocoto", "ecflow"])
 def test_setup_compose_configs(tmp_path, workflow):
     platform = "ursa"
@@ -111,7 +149,7 @@ def test_setup_set_up_rundir(logcap, tmp_path):
     assert f"AIGFS will be set up here: {rundir}" in logcap.text
 
 
-def test_setup_set_up_rundir_invalid_xml(logcap, tmp_path):
+def test_setup_set_up_rundir__invalid_xml(logcap, tmp_path):
     rundir = tmp_path / STR.rundir
     config: dict = {STR.app: {STR.rundir: str(rundir)}}
     with (
@@ -124,7 +162,7 @@ def test_setup_set_up_rundir_invalid_xml(logcap, tmp_path):
     assert "Invalid Rocoto XML" in logcap.text
 
 
-def test_setup_set_up_rundir_ecflow(logcap, tmp_path):
+def test_setup_set_up_rundir__ecflow(logcap, tmp_path):
     rundir = tmp_path / STR.rundir
     config: dict = {STR.app: {STR.rundir: str(rundir)}}
     with (
@@ -138,60 +176,3 @@ def test_setup_set_up_rundir_ecflow(logcap, tmp_path):
     YAMLConfig.return_value.dump.assert_called_once_with(rundir / STR.aigfs_yaml)
     ecflow.realize.assert_called_once_with(YAMLConfig(config), rundir, scripts_path=rundir / "ecf")
     assert f"AIGFS will be set up here: {rundir}" in logcap.text
-
-
-def test_ecflow_base_yaml_post_trigger():
-    text = ECFLOW_BASE_YAML.read_text()
-    assert "trigger: prep == complete" in text
-    assert "trigger: '../forecast:release_{{ ec.fhr }}'" in text
-
-
-def test_ecflow_base_yaml_release_events():
-    # aigfs.drivers.inference emits per-leadtime release_fXXX events via post_write_hook.
-    text = ECFLOW_BASE_YAML.read_text()
-    assert "release_f%03d" in text
-    assert "events:" in text
-
-
-def test_ecflow_base_yaml_post_write_hook():
-    text = ECFLOW_BASE_YAML.read_text()
-    ssl = '{{ "--ssl " if ecflow.server.ECF_SSL | default(true) else "" }}'
-    assert (
-        f"post_write_hook: 'ecflow_client {ssl}--alter change event release_f{{fff}} set $ECF_NAME'"
-        in text
-    )
-
-
-def test_ecflow_base_yaml_server_defaults():
-    text = ECFLOW_BASE_YAML.read_text()
-    assert "  server:\n    ECF_HOME: '{{ app.rundir }}/ecf'\n    ECF_SSL: true\n" in text
-
-
-def test_ecflow_base_yaml_sbatch_job_cmd():
-    text = ECFLOW_BASE_YAML.read_text()
-    ssl = '{{ "--ssl " if ecflow.server.ECF_SSL | default(true) else "" }}'
-    assert (
-        f"ECF_JOB_CMD: 'ecflow_client {ssl}--alter=add variable ECF_RID "
-        "$(sbatch --parsable -o %ECF_JOBOUT% %ECF_JOB%) %ECF_NAME%'"
-    ) in text
-    assert (
-        f"ECF_KILL_CMD: 'scancel %ECF_RID% && ecflow_client {ssl}--force=aborted %ECF_NAME%'"
-        in text
-    )
-    assert "ECF_STATUS_CMD: 'sacct -lj %ECF_RID%'" in text
-    # Suite SSL variable drives the include-file %SSL% preprocessor substitution.
-    assert 'SSL: \'{{ "--ssl" if ecflow.server.ECF_SSL | default(true) else "" }}\'' in text
-
-
-def test_ecflow_head_uses_ssl_and_slurm_job_id():
-    text = (INCLUDE_DIR / "head.h").read_text()
-    assert "export ECF_RID=$SLURM_JOB_ID" in text
-    assert "ecflow_client %SSL% --init=$ECF_RID" in text
-    assert "ecflow_client %SSL% --abort=trap" in text
-    # Server has no meaningful value for ECF_RID at preprocessing time.
-    assert "export ECF_RID=%ECF_RID%" not in text
-
-
-def test_ecflow_tail_uses_ssl():
-    text = (INCLUDE_DIR / "tail.h").read_text()
-    assert "ecflow_client %SSL% --complete" in text

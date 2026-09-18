@@ -58,6 +58,8 @@ class Grib2Writer:
         self.post_write_hook = post_write_hook
         self.start_date = start_date
 
+    # Public methods
+
     def create_grib2_message(
         self, var: str, lead: int, level: int | None = None
     ) -> grib2io.Grib2Message:
@@ -171,6 +173,8 @@ class Grib2Writer:
             logging.info("Running shell subprocess %s", cmd)
             subprocess.run(cmd, check=True)
         self._run_post_write_hook(lead, outfile_sfc, outfile_pres)
+
+    # Private methods
 
     def _run_post_write_hook(self, lead: int, outfile_sfc: Path, outfile_pres: Path) -> None:
         if not self.post_write_hook:

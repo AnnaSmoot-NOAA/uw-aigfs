@@ -8,7 +8,7 @@ dependencies:
   - pip
   - pydantic 2.13.*
   - python 3.14.*
-  - uwtools 2.20.*
+  - uwtools 2.20.0.* # sync RtD URLs in .md docs with this
   - wgrib2 3.8.*
   - xarray 2025.10.*
   - pip:

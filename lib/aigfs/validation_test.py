@@ -6,6 +6,8 @@ from pytest import fixture, mark, raises
 from aigfs import validation
 from aigfs.strings import STR
 
+# Fixtures
+
 
 @fixture
 def args_app(args_platform, args_time, tmp_path, utc):
@@ -59,6 +61,11 @@ def args_time():
     )
 
 
+# Tests
+
+# NB: Tests are ordered to follow the ordering of classes and functions in the tested module.
+
+
 @mark.parametrize("compute", ["a", None])
 @mark.parametrize("netaccess", ["b", None])
 @mark.parametrize("task", ["c", None])
@@ -86,7 +93,7 @@ def test_validation_Scheduler(args_scheduler):
     assert obj.type == "slurm"
 
 
-def test_validation_Scheduler_bad_type():
+def test_validation_Scheduler__bad_type():
     with raises(ValidationError) as e:
         validation.Scheduler(type="foo")  # type: ignore[arg-type]
     assert e.value.error_count() == 1
@@ -98,7 +105,7 @@ def test_validation_Platform(args_platform):
     assert validation.Platform(**args_platform)
 
 
-def test_validation_Platform_bad_name(args_platform, with_set):
+def test_validation_Platform__bad_name(args_platform, with_set):
     with raises(ValidationError) as e:
         validation.Platform(**with_set(args_platform, "foo", STR.name))
     assert e.value.error_count() == 1
@@ -125,19 +132,19 @@ def test_validation_App(args_app, with_del):
 
 
 @mark.parametrize("hours", [0, -1])
-def test_validation_App_bad_cycle_freq_negative(args_app, hours):
+def test_validation_App__bad_cycle_freq_negative(args_app, hours):
     args_app["cycle_freq"] = timedelta(hours=hours)
     with raises(ValueError, match="cycle_freq must be greater than 0"):
         validation.App(**args_app)
 
 
-def test_validation_App_bad_cycle_freq_not_0_mod_6(args_app):
+def test_validation_App__bad_cycle_freq_not_0_mod_6(args_app):
     args_app["cycle_freq"] = timedelta(hours=1)
     with raises(ValueError, match="cycle_freq must be a multiple of 6"):
         validation.App(**args_app)
 
 
-def test_validation_App_bad_first_vs_last_cycle(args_app, utc):
+def test_validation_App__bad_first_vs_last_cycle(args_app, utc):
     args_app["last_cycle"] = utc(1970, 1, 1, 0)
     with raises(ValueError, match="last_cycle cannot precede first_cycle"):
         validation.App(**args_app)
@@ -156,7 +163,7 @@ def test_validation_validate(args_config, with_set):
     assert validation.validate(config=with_set(args_config, {}, "user"))
 
 
-def test_validation_validate_fail(args_app, logcap):
+def test_validation_validate__fail(args_app, logcap):
     del args_app[STR.rundir]
     with raises(SystemExit) as e:
         validation.validate({STR.app: args_app})

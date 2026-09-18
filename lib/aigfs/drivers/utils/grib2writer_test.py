@@ -260,7 +260,7 @@ def test_drivers_utils_grib2writer_save_grib2_cumsum_ensemble_dropped(writer_ens
         },
     )
     writer_ens.save_grib2(ds, tmp_path)
-    # Should have been dropped — check the sfc file has no cumsum messages:
+    # Should have been dropped -- check the sfc file has no cumsum messages:
     sfc_file = tmp_path / "aigefs.t18z.sfc.f012.grib2"
     with grib2io.open(str(sfc_file)) as f:
         msgs = list(f)

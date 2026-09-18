@@ -25,7 +25,7 @@ Welcome to the `uw-aigfs` Contributor Guide. Please familiarize yourself with an
 
 ## Developer Setup
 
-> **Note:** The installation of conda environments is only meant for systems other than WCOSS2.
+> **Note:** The installation of conda environments is only meant for systems other than WCOSS. Do not run this step on WCOSS.
 
 `uw-aigfs` installs and manages its own conda installation in the `conda/` subdirectory of the repository root. To set up a development environment, run:
 
@@ -35,15 +35,17 @@ make devenv
 
 This installs [Miniforge](https://github.com/conda-forge/miniforge) into `conda/`, creates the `aigfs` conda environment from `etc/env/environment.yml`, then installs additional developer tools (linters, formatters, test runners) listed in `etc/env/devpkgs.yaml`.
 
+This command can also be run later to upgrade a non-development environment to a developer environment.
+
 After the initial installation, activate the environment in a fresh shell with:
 
 ```bash
 source bin/activate-<platform>
 ```
 
-where `<platform>` is `ursa` or `wcoss2`, or `conda` on a developer workstation (see the [User Guide](user_guide.md#installing) for details).
+where `<platform>` is `ursa` or `wcoss2`, or `conda` on a developer workstation (see the [User Guide](user_guide.md#install) for details).
 
-> **Note on disk space:** The conda installation requires several gigabytes of disk space. Clone `uw-aigfs` to a location with a sufficiently large disk quota — not your HPC home directory.
+> **Note on disk space:** The conda installation requires several gigabytes of disk space. Clone `uw-aigfs` to a location with a sufficiently large disk quota -- not your HPC home directory.
 
 ## Code Quality
 
@@ -121,7 +123,7 @@ Your PR is ready to merge when:
 1. It has been approved by a required number of `uw-aigfs` core-developer reviewers.
 2. All required CI checks have passed.
 
-These criteria and their current statuses are shown at the bottom of the PR's _Conversation_ tab. CI checks take some time to run — please be patient.
+These criteria and their current statuses are shown at the bottom of the PR's _Conversation_ tab. CI checks take some time to run -- please be patient.
 
 If you have write access to the repository, you may merge your PR yourself once the above conditions are met. Otherwise, a core developer will merge it for you.
 
@@ -173,7 +175,7 @@ Additionally, each Python `.py` module is accompanied by a `_test.py` unit-test 
 
 ### Key Concepts
 
-**Drivers** (`drivers/`) implement [uwtools](https://uwtools.readthedocs.io/en/main/) driver classes using the [iotaa](https://github.com/maddenp/iotaa) task framework. Each driver exposes tasks (Python methods decorated with `@task`, `@collection`, or `@external`) that declare their inputs and outputs as `Asset` objects. The `uw execute` command (called from Rocoto job scripts) resolves and runs these tasks.
+**Drivers** (`drivers/`) implement [uwtools](https://uwtools.readthedocs.io/en/2.20.0/) driver classes using the [iotaa](https://github.com/maddenp/iotaa) task framework. Each driver exposes tasks (Python methods decorated with `@task`, `@collection`, or `@external`) that declare their inputs and outputs as `Asset` objects. The `uw execute` command (called from Rocoto job scripts) resolves and runs these tasks.
 
 **Configuration** follows the `uwtools` YAML model. `etc/base.yaml` is the baseline; it is merged with workflow and platform configs, then with any user-provided YAML configs by `bin/setup` using `uwtools.api.config.compose`. The resulting `aigfs.yaml` is the single source of truth at runtime.
 
