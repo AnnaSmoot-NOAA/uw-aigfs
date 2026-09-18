@@ -361,15 +361,14 @@ See the [ecFlowUI](https://ecflow.readthedocs.io/en/5.18.0/ug/ecflow_ui/) docume
 
 #### Post-Write Hook
 
-`forecast.aigfs_inference.post_write_hook` is an optional string; when set, it is executed as a shell command by `aigfs.drivers.utils.grib2writer.Grib2Writer` after each leadtime's surface + pressure GRIB2 files have been atomically written. The following placeholders, if present in the command value, are substituted per invocation:
+`forecast.aigfs_inference.post_write_hook` is an optional string; when set, it is executed as a shell command by `aigfs.drivers.utils.grib2writer.Grib2Writer` after each leadtime's surface + pressure GRIB2 files have been atomically written. The following environment variables may be used the the command and will be exported to the shell in which it runs:
 
-| Placeholder     | Value                                                      |
-|-----------------|------------------------------------------------------------|
-| `{cycle_iso}`   | ISO8601 cycle string                                       |
-| `{fff}`         | Zero-padded 3-digit leadtime hours (`"000"`, `"006"`, ...) |
-| `{leadtime}`    | Integer leadtime hours (`0`, `6`, ...)                     |
-| `{pres_path}`   | Absolute path to the just-written `*.pres.fXXX.grib2` file |
-| `{sfc_path}`    | Absolute path to the just-written `*.sfc.fXXX.grib2` file  |
+| Placeholder  | Value                                                      |
+|--------------|------------------------------------------------------------|
+| `$CYCLE`     | ISO8601 cycle string                                       |
+| `$LEADTIME`  | Integer leadtime hours (`0`, `6`, ...)                     |
+| `$PATH_PRES` | Absolute path to the just-written `*.pres.fXXX.grib2` file |
+| `$PATH_SFC`  | Absolute path to the just-written `*.sfc.fXXX.grib2` file  |
 
 A non-zero exit from the hook is logged at `WARNING` level and does not abort the forecast; each leadtime is processed independently.
 

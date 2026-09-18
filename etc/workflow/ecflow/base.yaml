@@ -1,6 +1,6 @@
 forecast:
   aigfs_inference:
-    post_write_hook: 'ecflow_client --alter change event release_f{fff} set $ECF_NAME'
+    post_write_hook: 'ecflow_client --alter change event release_f$(printf "%03d" $LEADTIME) set $ECF_NAME'
 ecflow:
   server:
     ECF_HOME: '{{ app.rundir }}/ecf'

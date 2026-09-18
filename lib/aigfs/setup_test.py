@@ -28,7 +28,8 @@ def test_setup_ECFLOW_BASE_YAML__release_events():
 def test_setup_ECFLOW_BASE_YAML__post_write_hook():
     text = ECFLOW_BASE_YAML.read_text()
     assert (
-        "post_write_hook: 'ecflow_client --alter change event release_f{fff} set $ECF_NAME'" in text
+        "post_write_hook: 'ecflow_client --alter change event "
+        'release_f$(printf "%03d" $LEADTIME) set $ECF_NAME\'' in text
     )
 
 

@@ -343,15 +343,15 @@ def test_drivers_utils_grib2writer_save_grib2_post_write_hook(
     grib_out_config, start_date, ds, tmp_path
 ):
     marker = tmp_path / "hook.log"
-    hook = f"echo fff={{fff}} lead={{leadtime}} cycle={{cycle_iso}} >> {marker}"
+    hook = f"echo lead=$LEADTIME cycle=$CYCLE >{marker}"
     writer = Grib2Writer(
-        start_date=start_date,
         case_name=STR.aigfs,
         grib_out_config=grib_out_config,
         post_write_hook=hook,
+        start_date=start_date,
     )
     writer.save_grib2(ds, tmp_path)
-    assert marker.read_text().strip() == "fff=006 lead=6 cycle=2025-10-01T18:00:00"
+    assert marker.read_text().strip() == "lead=6 cycle=2025-10-01T18:00:00"
 
 
 def test_drivers_utils_grib2writer_save_grib2_post_write_hook_failure(

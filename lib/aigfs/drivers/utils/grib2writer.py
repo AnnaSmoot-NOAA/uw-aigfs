@@ -179,13 +179,15 @@ class Grib2Writer:
     def _run_post_write_hook(self, lead: int, outfile_sfc: Path, outfile_pres: Path) -> None:
         if not self.post_write_hook:
             return
-        cmd = self.post_write_hook.format(
-            fff=f"{lead:03d}",
-            leadtime=lead,
-            cycle_iso=self.start_date.strftime("%Y-%m-%dT%H:%M:%S"),
-            sfc_path=str(outfile_sfc),
-            pres_path=str(outfile_pres),
+        env = {
+            "CYCLE": self.start_date.strftime("%Y-%m-%dT%H:%M:%S"),
+            "LEADTIME": str(lead),
+            "PATH_PRES": str(outfile_pres),
+            "PATH_SFC": str(outfile_sfc),
+            **os.environ,
+        }
+        success, _ = run_shell_cmd(
+            cmd=self.post_write_hook, env=dict(sorted(env.items())), taskname="post_write_hook"
         )
-        success, _ = run_shell_cmd(cmd, taskname="post_write_hook")
         if not success:
             logging.warning("post_write_hook failed")
