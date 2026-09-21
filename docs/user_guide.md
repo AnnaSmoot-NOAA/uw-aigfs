@@ -18,7 +18,7 @@ Welcome to the `uw-aigfs` User Guide. This guide describes how to install, confi
   - [Run with Rocoto](#run-with-rocoto)
   - [Run with ecFlow](#run-with-ecflow)
     - [Start the Server](#start-the-server)
-    - [Reload a New Experiment on the Running Server](#reload-a-new-experiment-on-the-running-server)
+    - [Reload a Modified Experiment on the Running Server](#reload-a-modified-experiment-on-the-running-server)
 - [Reference](#reference)
   - [The Model Directory](#the-model-directory)
   - [ecFlow Reference](#ecflow-reference)
@@ -258,9 +258,9 @@ ecflow_client --get_state=/retro
 
 Alternatively, for more human-friendly monitoring, use the [ecFlow GUI (`ecflow_ui`)](#gui).
 
-#### Reload a New Experiment on the Running Server
+#### Reload a Modified Experiment on the Running Server
 
-If the ecFlow server is still running from a previous experiment and you want to load an updated suite -- for example, after re-running the `setup` command from [Configure](#configure) to regenerate the run directory with new configuration, or after manually editing `suite.def` -- halt the current suite, delete it from the server, then reload and begin:
+If the ecFlow server is still running and you want to load a modified suite -- for example, after re-running the `setup` command from [Configure](#configure) to regenerate the run directory with new configuration -- halt the current suite, delete it from the server, then reload and begin:
 
 ```bash
 ecflow_client --halt=yes
@@ -270,7 +270,7 @@ ecflow_client --load=suite.def
 ecflow_client --begin=retro
 ```
 
-The server itself keeps running throughout; only the loaded suite is replaced. You do not need to re-run `uw ecflow server` or re-`eval` `server.json` -- the exported `ECF_HOST`/`ECF_PORT`/`ECF_SSL` in your client shell still point at the same server.
+The server itself keeps running throughout; only the loaded suite is replaced. You do not need to re-run `uw ecflow server` or re-`eval` `server.json` -- the exported `ECF_HOST`/`ECF_PORT`/`ECF_SSL` in your client shell still point at the same server. If instead you are running `ecflow_client` from a new shell (for example, after closing and reopening your terminal), re-run the `eval "$(jq ...)"` step from [Start the Server](#start-the-server) to re-export those variables against the same running server.
 
 When you are finished with an experiment, you may close the shell/terminal you used for `ecflow_client` commands, return to the shell/terminal in which the ecFlow server is running, and shut down the server by pressing Ctrl-C.
 
