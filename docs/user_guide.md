@@ -222,6 +222,7 @@ uw ecflow server --config-file aigfs.yaml --report >server.json
 ```
 
 This starts the ecFlow server, redirecting a JSON report containing environment-variable information to the file `server.json`. Log messages (written to `stderr`) will appear in the terminal.
+#### Load, Begin, and Check the Suite
 
 Open a new shell/terminal to use for interacting with the ecFlow server. From the root of your git clone, activate the AIGFS runtime environment:
 
