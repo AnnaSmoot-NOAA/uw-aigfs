@@ -371,7 +371,7 @@ See the [ecFlowUI](https://ecflow.readthedocs.io/en/5.18.0/ug/ecflow_ui/) docume
 
 `forecast.aigfs_inference.post_write_hook` is an optional string; when set, it is executed as a shell command by `aigfs.drivers.utils.grib2writer.Grib2Writer` after each leadtime's surface + pressure GRIB2 files have been atomically written. The following environment variables may be used in the command and will be exported to the shell in which it runs:
 
-| Variable     | Value                                                      |
+| Bash Variable     | Value                                                      |
 |--------------|------------------------------------------------------------|
 | `$CYCLE`     | ISO8601 cycle string                                       |
 | `$LEADTIME`  | Integer leadtime hours (`0`, `6`, ...)                     |
