@@ -17,6 +17,8 @@ Welcome to the `uw-aigfs` User Guide. This guide describes how to install, confi
 - [Run the Workflow](#run-the-workflow)
   - [Run with Rocoto](#run-with-rocoto)
   - [Run with ecFlow](#run-with-ecflow)
+    - [Start the Server](#start-the-server)
+    - [Reload a New Experiment on the Running Server](#reload-a-new-experiment-on-the-running-server)
 - [Reference](#reference)
   - [The Model Directory](#the-model-directory)
   - [ecFlow Reference](#ecflow-reference)
@@ -211,6 +213,8 @@ The following steps outline an ecFlow-based run on Ursa.
 
 > **Note for RDHPCS users:** The ecFlow server must run on a dedicated ecFlow node, not a front end node. On Ursa this is `uecflow01`.
 
+#### Start the Server
+
 From your run directory, as specified in your user config, run:
 
 ```bash
@@ -253,7 +257,9 @@ ecflow_client --get_state=/retro
 
 Alternatively, for more human-friendly monitoring, use the [ecFlow GUI (`ecflow_ui`)](#gui).
 
-If you need to stop the suite and change its configuration, potentially after re-running the `setup` command from [Configure](#configure) to recreate the run directory with new configuration, or after manually editing `suite.def`:
+#### Reload a New Experiment on the Running Server
+
+If the ecFlow server is still running from a previous experiment and you want to load an updated suite -- for example, after re-running the `setup` command from [Configure](#configure) to regenerate the run directory with new configuration, or after manually editing `suite.def` -- halt the current suite, delete it from the server, then reload and begin:
 
 ```bash
 ecflow_client --halt=yes
@@ -263,7 +269,9 @@ ecflow_client --load=suite.def
 ecflow_client --begin=retro
 ```
 
-Finally, when you are finished, you may close the shell/terminal you used for `ecflow_client` commands, return to the shell/terminal in which the ecFlow server is running, and shut down the server by pressing Ctrl-C.
+The server itself keeps running throughout; only the loaded suite is replaced. You do not need to re-run `uw ecflow server` or re-`eval` `server.json` -- the exported `ECF_HOST`/`ECF_PORT`/`ECF_SSL` in your client shell still point at the same server.
+
+When you are finished, you may close the shell/terminal you used for `ecflow_client` commands, return to the shell/terminal in which the ecFlow server is running, and shut down the server by pressing Ctrl-C.
 
 ## Reference
 
@@ -361,9 +369,9 @@ See the [ecFlowUI](https://ecflow.readthedocs.io/en/5.18.0/ug/ecflow_ui/) docume
 
 #### Post-Write Hook
 
-`forecast.aigfs_inference.post_write_hook` is an optional string; when set, it is executed as a shell command by `aigfs.drivers.utils.grib2writer.Grib2Writer` after each leadtime's surface + pressure GRIB2 files have been atomically written. The following environment variables may be used the the command and will be exported to the shell in which it runs:
+`forecast.aigfs_inference.post_write_hook` is an optional string; when set, it is executed as a shell command by `aigfs.drivers.utils.grib2writer.Grib2Writer` after each leadtime's surface + pressure GRIB2 files have been atomically written. The following environment variables may be used in the command and will be exported to the shell in which it runs:
 
-| Placeholder  | Value                                                      |
+| Variable     | Value                                                      |
 |--------------|------------------------------------------------------------|
 | `$CYCLE`     | ISO8601 cycle string                                       |
 | `$LEADTIME`  | Integer leadtime hours (`0`, `6`, ...)                     |
@@ -388,7 +396,7 @@ By default, `uw ecflow server` starts the ecFlow server with SSL security enable
 
 The `forecast` task triggers on `prep == complete`.
 
-Every `post_f<fff>` triggers on `../forecast:release_f<fff>`, where the `release_f<fff>` events are set from within the forecast task each time that leadtime's GRIB2 pair has been written. This gives per-leadtime pipelined post-processing: Each `post_f<fff>` starts as soon as its inputs are on disk, without waiting for later leadtimes. Events are sent to the server via the driver's `post_write_hook` value (see [Post-write hook](#post-write-hook) below).
+Every `post_f<fff>` triggers on `../forecast:release_f<fff>`, where the `release_f<fff>` events are set from within the forecast task each time that leadtime's GRIB2 pair has been written. This gives per-leadtime pipelined post-processing: Each `post_f<fff>` starts as soon as its inputs are on disk, without waiting for later leadtimes. Events are sent to the server via the driver's `post_write_hook` value (see [Post-Write Hook](#post-write-hook) above).
 
 #### Task Names
 
