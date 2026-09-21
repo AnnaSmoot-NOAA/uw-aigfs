@@ -272,7 +272,7 @@ ecflow_client --begin=retro
 
 The server itself keeps running throughout; only the loaded suite is replaced. You do not need to re-run `uw ecflow server` or re-`eval` `server.json` -- the exported `ECF_HOST`/`ECF_PORT`/`ECF_SSL` in your client shell still point at the same server.
 
-When you are finished, you may close the shell/terminal you used for `ecflow_client` commands, return to the shell/terminal in which the ecFlow server is running, and shut down the server by pressing Ctrl-C.
+When you are finished with an experiment, you may close the shell/terminal you used for `ecflow_client` commands, return to the shell/terminal in which the ecFlow server is running, and shut down the server by pressing Ctrl-C.
 
 ## Reference
 
