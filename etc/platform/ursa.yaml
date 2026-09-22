@@ -13,7 +13,7 @@ ecflow:
     suite_retro:
       vars:
         ECF_JOB_CMD: 'ecflow_client --alter=add variable ECF_RID $(sbatch --parsable -o %ECF_JOBOUT% %ECF_JOB%) %ECF_NAME%'
-        ECF_KILL_CMD: 'scancel --signal=TERM --full %ECF_RID%; sleep 15; scancel %ECF_RID%; ecflow_client --force=aborted %ECF_NAME%'
+        ECF_KILL_CMD: 'scancel --signal=TERM --full %ECF_RID%; sleep 15; scancel --signal=KILL --full %ECF_RID%; ecflow_client --force=aborted %ECF_NAME%'
         ECF_STATUS_CMD: 'sacct -lj %ECF_RID%'
         RID_VAR: SLURM_JOB_ID
 forecast:
