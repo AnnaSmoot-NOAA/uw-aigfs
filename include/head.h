@@ -4,8 +4,12 @@ set -euo pipefail
 
 ERROR() {
   set +e
-  ecflow_client --abort=trap
-  trap 0
+  # Idempotent: only report once even if EXIT fires after a signal.
+  [ -n "${__ECF_ABORTED:-}" ] && { trap - 0; exit 0; }
+  __ECF_ABORTED=1
+  # Bounded so a hung server cannot stall past ECF_KILL_CMD's grace window.
+  timeout 10 ecflow_client --abort=trap
+  trap - 0
   exit 0
 }
 
