@@ -377,7 +377,12 @@ See the [ecFlowUI](https://ecflow.readthedocs.io/en/5.18.0/ug/ecflow_ui/) docume
 | `$CYCLE`     | ISO8601 cycle string                                       |
 | `$LEADTIME`  | Integer leadtime hours (`0`, `6`, ...)                     |
 | `$PATH_PRES` | Absolute path to the just-written `*.pres.fXXX.grib2` file |
-| `$PATH_SFC`  | Absolute path to the just-written `*.sfc.fXXX.grib2` file  |
+| Bash Variable     | Value                                                      |
+|-------------------|------------------------------------------------------------|
+| `$CYCLE`          | ISO8601 cycle string                                       |
+| `$LEADTIME`       | Integer leadtime hours (`0`, `6`, ...)                     |
+| `$PATH_PRES`      | Absolute path to the just-written `*.pres.fXXX.grib2` file |
+| `$PATH_SFC`       | Absolute path to the just-written `*.sfc.fXXX.grib2` file  |
 
 A non-zero exit from the hook is logged at `WARNING` level and does not abort the forecast; each leadtime is processed independently.
 
