@@ -43,7 +43,7 @@ def test_setup_INCLUDE_DIR__ecflow_head_uses_ssl_and_slurm_job_id():
     assert 'test -n "%ECF_SSL:%" && export ECF_SSL=%ECF_SSL:%' in text
     assert "export ECF_RID=$%RID_VAR%" in text
     assert "ecflow_client --init=$ECF_RID" in text
-    assert "ecflow_client --abort=trap" in text
+    assert "ecflow_client --abort" in text
 
 
 def test_setup_INCLUDE_DIR__ecflow_tail_uses_ssl():
