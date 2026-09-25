@@ -1,15 +1,17 @@
 set -euo pipefail
 
-# Configure error handling:
+# On any error or termination signal, funnel through ERROR to notify
+# ecflow_server and exit cleanly. The EXIT trap catches shell-terminating
+# errors from set -e; the signal traps catch external kills.
 
 ERROR() {
   set +e
-  # Report at most once: a second --abort on an already-aborted task is
-  # rejected by ecflow_server as a zombie.
+  # A second --abort on an already-aborted task is rejected by the server as a
+  # zombie, so guard to report at most once even if EXIT fires after a signal.
   if [[ ! -v __ECF_ABORTED ]]; then
     __ECF_ABORTED=1
     ecflow_client --abort
-    trap - 0
+    trap 0
   fi
   exit 0
 }
