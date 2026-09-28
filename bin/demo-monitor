@@ -21,27 +21,27 @@ cmd=${1:-status}
 tag=${2:-both}
 
 case "$cmd" in
-  status)
-    for t in ${tag/both/single multi}; do
-      echo "==================== $t ===================="
-      remote "$t" 'ecflow_client --stats 2>&1 | head -12'
-      echo '--- suite ---'
-      remote "$t" 'ecflow_client --get_state=/retro 2>&1 | grep -E "^(suite|family|task) " | sed "s/# passwd:[^ ]* //"'
-    done
-    echo '==================== slurm ===================='
-    squeue -u "$USER" -o "%.10i %.10P %.20j %.8T %.10M %.6D %R"
-    ;;
-  tree)
-    remote "$tag" 'ecflow_client --get_state=/retro'
-    ;;
-  logs)
-    remote "$tag" "tail -50 $CLONE/demo-$tag/server.log; echo '---ecf log---'; tail -50 $CLONE/demo-$tag/ecf/uecflow01.*.ecf.log"
-    ;;
-  stop)
-    remote "$tag" 'ecflow_client --halt=yes && ecflow_client --terminate=yes'
-    ;;
-  *)
-    echo "unknown cmd: $cmd" >&2
-    exit 2
-    ;;
+status)
+  for t in ${tag/both/single multi}; do
+    echo "==================== $t ===================="
+    remote "$t" 'ecflow_client --stats 2>&1 | head -12'
+    echo '--- suite ---'
+    remote "$t" 'ecflow_client --get_state=/retro 2>&1 | grep -E "^(suite|family|task) " | sed "s/# passwd:[^ ]* //"'
+  done
+  echo '==================== slurm ===================='
+  squeue -u "$USER" -o "%.10i %.10P %.20j %.8T %.10M %.6D %R"
+  ;;
+tree)
+  remote "$tag" 'ecflow_client --get_state=/retro'
+  ;;
+logs)
+  remote "$tag" "tail -50 $CLONE/demo-$tag/server.log; echo '---ecf log---'; tail -50 $CLONE/demo-$tag/ecf/uecflow01.*.ecf.log"
+  ;;
+stop)
+  remote "$tag" 'ecflow_client --halt=yes && ecflow_client --terminate=yes'
+  ;;
+*)
+  echo "unknown cmd: $cmd" >&2
+  exit 2
+  ;;
 esac
