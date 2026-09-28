@@ -1,0 +1,47 @@
+#!/bin/bash
+# Monitor / control the running ecFlow demos.
+#
+# Usage:
+#   bin/demo-monitor status              # both demos: server state, tree, Slurm queue
+#   bin/demo-monitor status single|multi # just one
+#   bin/demo-monitor tree   single|multi # full node tree
+#   bin/demo-monitor logs   single|multi # tail the ecflow server log
+#   bin/demo-monitor stop   single|multi # halt suite, terminate server
+
+set -euo pipefail
+
+CLONE=/scratch3/NCEPDEV/global/Anna.Smoot/uw-aigfs
+ECFHOST=uecflow01
+
+remote() {
+  ssh "$ECFHOST" bash -lc "'source $CLONE/bin/activate-ursa >/dev/null 2>&1 && cd $CLONE/demo-$1 && eval \"\$(jq -r \"to_entries | .[] | \\\"export \\(.key)=\\(.value)\\\"\" server.json)\" && $2'"
+}
+
+cmd=${1:-status}
+tag=${2:-both}
+
+case "$cmd" in
+  status)
+    for t in ${tag/both/single multi}; do
+      echo "==================== $t ===================="
+      remote "$t" 'ecflow_client --stats 2>&1 | head -12'
+      echo '--- suite ---'
+      remote "$t" 'ecflow_client --get_state=/retro 2>&1 | grep -E "^(suite|family|task) " | sed "s/# passwd:[^ ]* //"'
+    done
+    echo '==================== slurm ===================='
+    squeue -u "$USER" -o "%.10i %.10P %.20j %.8T %.10M %.6D %R"
+    ;;
+  tree)
+    remote "$tag" 'ecflow_client --get_state=/retro'
+    ;;
+  logs)
+    remote "$tag" "tail -50 $CLONE/demo-$tag/server.log; echo '---ecf log---'; tail -50 $CLONE/demo-$tag/ecf/uecflow01.*.ecf.log"
+    ;;
+  stop)
+    remote "$tag" 'ecflow_client --halt=yes && ecflow_client --terminate=yes'
+    ;;
+  *)
+    echo "unknown cmd: $cmd" >&2
+    exit 2
+    ;;
+esac
