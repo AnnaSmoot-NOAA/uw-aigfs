@@ -66,16 +66,19 @@ def test_workflow_config__exists(cfg, touch):
 
 
 @mark.usefixtures("cfg")
-def test_workflow_config__missing(tmp_path):
-    with patch.object(workflow, "setup") as setup:
+def test_workflow_config__missing(config, tmp_path):
+    setup = Mock()
+    setup.compose_configs.return_value = config
+    with patch.object(workflow, "setup", setup):
         node = workflow.config()
     assert not node.ready
     setup.compose_configs.assert_called_once_with(
         workflow=None, platform="oci", user_config_files=[tmp_path / "user.yaml"]
     )
-    c = setup.compose_configs.return_value
-    setup.validate.assert_called_once_with(c)
-    setup.set_up_rundir.assert_called_once_with(c, workflow=None, prefix="config")
+    setup.validate.assert_called_once_with(config)
+    setup.set_up_rundir.assert_called_once_with(
+        setup.validate.return_value, workflow=None, prefix="config"
+    )
 
 
 @mark.parametrize("ready", [True, False])

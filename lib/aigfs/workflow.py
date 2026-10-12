@@ -39,9 +39,9 @@ def config() -> Iterator:
     yield Asset(CFG, CFG.is_file)
     yield None
     user = PWD / "user.yaml"
-    c = setup.compose_configs(workflow=None, platform=STR.oci, user_config_files=[user])
-    setup.validate(c)
-    setup.set_up_rundir(c, workflow=None, prefix=taskname)
+    raw_config = setup.compose_configs(workflow=None, platform=STR.oci, user_config_files=[user])
+    valid_config = setup.validate(raw_config)
+    setup.set_up_rundir(valid_config, workflow=None, prefix=taskname)
 
 
 @task
