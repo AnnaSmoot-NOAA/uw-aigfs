@@ -23,7 +23,14 @@ def atask():
 
 
 @fixture
-def config(tmp_path):
+def logcap(caplog):
+    caplog.handler.setFormatter(logging.Formatter("%(message)s"))
+    caplog.set_level(logging.DEBUG)
+    return caplog
+
+
+@fixture
+def test_config(tmp_path):
     return {
         "app": {
             "cycle_freq": timedelta(hours=12),
@@ -55,13 +62,6 @@ def config(tmp_path):
         "user": {},
         "workflow": None,
     }
-
-
-@fixture
-def logcap(caplog):
-    caplog.handler.setFormatter(logging.Formatter("%(message)s"))
-    caplog.set_level(logging.DEBUG)
-    return caplog
 
 
 @fixture

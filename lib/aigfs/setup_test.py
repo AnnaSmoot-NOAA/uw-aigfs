@@ -157,8 +157,8 @@ def test_setup_parse_args(
     assert result.verbose == expected_verbose
 
 
-def test_setup_set_up_rundir(config, logcap):
-    c = Config(**config)
+def test_setup_set_up_rundir(test_config, logcap):
+    c = Config(**test_config)
     with (
         patch.object(setup, "YAMLConfig") as YAMLConfig,
         patch.object(setup, STR.rocoto) as rocoto,
@@ -166,30 +166,30 @@ def test_setup_set_up_rundir(config, logcap):
         rocoto.realize.return_value = True
         setup.set_up_rundir(c, STR.rocoto)
     assert c.app.rundir.is_dir()
-    YAMLConfig.assert_called_once_with(config)
+    YAMLConfig.assert_called_once_with(test_config)
     YAMLConfig.return_value.dump.assert_called_once_with(c.app.rundir / STR.aigfs_yaml)
-    rocoto.realize.assert_called_once_with(YAMLConfig(config), c.app.rundir / STR.rocoto_xml)
+    rocoto.realize.assert_called_once_with(YAMLConfig(test_config), c.app.rundir / STR.rocoto_xml)
     assert f"AIGFS will be set up here: {c.app.rundir}" in logcap.text
 
 
-def test_setup_set_up_rundir__ecflow(config, logcap):
-    c = Config(**config)
+def test_setup_set_up_rundir__ecflow(test_config, logcap):
+    c = Config(**test_config)
     with (
         patch.object(setup, "YAMLConfig") as YAMLConfig,
         patch.object(setup, STR.ecflow) as ecflow,
     ):
         setup.set_up_rundir(c, STR.ecflow)
     assert c.app.rundir.is_dir()
-    YAMLConfig.asssert_called_once_with(config)
+    YAMLConfig.asssert_called_once_with(test_config)
     YAMLConfig.return_value.dump.assert_called_once_with(c.app.rundir / STR.aigfs_yaml)
     ecflow.realize.assert_called_once_with(
-        YAMLConfig(config), c.app.rundir, scripts_path=c.app.rundir / "ecf"
+        YAMLConfig(test_config), c.app.rundir, scripts_path=c.app.rundir / "ecf"
     )
     assert f"AIGFS will be set up here: {c.app.rundir}" in logcap.text
 
 
-def test_setup_set_up_rundir__invalid_xml(config, logcap):
-    c = Config(**config)
+def test_setup_set_up_rundir__invalid_xml(test_config, logcap):
+    c = Config(**test_config)
     with (
         patch.object(setup, "YAMLConfig"),
         patch.object(setup, STR.rocoto) as rocoto,
@@ -200,8 +200,8 @@ def test_setup_set_up_rundir__invalid_xml(config, logcap):
     assert "Invalid Rocoto XML" in logcap.text
 
 
-def test_setup_set_up_rundir__no_workflow(config, logcap):
-    c = Config(**config)
+def test_setup_set_up_rundir__no_workflow(test_config, logcap):
+    c = Config(**test_config)
     with (
         patch.object(setup, "YAMLConfig") as YAMLConfig,
         patch.object(setup, STR.ecflow) as ecflow,
