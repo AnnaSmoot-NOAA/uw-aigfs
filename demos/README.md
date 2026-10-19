@@ -1,4 +1,50 @@
-# uw-aigfs Single-Cycle Demos (Rocoto and ecFlow)
+(aigfs) Anna.Smoot@uecflow01 /ho/An$ uw ecflow server --config-file aigfs.yaml --report >server.json
+Traceback (most recent call last):
+  File "/scratch3/NCEPDEV/global/Anna.Smoot/uw-aigfs/conda/envs/aigfs/bin/uw", line 8, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/scratch3/NCEPDEV/global/Anna.Smoot/uw-aigfs/conda/envs/aigfs/lib/python3.14/site-packages/uwtools/cli.py", line 128, in main
+    success = modes[mode](args)
+  File "/scratch3/NCEPDEV/global/Anna.Smoot/uw-aigfs/conda/envs/aigfs/lib/python3.14/site-packages/uwtools/cli.py", line 213, in _dispatch_ecflow
+    return actions[args[STR.action]](args)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/scratch3/NCEPDEV/global/Anna.Smoot/uw-aigfs/conda/envs/aigfs/lib/python3.14/site-packages/uwtools/cli.py", line 236, in _dispatch_ecflow_server
+    return uwtools.api.ecflow.server(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        config=args.get(STR.config_file),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+        stdin_ok=True,
+        ^^^^^^^^^^^^^^
+    )
+    ^
+  File "/scratch3/NCEPDEV/global/Anna.Smoot/uw-aigfs/conda/envs/aigfs/lib/python3.14/site-packages/uwtools/api/ecflow.py", line 75, in server
+    _server(
+    ~~~~~~~^
+        config=_ensure_data_source(_str2path(config), stdin_ok),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        report=report,
+        ^^^^^^^^^^^^^^
+    )
+    ^
+  File "/scratch3/NCEPDEV/global/Anna.Smoot/uw-aigfs/conda/envs/aigfs/lib/python3.14/site-packages/uwtools/ecflow.py", line 127, in server
+    config = YAMLConfig(config)
+  File "/scratch3/NCEPDEV/global/Anna.Smoot/uw-aigfs/conda/envs/aigfs/lib/python3.14/site-packages/uwtools/config/formats/base.py", line 53, in __init__
+    self.data = self._load(self._config_file)
+                ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "/scratch3/NCEPDEV/global/Anna.Smoot/uw-aigfs/conda/envs/aigfs/lib/python3.14/site-packages/uwtools/config/formats/yaml.py", line 92, in _load
+    with readable(config_file) as f:
+         ~~~~~~~~^^^^^^^^^^^^^
+  File "/scratch3/NCEPDEV/global/Anna.Smoot/uw-aigfs/conda/envs/aigfs/lib/python3.14/contextlib.py", line 141, in __enter__
+    return next(self.gen)
+  File "/scratch3/NCEPDEV/global/Anna.Smoot/uw-aigfs/conda/envs/aigfs/lib/python3.14/site-packages/uwtools/utils/file.py", line 116, in readable
+    with Path(filepath).open(mode) as f:
+         ~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/scratch3/NCEPDEV/global/Anna.Smoot/uw-aigfs/conda/envs/aigfs/lib/python3.14/pathlib/__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'aigfs.yaml'# uw-aigfs Single-Cycle Demos (Rocoto and ecFlow)
 
 Two minimal, single-cycle demonstrations of the `uw-aigfs` workflow on **Ursa**,
 one driven by **Rocoto** and one by **ecFlow**. Both run the exact same three
@@ -177,34 +223,55 @@ to the shell running `uw ecflow server` and press **Ctrl-C**.
 
 ---
 
-## 5. Expected output (both demos)
+## 5. Expected output
 
-Each demo produces the same per-cycle layout under its run directory:
+Each demo produces a per-cycle directory under its run directory. The ecFlow
+layout (verified by the run below) looks like:
 
 ```
 <rundir>/
 |-- aigfs.yaml
-|-- rocoto.xml            # Rocoto demo only
-|-- suite.def            # ecFlow demo only
-|-- ecf/                 # ecFlow demo only
-|-- logs/                # task + workflow logs
+|-- suite.def            # ecFlow demo (rocoto.xml for the Rocoto demo)
+|-- server.json          # ecFlow demo (written by `uw ecflow server`)
+|-- ecf/                 # ecFlow demo: generated .ecf scripts, job output, server log
 `-- 2026091300/
-    |-- prep/            # ICs netCDF + wgrib2 staging
-    |-- forecast/        # aigfs.done + aigfs.t00z.{sfc,pres}.f{000..024}.grib2(.idx)
-    |-- post_000/
+    |-- prep/            # aigfs.t00z.ic.nc (+ staged GFS GRIB under data/)
+    |-- forecast/        # aigfs.t00z.{sfc,pres}.f{000,006,012,018,024}.grib2(.idx)
+    |-- post_000/        # aigfs.t00z.{sfc,pres}.f000.grib2.idx
     |-- post_006/
     |-- post_012/
     |-- post_018/
     `-- post_024/
 ```
 
-Success sentinels:
+The Rocoto demo instead writes `rocoto.xml` (+ `rocoto.db` after the first
+`rocotorun`) and per-task logs under `<rundir>/logs/`.
 
-| File                                          | Meaning                     |
-|-----------------------------------------------|-----------------------------|
-| `<cycle>/prep/runscript.aigfs_ics.done`       | prep stage completed        |
-| `<cycle>/forecast/aigfs.done`                 | forecast stage completed    |
-| `<cycle>/post_fff/runscript.aigfs_post.done`  | post stage for leadtime fff |
+### Confirming success
 
-Forecast GRIB2 output lives in `<cycle>/forecast/`:
-`aigfs.t<HH>z.{sfc,pres}.f<fff>.grib2` (`.idx` copied there by post).
+This branch does not write `.done` sentinel files; completion is signaled by the
+workflow engine plus the presence of the output files.
+
+**ecFlow** -- the whole suite reports `complete` (no `aborted`/`queued` nodes):
+
+```bash
+ecflow_client --get_state=/retro | grep -E 'suite|task' 
+# e.g. "suite retro ... state:complete", every task "state:complete"
+```
+
+**Rocoto** -- every task shows `SUCCEEDED`:
+
+```bash
+rocotostat -w rocoto.xml -d rocoto.db
+```
+
+**Output files** -- a successful cycle produces, in `<cycle>/forecast/`, the
+GRIB2 forecast fields for each leadtime, with `.idx` files written by the post
+stage:
+
+```bash
+ls <rundir>/2026091300/forecast/aigfs.t00z.*.f*.grib2*
+```
+
+You should see `sfc` and `pres` files for f000, f006, f012, f018, and f024, each
+with a matching `.idx`.

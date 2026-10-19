@@ -166,7 +166,16 @@ def test_setup_set_up_rundir(test_config, logcap):
         rocoto.realize.return_value = True
         setup.set_up_rundir(c, STR.rocoto)
     assert c.app.rundir.is_dir()
-    YAMLConfig.assert_called_once_with(test_config)
+    expected = {
+        **test_config,
+        STR.app: {
+            **test_config[STR.app],
+            "home": str(c.app.home),
+            "modeldir": str(c.app.modeldir),
+            "rundir": str(c.app.rundir),
+        },
+    }
+    YAMLConfig.assert_called_once_with(expected)
     YAMLConfig.return_value.dump.assert_called_once_with(c.app.rundir / STR.aigfs_yaml)
     rocoto.realize.assert_called_once_with(YAMLConfig(test_config), c.app.rundir / STR.rocoto_xml)
     assert f"AIGFS will be set up here: {c.app.rundir}" in logcap.text

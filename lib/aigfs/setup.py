@@ -90,7 +90,9 @@ def set_up_rundir(config: Config, workflow: str | None, prefix: str | None = Non
     logging.info("%sAIGFS will be set up here: %s", _pre(prefix), rundir)
     rundir.mkdir(parents=True, exist_ok=True)
     final = rundir / STR.aigfs_yaml
-    yaml_config = YAMLConfig(config.model_dump())
+    data = config.model_dump()
+    data[STR.app] = {k: (str(v) if isinstance(v, Path) else v) for k, v in data[STR.app].items()}
+    yaml_config = YAMLConfig(data)
     yaml_config.dump(final)
     if workflow == STR.ecflow:
         ecflow.realize(yaml_config, rundir, scripts_path=rundir / "ecf")
