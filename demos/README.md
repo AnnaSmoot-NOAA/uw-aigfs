@@ -1,50 +1,4 @@
-(aigfs) Anna.Smoot@uecflow01 /ho/An$ uw ecflow server --config-file aigfs.yaml --report >server.json
-Traceback (most recent call last):
-  File "/scratch3/NCEPDEV/global/Anna.Smoot/uw-aigfs/conda/envs/aigfs/bin/uw", line 8, in <module>
-    sys.exit(main())
-             ~~~~^^
-  File "/scratch3/NCEPDEV/global/Anna.Smoot/uw-aigfs/conda/envs/aigfs/lib/python3.14/site-packages/uwtools/cli.py", line 128, in main
-    success = modes[mode](args)
-  File "/scratch3/NCEPDEV/global/Anna.Smoot/uw-aigfs/conda/envs/aigfs/lib/python3.14/site-packages/uwtools/cli.py", line 213, in _dispatch_ecflow
-    return actions[args[STR.action]](args)
-           ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
-  File "/scratch3/NCEPDEV/global/Anna.Smoot/uw-aigfs/conda/envs/aigfs/lib/python3.14/site-packages/uwtools/cli.py", line 236, in _dispatch_ecflow_server
-    return uwtools.api.ecflow.server(
-           ~~~~~~~~~~~~~~~~~~~~~~~~~^
-        config=args.get(STR.config_file),
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    ...<3 lines>...
-        stdin_ok=True,
-        ^^^^^^^^^^^^^^
-    )
-    ^
-  File "/scratch3/NCEPDEV/global/Anna.Smoot/uw-aigfs/conda/envs/aigfs/lib/python3.14/site-packages/uwtools/api/ecflow.py", line 75, in server
-    _server(
-    ~~~~~~~^
-        config=_ensure_data_source(_str2path(config), stdin_ok),
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    ...<2 lines>...
-        report=report,
-        ^^^^^^^^^^^^^^
-    )
-    ^
-  File "/scratch3/NCEPDEV/global/Anna.Smoot/uw-aigfs/conda/envs/aigfs/lib/python3.14/site-packages/uwtools/ecflow.py", line 127, in server
-    config = YAMLConfig(config)
-  File "/scratch3/NCEPDEV/global/Anna.Smoot/uw-aigfs/conda/envs/aigfs/lib/python3.14/site-packages/uwtools/config/formats/base.py", line 53, in __init__
-    self.data = self._load(self._config_file)
-                ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
-  File "/scratch3/NCEPDEV/global/Anna.Smoot/uw-aigfs/conda/envs/aigfs/lib/python3.14/site-packages/uwtools/config/formats/yaml.py", line 92, in _load
-    with readable(config_file) as f:
-         ~~~~~~~~^^^^^^^^^^^^^
-  File "/scratch3/NCEPDEV/global/Anna.Smoot/uw-aigfs/conda/envs/aigfs/lib/python3.14/contextlib.py", line 141, in __enter__
-    return next(self.gen)
-  File "/scratch3/NCEPDEV/global/Anna.Smoot/uw-aigfs/conda/envs/aigfs/lib/python3.14/site-packages/uwtools/utils/file.py", line 116, in readable
-    with Path(filepath).open(mode) as f:
-         ~~~~~~~~~~~~~~~~~~~^^^^^^
-  File "/scratch3/NCEPDEV/global/Anna.Smoot/uw-aigfs/conda/envs/aigfs/lib/python3.14/pathlib/__init__.py", line 771, in open
-    return io.open(self, mode, buffering, encoding, errors, newline)
-           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-FileNotFoundError: [Errno 2] No such file or directory: 'aigfs.yaml'# uw-aigfs Single-Cycle Demos (Rocoto and ecFlow)
+# uw-aigfs Single-Cycle Demos (Rocoto and ecFlow)
 
 Two minimal, single-cycle demonstrations of the `uw-aigfs` workflow on **Ursa**,
 one driven by **Rocoto** and one by **ecFlow**. Both run the exact same three
@@ -127,23 +81,45 @@ This composes `etc/base.yaml` + `etc/workflow/rocoto.yaml` +
 | `aigfs.yaml` | Fully realized configuration |
 | `rocoto.xml` | Rocoto workflow definition   |
 
-### 3b. Run and monitor
+### 3b. Run and monitor with `uw rocoto iterate`
 
-On RDHPCS platforms, Rocoto is available as a system module:
+Use `uwtools` to drive the workflow: `uw rocoto iterate` repeatedly runs
+`rocotorun` until the requested task (and everything it depends on) reaches a
+terminal state, printing `rocotostat` output on each pass. This replaces
+hand-rolled `while ...; rocotorun; sleep ...; done` loops.
+
+Both `uw` (from the AIGFS env) and `rocotorun`/`rocotostat` (from the system
+module) must be on `PATH`, so activate the env **and** load the module:
 
 ```bash
 module load rocoto
 cd /scratch3/NCEPDEV/global/Anna.Smoot/uw-aigfs/demo-rocoto
 ```
 
-Advance the workflow (re-run periodically as jobs complete; `rocoto.db` is created
-on the first run):
+Iterating the final post task drives the whole `prep -> forecast -> post` chain,
+because iterate resolves dependencies automatically (`post_024` depends on
+`forecast`, which depends on `prep`):
 
 ```bash
-rocotorun -w rocoto.xml -d rocoto.db
+uw rocoto iterate \
+  --cycle 2026-09-13T00 \
+  --workflow rocoto.xml \
+  --database rocoto.db \
+  --task post_024 \
+  --rate 60
 ```
 
-Check task status:
+`rocoto.db` is created on the first pass. The command returns once `post_024`
+succeeds. To populate the remaining leadtimes (prep and forecast are already
+done, so these finish quickly):
+
+```bash
+for f in 000 006 012 018; do
+  uw rocoto iterate --cycle 2026-09-13T00 -w rocoto.xml -d rocoto.db --task post_$f --rate 30
+done
+```
+
+Check overall status at any time:
 
 ```bash
 rocotostat -w rocoto.xml -d rocoto.db
@@ -152,8 +128,10 @@ rocotostat -w rocoto.xml -d rocoto.db
 Per-task logs land in `<rundir>/logs/`; the overall workflow log is
 `<rundir>/logs/workflow.log`.
 
-> Tip: `uw rocoto iterate` can drive the whole workflow for you. See the
-> [uwtools Rocoto tool docs](https://uwtools.readthedocs.io/en/2.21.0/sections/user_guide/cli/tools/rocoto.html#cli-rocoto-iterate-examples).
+> Lower-level alternative: run `rocotorun -w rocoto.xml -d rocoto.db` yourself
+> every minute or two and watch `rocotostat`; `uw rocoto iterate` simply automates
+> that loop. See the
+> [uwtools Rocoto tool docs](https://uwtools.readthedocs.io/en/2.20.0/sections/user_guide/cli/tools/rocoto.html).
 
 ---
 
@@ -189,7 +167,7 @@ uw ecflow server --config-file aigfs.yaml --report >server.json
 Leave that shell attached -- the server writes stderr there. `server.json`
 records the `ECF_HOST`/`ECF_PORT`/`ECF_SSL`/`ECF_HOME` the client shell needs.
 
-### 4c. Load, begin, and monitor
+### 4c. Load and begin the suite
 
 Open a **second** shell (still on `uecflow01`):
 
@@ -207,19 +185,54 @@ env | sort | grep ^ECF_
 ecflow_client --restart
 ecflow_client --load=suite.def
 ecflow_client --begin=retro
+```
 
-# Watch progress.
+### 4d. Monitor with the ecFlow UI (`ecflow_ui`)
+
+The ecFlow UI is the recommended way to watch and drive the suite. It shows the
+suite tree with live task colors (queued / submitted / active / complete /
+aborted), per-task output and logs, and manual controls.
+
+1. Connect to `uecflow01` with X forwarding enabled (`ssh -Y uecflow01`, or use
+   FastX / VNC), activate the env, and launch the UI:
+
+   ```bash
+   source $CLONE/bin/activate-ursa
+   ecflow_ui &
+   ```
+
+2. Register the demo server (**Servers > Manage Servers... > Add**) using the
+   values from `server.json`:
+
+   | Field    | Value                                   |
+   |----------|-----------------------------------------|
+   | Name     | any label, e.g. `aigfs-demo`            |
+   | Host     | value of `ECF_HOST` (e.g. `uecflow01`)  |
+   | Port     | value of `ECF_PORT`                     |
+   | Protocol | **TCP/IP with SSL** (since `ECF_SSL=1`) |
+
+3. Expand the `retro` suite and watch tasks advance
+   `prep -> forecast -> post_fXXX`. Right-click a task for **Info**, **Output**,
+   **Manual**, and control actions (requeue, execute, suspend, etc.).
+
+Prefer the terminal? You can still poll the state directly:
+
+```bash
 ecflow_client --get_state=/retro
 ```
 
-For human-friendly monitoring, launch the ecFlow GUI (`ecflow_ui`) with X
-forwarding and add a server using the values in `server.json` (Protocol
-**TCP/IP with SSL** when `ECF_SSL=1`).
+### 4e. Shut down
 
-### 4d. Shut down
+Halt the suite and terminate the server from a client shell (or press **Ctrl-C**
+in the shell running `uw ecflow server`):
 
-In the client shell, halt/delete the suite as desired. To stop the server, return
-to the shell running `uw ecflow server` and press **Ctrl-C**.
+```bash
+ecflow_client --halt=yes
+ecflow_client --terminate=yes
+```
+
+See [§6 Tear down](#6-tear-down-clean-slate-before-the-next-run) for full cleanup
+that also removes run directories.
 
 ---
 
@@ -245,7 +258,7 @@ layout (verified by the run below) looks like:
 ```
 
 The Rocoto demo instead writes `rocoto.xml` (+ `rocoto.db` after the first
-`rocotorun`) and per-task logs under `<rundir>/logs/`.
+`uw rocoto iterate` / `rocotorun`) and per-task logs under `<rundir>/logs/`.
 
 ### Confirming success
 
@@ -275,3 +288,58 @@ ls <rundir>/2026091300/forecast/aigfs.t00z.*.f*.grib2*
 
 You should see `sfc` and `pres` files for f000, f006, f012, f018, and f024, each
 with a matching `.idx`.
+
+---
+
+## 6. Tear down (clean slate before the next run)
+
+**This matters.** The AIGFS drivers treat a stage as already finished when its
+output files exist -- `iotaa` checks `path.is_file()` for the ICs netCDF, the
+forecast GRIB2 files, and the post `.idx` files. Rocoto separately records task
+state in `rocoto.db`. So if you re-run a demo on top of a previous run directory,
+stages are **silently skipped** and the workflow appears to "succeed" instantly,
+hiding real errors. Always start each demo from an empty run directory.
+
+### ecFlow
+
+1. In a client shell with `ECF_*` exported, halt and terminate the server (or
+   press **Ctrl-C** in the shell running `uw ecflow server`):
+
+   ```bash
+   ecflow_client --halt=yes
+   ecflow_client --terminate=yes
+   ```
+
+2. Confirm no ecFlow server is left running on `uecflow01` -- a leftover server
+   keeps its port and an old loaded suite:
+
+   ```bash
+   ssh uecflow01 'pgrep -a -u $USER ecflow_server || echo "no ecflow_server running"'
+   ```
+
+   Stop any straggler by PID: `ssh uecflow01 'kill <PID>'`.
+
+3. Remove the run directory:
+
+   ```bash
+   rm -rf $CLONE/demo-ecflow
+   ```
+
+### Rocoto
+
+Rocoto has no long-running server, so just remove the run directory (this also
+deletes `rocoto.db`, which otherwise remembers task states):
+
+```bash
+rm -rf $CLONE/demo-rocoto
+```
+
+### Everything at once
+
+```bash
+rm -rf $CLONE/demo-ecflow $CLONE/demo-rocoto
+ssh uecflow01 'pgrep -a -u $USER ecflow_server || echo "no ecflow_server running"'
+```
+
+After teardown, re-running `setup` (steps 3 / 4a) regenerates a fresh run
+directory so every stage executes for real.
