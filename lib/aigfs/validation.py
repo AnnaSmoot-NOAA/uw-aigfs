@@ -156,15 +156,14 @@ class Config(BaseModel):
 
     @model_validator(mode="after")
     def cycle_range_vs_workflow(self) -> "Config":
+        # A workflow engine (ecflow or workflow) needs cycle_freq for window spacing in both the
+        # prescribed (first_cycle/last_cycle given) and deduced/real-time (no bounds given) cases.
+        # The cycle-range bounds are optional -- required only for the prescribed path, and enforced
+        # as a pair (with cycle_freq) by App.first_and_last_cycle.
         workflow = self.ecflow is not None or self.workflow is not None
-        cycle_range = (
-            self.app.cycle_freq is not None
-            and self.app.first_cycle is not None
-            and self.app.last_cycle is not None
-        )
-        if workflow and not cycle_range:
+        if workflow and self.app.cycle_freq is None:
             engine = "ecflow" if self.ecflow is not None else "workflow"
-            msg = f"cycle_freq, first_cycle, last_cycle must be defined when {engine} is defined"
+            msg = f"cycle_freq must be defined when {engine} is defined"
             raise ValueError(msg)
         return self
 

@@ -212,20 +212,32 @@ def test_validation_Config__cycle_range_with_engines(args_config, ecflow, workfl
     ("engine", "other_engine"),
     [("ecflow", "workflow"), ("workflow", "ecflow")],
 )
-def test_validation_Config__workflow_requires_cycle_range(args_config, engine, other_engine):
+def test_validation_Config__workflow_requires_cycle_freq(args_config, engine, other_engine):
     args_config[engine] = {}
     args_config[other_engine] = None
-    # While it would be an error for any of the following three cycle-range values to be None, we
-    # only need to test the case where ALL THREE are None because all the other cases are covered
-    # by different validation rules and their associated tests.
+    # A workflow engine needs cycle_freq for window spacing. The first_cycle/last_cycle bounds are
+    # optional (prescribed path only), so the only case this rule rejects is a missing cycle_freq.
     args_config["app"]["cycle_freq"] = None
     args_config["app"]["first_cycle"] = None
     args_config["app"]["last_cycle"] = None
     with raises(
         ValueError,
-        match=f"cycle_freq, first_cycle, last_cycle must be defined when {engine} is defined",
+        match=f"cycle_freq must be defined when {engine} is defined",
     ):
         validation.Config(**args_config)
+
+
+@mark.parametrize(
+    ("engine", "other_engine"),
+    [("ecflow", "workflow"), ("workflow", "ecflow")],
+)
+def test_validation_Config__workflow_realtime_without_bounds(args_config, engine, other_engine):
+    # Deduced/real-time path: a workflow engine with cycle_freq but no first_cycle/last_cycle is ok.
+    args_config[engine] = {}
+    args_config[other_engine] = None
+    args_config["app"]["first_cycle"] = None
+    args_config["app"]["last_cycle"] = None
+    assert validation.Config(**args_config)
 
 
 def test_validation_Config__optional_cycles_without_engine(args_config):

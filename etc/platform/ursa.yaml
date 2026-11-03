@@ -11,11 +11,13 @@ app:
 ecflow:
   suitedef:
     suite_retro:
-      vars:
+      vars: &ecflow_slurm_vars
         ECF_JOB_CMD: 'ecflow_client --alter=add variable ECF_RID $(sbatch --parsable -o %ECF_JOBOUT% %ECF_JOB%) %ECF_NAME%'
         ECF_KILL_CMD: 'scancel --signal=TERM --full %ECF_RID%'
         ECF_STATUS_CMD: 'sacct -lj %ECF_RID%'
         RID_VAR: SLURM_JOB_ID
+    suite_rtaigfs:
+      vars: *ecflow_slurm_vars
 forecast:
   aigfs_inference:
     execution:

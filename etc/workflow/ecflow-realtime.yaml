@@ -1,0 +1,79 @@
+forecast:
+  aigfs_inference:
+    post_write_hook: 'ecflow_client --alter change event release_f$(printf "%03d" $LEADTIME) set $ECF_NAME'
+ecflow:
+  server:
+    ECF_HOME: '{{ app.rundir }}/ecf'
+  suitedef:
+    scheduler: '{{ app.platform.scheduler.type }}'
+    suite_rtaigfs:
+      # Real-time rolling window. Rather than a bounded repeat_datetime (the prescribed/retrospective
+      # suite in ecflow.yaml), the window is a set of concurrent per-cycle families, one per cycle in
+      # the RTCYCLES environment variable. The RT driver sets RTCYCLES (a comma-separated list of
+      # YYYYmmddTHHMMSS cycle timestamps) and regenerates/advances the suite as the window rolls.
+      families_cycle_{{ ec.cycle }}:
+        expand:
+          cycle: !list '[{{ "RTCYCLES" | env }}]'
+        vars:
+          CYCLE: '{{ ec.cycle }}'
+        task_prep:
+          script: &script
+            includes:
+              entry:
+                - <head.h>
+              exit:
+                - <tail.h>
+            manual: Prepares AIGFS ICs from GFS.
+            batchargs: !dict '{{ prep.aigfs_ics.execution.batchargs }}'
+            body: |
+              source %APPDIR%/bin/activate-%PLATFORM%
+              uw execute \
+                --module aigfs.drivers.ics \
+                --classname AIGFSICs \
+                --task run \
+                --config %CONFIG% \
+                --cycle $ISOCYCLE \
+                --key-path prep
+        task_forecast:
+          trigger: prep == complete
+          events: !list '[{% for h in range(0, forecast.aigfs_inference.forecast_length + 1, forecast.aigfs_inference.forecast_freq) %}{{ "release_f%03d" % h }},{% endfor %} ]'
+          script:
+            <<: *script
+            manual: Runs AIGFS forecast.
+            batchargs: !dict '{{ forecast.aigfs_inference.execution.batchargs }}'
+            body: |
+              source %APPDIR%/bin/activate-%PLATFORM%
+              uw execute \
+                --module aigfs.drivers.inference \
+                --classname AIGFSInference \
+                --task run \
+                --config %CONFIG% \
+                --cycle $ISOCYCLE \
+                --key-path forecast
+        family_post:
+          tasks_post_{{ ec.fhr }}:
+            expand:
+              fhr: !list '[{% for h in range(0, forecast.aigfs_inference.forecast_length + 1, forecast.aigfs_inference.forecast_freq) %}{{ "f%03d" % h }},{% endfor %} ]'
+            trigger: '../forecast:release_{{ ec.fhr }}'
+            script:
+              <<: *script
+              manual: Runs AIGFS post for {{ ec.fhr }}.
+              batchargs: !dict '{{ post.aigfs_post.execution.batchargs }}'
+              body: |
+                source %APPDIR%/bin/activate-%PLATFORM%
+                export FHR=%FHR%
+                uw execute \
+                  --module aigfs.drivers.post \
+                  --classname AIGFSPost \
+                  --task run \
+                  --config %CONFIG% \
+                  --cycle $ISOCYCLE \
+                  --key-path post \
+                  --leadtime %FHR%
+            vars:
+              FHR: '{{ ec.fhr | replace("f", "") | int }}'
+      vars:
+        APPDIR: '{{ app.home }}'
+        CONFIG: '{{ app.rundir}}/aigfs.yaml'
+        ECF_INCLUDE: '{{ app.home }}/include'
+        PLATFORM: '{{ app.platform.name }}'
