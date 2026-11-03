@@ -84,9 +84,9 @@ This composes `etc/base.yaml` + `etc/workflow/rocoto.yaml` +
 ### 3b. Run and monitor with `uw rocoto iterate`
 
 Use `uwtools` to drive the workflow: `uw rocoto iterate` repeatedly runs
-`rocotorun` until the requested task (and everything it depends on) reaches a
-terminal state, printing `rocotostat` output on each pass. This replaces
-hand-rolled `while ...; rocotorun; sleep ...; done` loops.
+`rocotorun -t <task>` until the requested task reaches a terminal state, printing
+`rocotostat` output on each pass. This replaces hand-rolled
+`while ...; rocotorun; sleep ...; done` loops.
 
 Both `uw` (from the AIGFS env) and `rocotorun`/`rocotostat` (from the system
 module) must be on `PATH`, so activate the env **and** load the module:
@@ -96,25 +96,37 @@ module load rocoto
 cd /scratch3/NCEPDEV/global/Anna.Smoot/uw-aigfs/demo-rocoto
 ```
 
-Iterating the final post task drives the whole `prep -> forecast -> post` chain,
-because iterate resolves dependencies automatically (`post_024` depends on
-`forecast`, which depends on `prep`):
+**Important -- know which upstream link each task uses.** When you target a task
+with `rocotorun -t`, Rocoto follows **taskdep** (task-to-task) ancestors but
+**not datadep** (file-existence) dependencies. In this workflow:
+
+- `forecast` has a **taskdep** on `prep`, so iterating `forecast` automatically
+  runs `prep` first.
+- each `post_fXXX` has a **datadep** on the forecast output *files* (not a taskdep
+  on `forecast`), so iterating a post task **will not** trigger `prep`/`forecast`
+  -- it just waits for files that do not exist yet.
+
+So drive the workflow in two steps. First iterate `forecast` (pulls in `prep`):
 
 ```bash
 uw rocoto iterate \
   --cycle 2026-09-13T00 \
   --workflow rocoto.xml \
   --database rocoto.db \
-  --task post_024 \
+  --task forecast \
   --rate 60
 ```
 
-`rocoto.db` is created on the first pass. The command returns once `post_024`
-succeeds. To populate the remaining leadtimes (prep and forecast are already
-done, so these finish quickly):
+`rocoto.db` is created on the first pass. The command returns once `forecast`
+succeeds and its GRIB2 output files exist. Then iterate the post task(s), whose
+datadeps are now satisfied:
 
 ```bash
-for f in 000 006 012 018; do
+# one leadtime (enough to show prep -> forecast -> post end to end):
+uw rocoto iterate --cycle 2026-09-13T00 -w rocoto.xml -d rocoto.db --task post_024 --rate 30
+
+# or all leadtimes:
+for f in 000 006 012 018 024; do
   uw rocoto iterate --cycle 2026-09-13T00 -w rocoto.xml -d rocoto.db --task post_$f --rate 30
 done
 ```
@@ -128,9 +140,9 @@ rocotostat -w rocoto.xml -d rocoto.db
 Per-task logs land in `<rundir>/logs/`; the overall workflow log is
 `<rundir>/logs/workflow.log`.
 
-> Lower-level alternative: run `rocotorun -w rocoto.xml -d rocoto.db` yourself
-> every minute or two and watch `rocotostat`; `uw rocoto iterate` simply automates
-> that loop. See the
+> Lower-level alternative: run `rocotorun -w rocoto.xml -d rocoto.db` (no `-t`)
+> yourself every minute or two and watch `rocotostat`. Without `-t`, `rocotorun`
+> processes every task, so prep, forecast, and post all advance naturally. See the
 > [uwtools Rocoto tool docs](https://uwtools.readthedocs.io/en/2.20.0/sections/user_guide/cli/tools/rocoto.html).
 
 ---
