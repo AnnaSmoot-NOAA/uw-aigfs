@@ -1,0 +1,52 @@
+#!/bin/bash
+
+# drive: one real-time step of the ecFlow AIGFS rolling window. Intended to be
+# invoked periodically (e.g. from scron). A non-blocking flock ensures that only
+# one copy runs at a time, so overlapping schedule ticks are harmless.
+
+set -aeuo pipefail
+
+go() {
+
+  # Truncate log:
+
+  true >$log
+
+  # Set up environment:
+
+  PS4="[$(date +%Y-%m-%dT%H:%M:%S)]          "
+  export PS4
+  clone=$(dirname $rtdir)
+  # shellcheck source=/dev/null
+  source $clone/bin/activate-$platform
+
+  # The real-time user config reads RUNDIR and MODELDIR from the environment:
+
+  RUNDIR=$rtdir/run
+  MODELDIR=$rtdir/model
+  export RUNDIR MODELDIR
+
+  # Advance the window: ensure the server, deduce+gate cycles, render the suite,
+  # sync it to the server, and prune aged-out cycle directories.
+
+  (set -ex && python -m aigfs.ecflow_rt \
+    --config $rtdir/aigfs.yaml \
+    --install $rtdir \
+    --ecflow-host $ecflow_host \
+    --port $ecflow_port \
+    --platform $platform)
+
+  # Rotate log:
+
+  cp $log $log.last
+}
+
+rtdir=$(readlink -f $(dirname $(dirname $0)))
+log=$rtdir/rtaigfs-ecflow.log
+platform=${PLATFORM:-ursa}
+ecflow_host=${ECFLOW_HOST:-uecflow01}
+ecflow_port=${ECFLOW_PORT:-31415}
+
+# Only proceed if no other copy of this script is running:
+
+flock -n -o $(readlink -f $0) -c go >>$log 2>&1

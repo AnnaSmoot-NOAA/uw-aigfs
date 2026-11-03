@@ -259,6 +259,40 @@ Per-task run directories have structure and content specific to each task, but s
 
 Values for `<driver>` are `aigfs_ics`, `aigfs_inference`, and `aigfs_post`.
 
+### Deploying the ecFlow Realtime Workflow
+
+An ecFlow-driven realtime workflow can run **side-by-side** with the Rocoto one under the same `role.rtaigfs` account, using a separate install directory (`app-ecflow/`), a dedicated ecFlow server port, and `scron` rather than `crontab`. Deploy it with:
+
+```
+$ make deploy playbook=rtaigfs-ursa-ecflow
+```
+
+Unlike Rocoto, ecFlow needs a persistent server on the dedicated ecFlow node (`uecflow01`). This is handled **self-service** -- no sysadmin coordination is required. The scheduled driver `ssh`es into `uecflow01` and runs `app-ecflow/bin/ensure-server`, which starts the server detached if it is down and recovers prior suite state from its checkpoint. See [Run in Real Time](user_guide.md#run-in-real-time) for the full persistence model.
+
+The `rtaigfs-ursa-ecflow` playbook installs the `scrontab` only for the production user, so developers can deploy to obtain `app-ecflow/` and then run `app-ecflow/bin/drive` iteratively. Verify `app-ecflow/aigfs.yaml` before driving -- in particular `app.platform.scheduler.account`, the ecFlow host/port (role defaults), and `user.active_cycles`/`user.window_cycles`.
+
+The `app-ecflow/` directory layout:
+
+```
+app-ecflow/
+├── aigfs.yaml              # Realtime config (no first_cycle/last_cycle)
+├── bin                     # drive, ensure-server, report, bb
+├── model                   # AIGFS model files
+├── run                     # Root of yyyymmddhh cycle run directories + ecFlow server state
+├── rtaigfs-ecflow.log      # Log from latest drive step
+└── rtaigfs-ecflow.log.last # Log from previous drive step
+```
+
+The `run/` directory holds the ecFlow `ECF_HOME` (`run/ecf`, with the server log, checkpoint, and generated `suite.def`/ecf scripts), `server.json`, and one `yyyymmddhh/` directory per in-window cycle (prep/forecast/post task run directories). `scrontab -l` should show entries for advancing the window and for the daily report.
+
+Updates follow the same recipe as the Rocoto deployment, substituting the playbook:
+
+1. Update the `uw-aigfs` git repo via PR.
+1. Update the git clone on Ursa: `git pull`.
+1. If the conda installation must be updated: `rm -rf conda && make env`.
+1. Stop the running ecFlow server (`ecflow_client --halt=yes` then `--terminate=yes` on `uecflow01`) so the redeploy can replace `app-ecflow/` cleanly; the next scron tick restarts it from the preserved checkpoint.
+1. Update the deployment: `make deploy playbook=rtaigfs-ursa-ecflow`.
+
 ## Containerized AIGFS
 
 **This section contains work-in-progress development notes and is unlikely to be complete or fully correct.**

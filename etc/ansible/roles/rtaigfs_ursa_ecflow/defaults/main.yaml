@@ -1,0 +1,16 @@
+---
+rtaigfs_ecflow_account: gsd-fv3
+rtaigfs_ecflow_bb_arch: "{{ {'x86_64': 'amd64', 'aarch64': 'aarch64'}[ansible_facts['architecture']] }}"
+rtaigfs_ecflow_bb_url: https://github.com/babashka/babashka/releases/download/v{{ rtaigfs_ecflow_bb_version }}/babashka-{{ rtaigfs_ecflow_bb_version }}-linux-{{ rtaigfs_ecflow_bb_arch }}-static.tar.gz
+rtaigfs_ecflow_bb_version: 1.13.225
+rtaigfs_ecflow_bin_dir: "{{ rtaigfs_ecflow_install_dir | realpath }}/bin"
+rtaigfs_ecflow_host: uecflow01
+rtaigfs_ecflow_install_dir: "{{ playbook_dir }}/../../../app-ecflow"
+rtaigfs_ecflow_model_archive: aigfs-v1.1.tgz
+rtaigfs_ecflow_model_archive_path: "/home/{{ rtaigfs_ecflow_user }}/models/{{ rtaigfs_ecflow_model_archive }}"
+rtaigfs_ecflow_platform: ursa
+rtaigfs_ecflow_port: 31415
+rtaigfs_ecflow_scrontab_minutes: 5
+rtaigfs_ecflow_scrontab_partition: u1-service
+rtaigfs_ecflow_scrontab_path: "{{ rtaigfs_ecflow_install_dir | realpath }}/scrontab"
+rtaigfs_ecflow_user: role.rtaigfs

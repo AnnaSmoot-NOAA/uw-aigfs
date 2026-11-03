@@ -1,0 +1,60 @@
+---
+- name: Create install directory
+  ansible.builtin.file:
+    path: "{{ rtaigfs_ecflow_install_dir | realpath }}"
+    state: directory
+    mode: "0755"
+
+- name: Create bin directory
+  ansible.builtin.file:
+    path: "{{ rtaigfs_ecflow_bin_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Check for bb
+  ansible.builtin.stat:
+    path: "{{ rtaigfs_ecflow_bin_dir }}/bb"
+  register: rtaigfs_ecflow_bb
+
+- name: Install bb
+  ansible.builtin.shell:
+    cmd: set -o pipefail && curl -fsSL {{ rtaigfs_ecflow_bb_url }} | tar -xzO bb >{{ (rtaigfs_ecflow_bin_dir ~ '/bb') }}
+    executable: /bin/bash
+  changed_when: true
+  when: not rtaigfs_ecflow_bb.stat.exists
+
+- name: Make bb executable
+  ansible.builtin.file:
+    path: "{{ rtaigfs_ecflow_bin_dir }}/bb"
+    mode: "0755"
+
+- name: Install drive launcher
+  ansible.builtin.copy:
+    src: drive
+    dest: "{{ rtaigfs_ecflow_bin_dir }}/drive"
+    mode: "0755"
+
+- name: Install ensure-server
+  ansible.builtin.copy:
+    src: ensure-server
+    dest: "{{ rtaigfs_ecflow_bin_dir }}/ensure-server"
+    mode: "0755"
+
+- name: Install report launcher
+  ansible.builtin.copy:
+    src: report
+    dest: "{{ rtaigfs_ecflow_bin_dir }}/report"
+    mode: "0755"
+
+- name: Install configuration
+  ansible.builtin.copy:
+    src: aigfs.yaml
+    dest: "{{ rtaigfs_ecflow_install_dir | realpath }}/aigfs.yaml"
+    mode: "0644"
+
+- name: Extract model archive
+  ansible.builtin.unarchive:
+    src: "{{ rtaigfs_ecflow_model_archive_path }}"
+    dest: "{{ rtaigfs_ecflow_install_dir | realpath }}"
+    remote_src: true
+    creates: "{{ rtaigfs_ecflow_install_dir | realpath }}/model"

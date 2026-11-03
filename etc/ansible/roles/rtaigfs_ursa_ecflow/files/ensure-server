@@ -1,0 +1,94 @@
+#!/bin/bash
+
+# ensure-server: ensure a persistent ecFlow server is running for the real-time
+# ecFlow AIGFS workflow. Idempotent and safe to call repeatedly. Intended to run
+# ON the dedicated ecFlow node (e.g. uecflow01 on Ursa), typically invoked over
+# ssh by the real-time driver.
+#
+# Behavior:
+#   - If a server already answers on the configured host/port, ensure it is in
+#     the RUNNING state and exit.
+#   - Otherwise start a detached ecFlow server (via "uw ecflow server"), which
+#     recovers prior suite state from the checkpoint in ECF_HOME if present. A
+#     recovered/started server comes up HALTED, so move it to RUNNING.
+#
+# The server is started with setsid+nohup so it survives the ssh session and
+# logout. Suite state is preserved across restarts by ecFlow's checkpoint file.
+
+set -euo pipefail
+
+usage() {
+  echo "usage: $0 --rundir DIR --config FILE --port PORT [--platform NAME] [--insecure]" >&2
+  exit 2
+}
+
+insecure=0
+platform=ursa
+rundir=
+config=
+port=
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --rundir) rundir=$2; shift 2;;
+    --config) config=$2; shift 2;;
+    --port) port=$2; shift 2;;
+    --platform) platform=$2; shift 2;;
+    --insecure) insecure=1; shift;;
+    *) usage;;
+  esac
+done
+
+[[ -n $rundir && -n $config && -n $port ]] || usage
+
+# Derive the repo clone root from this script's location
+# (<clone>/<install>/bin/ensure-server) and activate the AIGFS runtime so that
+# "uw" and "ecflow_client" are on PATH.
+
+self=$(readlink -f "$0")
+install=$(dirname "$(dirname "$self")")
+clone=$(dirname "$install")
+# shellcheck source=/dev/null
+source "$clone/bin/activate-$platform"
+
+ECF_HOST=$(hostname)
+export ECF_HOST
+export ECF_PORT=$port
+if [[ $insecure -eq 1 ]]; then
+  unset ECF_SSL || true
+  ssl_flag=()
+else
+  export ECF_SSL=1
+  ssl_flag=(--ssl)
+fi
+
+mkdir -p "$rundir"
+
+client() { ecflow_client --host="$ECF_HOST" --port="$ECF_PORT" "${ssl_flag[@]}" "$@"; }
+ping_ok() { client --ping >/dev/null 2>&1; }
+
+if ping_ok; then
+  echo "ensure-server: server already running on $ECF_HOST:$ECF_PORT"
+else
+  echo "ensure-server: starting server on $ECF_HOST:$ECF_PORT"
+  server_cmd=(uw ecflow server --config-file "$config" --port "$port" --report)
+  [[ $insecure -eq 1 ]] && server_cmd+=(--insecure)
+  cd "$rundir"
+  setsid nohup "${server_cmd[@]}" >"$rundir/server.json" 2>>"$rundir/server.log" &
+  for _ in $(seq 1 60); do
+    ping_ok && break
+    sleep 1
+  done
+  if ! ping_ok; then
+    echo "ensure-server: server failed to start on $ECF_HOST:$ECF_PORT (see $rundir/server.log)" >&2
+    exit 1
+  fi
+  echo "ensure-server: server started on $ECF_HOST:$ECF_PORT"
+fi
+
+# A manually started server (including one recovered from a checkpoint) begins
+# HALTED: no scheduling, no auto-checkpointing. Move it to RUNNING. This is a
+# no-op if the server is already running.
+
+client --restart >/dev/null 2>&1 || true
+echo "ensure-server: server is RUNNING on $ECF_HOST:$ECF_PORT"

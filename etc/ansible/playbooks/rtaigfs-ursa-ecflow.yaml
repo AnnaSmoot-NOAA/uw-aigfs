@@ -1,0 +1,133 @@
+---
+- name: Configure rtaigfs-ursa-ecflow
+  hosts: localhost
+  gather_facts: true
+
+  vars_files:
+    - ../roles/rtaigfs_ursa_ecflow/defaults/main.yaml
+
+  vars:
+    rtaigfs_ecflow_app: "{{ rtaigfs_ecflow_app_parent }}/app-ecflow"
+    rtaigfs_ecflow_app_save: "{{ rtaigfs_ecflow_app_parent }}/app-ecflow.{{ rtaigfs_ecflow_save_ts }}"
+    rtaigfs_ecflow_app_parent: "{{ (playbook_dir + '/../../..') | realpath }}"
+    rtaigfs_ecflow_is_service_user: "{{ ansible_facts['user_id'] == rtaigfs_ecflow_user }}"
+    rtaigfs_ecflow_scrontab_save: "{{ rtaigfs_ecflow_root }}/rtaigfs-ecflow-scrontab.{{ rtaigfs_ecflow_save_ts }}"
+    rtaigfs_ecflow_root: "{{ lookup('ansible.builtin.env', 'PWD') }}"
+
+  pre_tasks:
+    - name: Set timestamp
+      ansible.builtin.set_fact:
+        rtaigfs_ecflow_save_ts: "{{ lookup('pipe', 'date +%Y%m%dT%H%M%S') }}"
+
+    - name: Save scrontab
+      ansible.builtin.shell:
+        cmd: "scrontab -l >{{ rtaigfs_ecflow_scrontab_save }} 2>/dev/null || : >{{ rtaigfs_ecflow_scrontab_save }}"
+        executable: /bin/bash
+      changed_when: false
+      when: rtaigfs_ecflow_is_service_user
+
+  tasks:
+    - name: Deploy RTAIGFS ecFlow
+      block:
+        - name: Unload scrontab
+          ansible.builtin.command:
+            argv: [scrontab, -r]
+          register: rtaigfs_ecflow_scrontab_unload
+          failed_when:
+            - rtaigfs_ecflow_scrontab_unload.rc != 0
+            - "'no crontab' not in (rtaigfs_ecflow_scrontab_unload.stderr | default(''))"
+          changed_when: rtaigfs_ecflow_scrontab_unload.rc == 0
+          when: rtaigfs_ecflow_is_service_user
+
+        - name: Does app-ecflow/ exist?
+          ansible.builtin.stat:
+            path: "{{ rtaigfs_ecflow_app }}"
+          register: rtaigfs_ecflow_app_stat
+
+        - name: Save app-ecflow/
+          ansible.builtin.command:
+            argv: [mv, "{{ rtaigfs_ecflow_app }}", "{{ rtaigfs_ecflow_app_save }}"]
+          when: rtaigfs_ecflow_app_stat.stat.exists
+          changed_when: true
+
+        - name: Run rtaigfs_ursa_ecflow role
+          ansible.builtin.include_role:
+            name: rtaigfs_ursa_ecflow
+
+        - name: Is there a saved run directory?
+          ansible.builtin.stat:
+            path: "{{ rtaigfs_ecflow_app_save }}/run"
+          register: rtaigfs_ecflow_run_stat
+          when: rtaigfs_ecflow_app_stat.stat.exists
+
+        - name: Restore saved run directory
+          ansible.builtin.command:
+            argv: [mv, "{{ rtaigfs_ecflow_app_save }}/run", "{{ rtaigfs_ecflow_app }}/run"]
+          when:
+            - rtaigfs_ecflow_app_stat.stat.exists
+            - rtaigfs_ecflow_run_stat.stat.exists | default(false)
+          changed_when: true
+
+        - name: Remove saved app-ecflow/
+          ansible.builtin.file:
+            path: "{{ rtaigfs_ecflow_app_save }}"
+            state: absent
+          when: rtaigfs_ecflow_app_stat.stat.exists
+
+        - name: Remove saved scrontab
+          ansible.builtin.file:
+            path: "{{ rtaigfs_ecflow_scrontab_save }}"
+            state: absent
+          when: rtaigfs_ecflow_is_service_user
+
+        - name: Install scrontab
+          ansible.builtin.command:
+            argv: [scrontab, "-"]
+            stdin: "{{ lookup('ansible.builtin.template', '../roles/rtaigfs_ursa_ecflow/templates/scrontab.j2') }}"
+          changed_when: true
+          when: rtaigfs_ecflow_is_service_user
+
+      rescue:
+        - name: "ROLLBACK: Initial notice"
+          ansible.builtin.debug:
+            msg: |
+              ============================================================
+              DEPLOYMENT FAILED — rolling back.
+              Failed task: {{ ansible_failed_task.name | default('unknown') }}
+              Error: {{ ansible_failed_result.msg | default(ansible_failed_result) }}
+              ============================================================
+
+        - name: "ROLLBACK: Remove broken app-ecflow/"
+          ansible.builtin.file:
+            path: "{{ rtaigfs_ecflow_app }}"
+            state: absent
+          when: (rtaigfs_ecflow_app_stat.stat.exists | default(false))
+
+        - name: "ROLLBACK: Restore saved app-ecflow/"
+          ansible.builtin.command:
+            argv: [mv, "{{ rtaigfs_ecflow_app_save }}", "{{ rtaigfs_ecflow_app }}"]
+          when: (rtaigfs_ecflow_app_stat.stat.exists | default(false))
+          changed_when: true
+
+        - name: "ROLLBACK: Reload saved scrontab"
+          ansible.builtin.shell:
+            cmd: >-
+              if [ -s {{ rtaigfs_ecflow_scrontab_save }} ]; then
+                scrontab {{ rtaigfs_ecflow_scrontab_save }};
+              fi
+          changed_when: true
+          when: rtaigfs_ecflow_is_service_user
+
+        - name: "ROLLBACK: Remove saved scrontab"
+          ansible.builtin.file:
+            path: "{{ rtaigfs_ecflow_scrontab_save }}"
+            state: absent
+          when: rtaigfs_ecflow_is_service_user
+
+        - name: "ROLLBACK: Final notice"
+          ansible.builtin.fail:
+            msg: |
+              ============================================================
+              DEPLOYMENT ROLLED BACK.
+              See failure message above for the root cause.
+              ============================================================
