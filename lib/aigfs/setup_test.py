@@ -84,6 +84,29 @@ def test_setup_compose_configs(logcap, tmp_path, workflow):
     assert (msg in logcap.text) == (workflow is None)
 
 
+def test_setup_compose_configs_app_overrides(tmp_path):
+    with (
+        patch.object(setup, "compose_to_dict") as compose_to_dict,
+        patch.object(setup, "NamedTemporaryFile") as NamedTemporaryFile,
+    ):
+        compose_to_dict.return_value = {}
+        reserved_path = tmp_path / "reserved.yaml"
+        tmp = Mock()
+        tmp.name = str(reserved_path)
+        NamedTemporaryFile().__enter__.return_value = tmp
+        setup.compose_configs(
+            STR.ecflow, "ursa", [Path("/path/to/a.yaml")], app_overrides={STR.rundir: "/run"}
+        )
+    expected = {
+        STR.app: {
+            STR.home: str(setup.HOMEDIR),
+            STR.platform: {STR.name: "ursa"},
+            STR.rundir: "/run",
+        }
+    }
+    assert YAMLConfig(reserved_path) == expected
+
+
 @mark.parametrize("workflow", [STR.rocoto, STR.ecflow, None])
 def test_setup_main(workflow):
     with (

@@ -90,7 +90,12 @@ def test_ecflow_rt_render_suite_writes_config_when_absent(tmp_path, utc):
             Path("/u/user.yaml"), "ursa", tmp_path, [utc(2026, 9, 13, 0)]
         )
     assert os.environ[ecflow_rt.STR_RTCYCLES] == "20260913T000000"
-    compose.assert_called_once_with(ecflow_rt.WORKFLOW, "ursa", [Path("/u/user.yaml")])
+    compose.assert_called_once_with(
+        ecflow_rt.WORKFLOW,
+        "ursa",
+        [Path("/u/user.yaml")],
+        app_overrides={STR.rundir: str(tmp_path)},
+    )
     validate.assert_called_once_with(compose.return_value)
     assert yamlconfig.call_args.args[0][STR.app] == {"home": "/h", "rundir": "/r", "n": 1}
     yamlconfig.return_value.dump.assert_called_once_with(tmp_path / STR.aigfs_yaml)

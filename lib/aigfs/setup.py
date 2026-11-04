@@ -18,10 +18,17 @@ from aigfs.validation import Config, validate
 
 
 def compose_configs(
-    workflow: str | None, platform: str, user_config_files: list[Path], prefix: str | None = None
+    workflow: str | None,
+    platform: str,
+    user_config_files: list[Path],
+    prefix: str | None = None,
+    app_overrides: dict | None = None,
 ) -> dict:
     """
     Compose and realize base, platform, and user configs.
+
+    Any app_overrides are merged into the highest-priority (reserved) app block, so e.g. a concrete
+    app.rundir can be supplied to fully resolve nested, cycle-parameterized rundir templates.
     """
     if not workflow:
         msg = "%sNo --workflow value supplied, omitting workflow support"
@@ -32,6 +39,8 @@ def compose_configs(
         p_platform = PLATFORMDIR / f"{platform}.yaml"
         p_reserved = Path(tmp.name)
         app = {STR.app: {STR.home: str(HOMEDIR), STR.platform: {STR.name: platform}}}
+        if app_overrides:
+            app[STR.app].update(app_overrides)
         YAMLConfig(app).dump(p_reserved)
         configs = [x for x in [p_base, p_workflow, p_platform, *user_config_files, p_reserved] if x]
         return compose_to_dict(configs, realize=True)
