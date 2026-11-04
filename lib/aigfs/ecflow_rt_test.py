@@ -1,8 +1,12 @@
+import os
 from datetime import datetime, timedelta
+from pathlib import Path
+from unittest.mock import Mock, patch
 
-from pytest import mark
+from pytest import mark, raises
 
 from aigfs import ecflow_rt
+from aigfs.strings import STR
 
 # deduce_cycles
 
@@ -44,7 +48,7 @@ def test_ecflow_rt_gated_cycles_custom_offset(utc):
     assert ecflow_rt.gated_cycles(cycles, now, timedelta(hours=7)) == []
 
 
-# family_name
+# family_name / _utc
 
 
 @mark.parametrize(
@@ -59,18 +63,132 @@ def test_ecflow_rt_family_name(args, expected, utc):
 
 
 def test_ecflow_rt_family_name_naive_treated_as_utc():
-    assert ecflow_rt.family_name(datetime(2026, 9, 13, 0)) == "cycle_20260913T000000"  # noqa: DTZ001
+    # A naive datetime exercises the _utc() tz-adding branch.
+    naive = datetime(2026, 9, 13, 0)  # noqa: DTZ001
+    assert ecflow_rt.family_name(naive) == "cycle_20260913T000000"
+
+
+# render_suite
+
+
+def _render_config(app):
+    config = Mock()
+    config.model_dump.return_value = {STR.app: dict(app)}
+    return config
+
+
+def test_ecflow_rt_render_suite_writes_config_when_absent(tmp_path, utc):
+    # Mix of Path and non-Path app values exercises both arms of the stringify comprehension.
+    config = _render_config({"home": Path("/h"), "rundir": Path("/r"), "n": 1})
+    with (
+        patch.object(ecflow_rt.setup, "compose_configs") as compose,
+        patch.object(ecflow_rt.setup, "validate", return_value=config) as validate,
+        patch.object(ecflow_rt, "YAMLConfig") as yamlconfig,
+        patch.object(ecflow_rt.uwecflow, "realize") as realize,
+    ):
+        result = ecflow_rt.render_suite(
+            Path("/u/user.yaml"), "ursa", tmp_path, [utc(2026, 9, 13, 0)]
+        )
+    assert os.environ[ecflow_rt.STR_RTCYCLES] == "20260913T000000"
+    compose.assert_called_once_with(ecflow_rt.WORKFLOW, "ursa", [Path("/u/user.yaml")])
+    validate.assert_called_once_with(compose.return_value)
+    assert yamlconfig.call_args.args[0][STR.app] == {"home": "/h", "rundir": "/r", "n": 1}
+    yamlconfig.return_value.dump.assert_called_once_with(tmp_path / STR.aigfs_yaml)
+    realize.assert_called_once_with(
+        yamlconfig.return_value, tmp_path, scripts_path=tmp_path / "ecf"
+    )
+    assert result is yamlconfig.return_value
+
+
+def test_ecflow_rt_render_suite_skips_config_when_present(tmp_path, utc):
+    (tmp_path / STR.aigfs_yaml).touch()
+    config = _render_config({"home": Path("/h")})
+    with (
+        patch.object(ecflow_rt.setup, "compose_configs"),
+        patch.object(ecflow_rt.setup, "validate", return_value=config),
+        patch.object(ecflow_rt, "YAMLConfig") as yamlconfig,
+        patch.object(ecflow_rt.uwecflow, "realize") as realize,
+    ):
+        ecflow_rt.render_suite(Path("/u/user.yaml"), "ursa", tmp_path, [utc(2026, 9, 13, 0)])
+    yamlconfig.return_value.dump.assert_not_called()
+    realize.assert_called_once()
+
+
+# sync_window
+
+
+def _suite(names):
+    suite = Mock()
+    nodes = []
+    for name in names:
+        node = Mock()
+        node.name.return_value = name
+        nodes.append(node)
+    suite.nodes = nodes
+    return suite
+
+
+def test_ecflow_rt_sync_window_loads_and_begins_when_absent(tmp_path, utc):
+    client = Mock()
+    client.get_defs.return_value = None  # no defs on server yet
+    with patch("ecflow.Client", return_value=client):
+        ecflow_rt.sync_window("host", 20, tmp_path, [utc(2026, 9, 13, 0)], ssl=True, begin=True)
+    client.enable_ssl.assert_called_once()
+    client.replace.assert_called_once_with("/rtaigfs", str(tmp_path / "suite.def"), True, True)  # noqa: FBT003
+    client.begin_suite.assert_called_once_with("rtaigfs", True)  # noqa: FBT003
+    client.checkpt.assert_called_once()
+
+
+def test_ecflow_rt_sync_window_loads_without_begin_or_ssl(tmp_path, utc):
+    client = Mock()
+    defs = Mock()
+    defs.find_suite.return_value = None
+    client.get_defs.return_value = defs
+    with patch("ecflow.Client", return_value=client):
+        ecflow_rt.sync_window("host", 20, tmp_path, [utc(2026, 9, 13, 0)], ssl=False, begin=False)
+    client.enable_ssl.assert_not_called()
+    client.replace.assert_called_once()
+    client.begin_suite.assert_not_called()
+
+
+def test_ecflow_rt_sync_window_adds_and_deletes(tmp_path, utc):
+    client = Mock()
+    defs = Mock()
+    # Server has 00Z (keep), 18Z (aged out), plus a non-cycle node (ignored by the filter).
+    defs.find_suite.return_value = _suite(
+        ["cycle_20260913T000000", "cycle_20260912T180000", "misc"]
+    )
+    client.get_defs.return_value = defs
+    cycles = [utc(2026, 9, 13, 6), utc(2026, 9, 13, 0)]  # want 06Z (new) + 00Z (keep)
+    with patch("ecflow.Client", return_value=client):
+        ecflow_rt.sync_window("host", 20, tmp_path, cycles, ssl=True)
+    suite_def = str(tmp_path / "suite.def")
+    client.replace.assert_called_once_with("/rtaigfs/cycle_20260913T060000", suite_def, True, True)  # noqa: FBT003
+    client.delete.assert_called_once_with("/rtaigfs/cycle_20260912T180000", True)  # noqa: FBT003
+    client.begin_suite.assert_not_called()
+    client.checkpt.assert_called_once()
+
+
+def test_ecflow_rt_sync_window_noop_when_matching(tmp_path, utc):
+    client = Mock()
+    defs = Mock()
+    defs.find_suite.return_value = _suite(["cycle_20260913T000000"])
+    client.get_defs.return_value = defs
+    with patch("ecflow.Client", return_value=client):
+        ecflow_rt.sync_window("host", 20, tmp_path, [utc(2026, 9, 13, 0)], ssl=True)
+    client.replace.assert_not_called()
+    client.delete.assert_not_called()
+    client.checkpt.assert_called_once()
 
 
 # prune_cycle_dirs
 
 
 def test_ecflow_rt_prune_cycle_dirs_keeps_newest(tmp_path):
-    names = ["2026091300", "2026091306", "2026091312", "2026091318", "2026091400"]
-    for name in names:
+    for name in ["2026091300", "2026091306", "2026091312", "2026091318", "2026091400"]:
         (tmp_path / name).mkdir()
     (tmp_path / "ecf").mkdir()  # non-cycle dir must be ignored
-    (tmp_path / "aigfs.yaml").touch()
+    (tmp_path / "aigfs.yaml").touch()  # non-dir must be ignored
     ecflow_rt.prune_cycle_dirs(tmp_path, keep=3)
     remaining = sorted(p.name for p in tmp_path.iterdir() if p.is_dir() and p.name.isdigit())
     assert remaining == ["2026091312", "2026091318", "2026091400"]
@@ -85,5 +203,180 @@ def test_ecflow_rt_prune_cycle_dirs_noop_when_under_limit(tmp_path):
     assert remaining == ["2026091300", "2026091306"]
 
 
+def test_ecflow_rt_prune_cycle_dirs_keep_zero_removes_all(tmp_path):
+    for name in ["2026091300", "2026091306"]:
+        (tmp_path / name).mkdir()
+    ecflow_rt.prune_cycle_dirs(tmp_path, keep=0)
+    assert [p.name for p in tmp_path.iterdir() if p.is_dir() and p.name.isdigit()] == []
+
+
 def test_ecflow_rt_prune_cycle_dirs_missing_rundir(tmp_path):
     ecflow_rt.prune_cycle_dirs(tmp_path / "nope", keep=3)  # must not raise
+
+
+# ensure_server
+
+
+def test_ecflow_rt_ensure_server():
+    with patch.object(ecflow_rt.subprocess, "run") as run:
+        ecflow_rt.ensure_server(Path("/i"), "uecflow01", Path("/r"), 20, "ursa")
+    run.assert_called_once_with(
+        [
+            "ssh",
+            "-o",
+            "BatchMode=yes",
+            "uecflow01",
+            "/i/bin/ensure-server",
+            "--rundir",
+            "/r",
+            "--config",
+            str(Path("/r") / STR.aigfs_yaml),
+            "--port",
+            "20",
+            "--platform",
+            "ursa",
+        ],
+        check=True,
+    )
+
+
+# drive
+
+
+def _drive_args(**overrides):
+    defaults = {
+        "config": "/c/user.yaml",
+        "install": "/i",
+        "ecflow_host": "uecflow01",
+        "port": 20,
+        "platform": "ursa",
+        "insecure": False,
+        "render_only": False,
+    }
+    defaults.update(overrides)
+    return Mock(**defaults)
+
+
+def _drive_config(user):
+    config = Mock()
+    config.app.rundir = "/run"
+    config.app.cycle_freq = timedelta(hours=6)
+    config.user = user
+    return config
+
+
+def test_ecflow_rt_drive_no_cycles_returns_early(utc):
+    config = _drive_config({})
+    with (
+        patch.object(ecflow_rt.setup, "compose_configs"),
+        patch.object(ecflow_rt.setup, "validate", return_value=config),
+        patch.object(ecflow_rt, "deduce_cycles", return_value=[utc(2026, 9, 13, 0)]),
+        patch.object(ecflow_rt, "gated_cycles", return_value=[]),
+        patch.object(ecflow_rt, "render_suite") as render,
+        patch.object(ecflow_rt, "prune_cycle_dirs") as prune,
+    ):
+        ecflow_rt.drive(_drive_args())
+    render.assert_not_called()
+    prune.assert_not_called()
+
+
+def test_ecflow_rt_drive_full_step(utc):
+    config = _drive_config({"active_cycles": 2, "window_cycles": 5})
+    cyc = [utc(2026, 9, 13, 0)]
+    with (
+        patch.object(ecflow_rt.setup, "compose_configs"),
+        patch.object(ecflow_rt.setup, "validate", return_value=config),
+        patch.object(ecflow_rt, "deduce_cycles", return_value=cyc) as deduce,
+        patch.object(ecflow_rt, "gated_cycles", return_value=cyc),
+        patch.object(ecflow_rt, "render_suite") as render,
+        patch.object(ecflow_rt, "ensure_server") as ensure,
+        patch.object(ecflow_rt, "sync_window") as sync,
+        patch.object(ecflow_rt, "prune_cycle_dirs") as prune,
+    ):
+        ecflow_rt.drive(_drive_args())
+    assert deduce.call_args.args[1:] == (timedelta(hours=6), 2)
+    render.assert_called_once_with(Path("/c/user.yaml"), "ursa", Path("/run"), cyc)
+    ensure.assert_called_once_with(Path("/i"), "uecflow01", Path("/run"), 20, "ursa")
+    sync.assert_called_once_with("uecflow01", 20, Path("/run"), cyc, ssl=True)
+    prune.assert_called_once_with(Path("/run"), 5)
+
+
+def test_ecflow_rt_drive_render_only(utc):
+    config = _drive_config(None)  # None -> defaults via "config.user or {}"
+    cyc = [utc(2026, 9, 13, 0)]
+    with (
+        patch.object(ecflow_rt.setup, "compose_configs"),
+        patch.object(ecflow_rt.setup, "validate", return_value=config),
+        patch.object(ecflow_rt, "deduce_cycles", return_value=cyc),
+        patch.object(ecflow_rt, "gated_cycles", return_value=cyc),
+        patch.object(ecflow_rt, "render_suite") as render,
+        patch.object(ecflow_rt, "ensure_server") as ensure,
+        patch.object(ecflow_rt, "sync_window") as sync,
+        patch.object(ecflow_rt, "prune_cycle_dirs") as prune,
+    ):
+        ecflow_rt.drive(_drive_args(render_only=True))
+    render.assert_called_once()
+    ensure.assert_not_called()
+    sync.assert_not_called()
+    prune.assert_called_once_with(Path("/run"), ecflow_rt.DEFAULT_WINDOW_CYCLES)
+
+
+# parse_args / main
+
+
+def test_ecflow_rt_parse_args_defaults():
+    ns = ecflow_rt.parse_args(
+        ["--config", "c", "--install", "i", "--ecflow-host", "h", "--port", "20"]
+    )
+    assert ns.platform == "ursa"
+    assert ns.port == 20
+    assert not ns.insecure
+    assert not ns.render_only
+    assert not ns.verbose
+
+
+def test_ecflow_rt_parse_args_flags():
+    ns = ecflow_rt.parse_args(
+        [
+            "--config",
+            "c",
+            "--install",
+            "i",
+            "--ecflow-host",
+            "h",
+            "--port",
+            "20",
+            "--platform",
+            "wcoss2",
+            "--insecure",
+            "--render-only",
+            "--verbose",
+        ]
+    )
+    assert ns.platform == "wcoss2"
+    assert ns.insecure
+    assert ns.render_only
+    assert ns.verbose
+
+
+def test_ecflow_rt_main_success():
+    with (
+        patch.object(ecflow_rt, "parse_args") as parse_args,
+        patch.object(ecflow_rt, "use_uwtools_logger") as logger,
+        patch.object(ecflow_rt, "drive") as drive,
+    ):
+        parse_args.return_value = Mock(verbose=True)
+        ecflow_rt.main()
+    logger.assert_called_once_with(verbose=True)
+    drive.assert_called_once_with(parse_args.return_value)
+
+
+def test_ecflow_rt_main_failure_exits():
+    with (
+        patch.object(ecflow_rt, "parse_args", return_value=Mock(verbose=False)),
+        patch.object(ecflow_rt, "use_uwtools_logger"),
+        patch.object(ecflow_rt, "drive", side_effect=RuntimeError("boom")),
+        raises(SystemExit) as excinfo,
+    ):
+        ecflow_rt.main()
+    assert excinfo.value.code == 1

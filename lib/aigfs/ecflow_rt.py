@@ -122,10 +122,10 @@ def render_suite(
 def sync_window(
     host: str,
     port: int,
-    ssl: bool,
     rundir: Path,
     cycles: list[datetime],
     *,
+    ssl: bool,
     begin: bool = True,
 ) -> None:
     """
@@ -135,7 +135,7 @@ def sync_window(
     and delete families for cycles that have aged out. Force a checkpoint
     afterward so a hard server crash does not lose the change.
     """
-    from ecflow import Client  # noqa: PLC0415
+    from ecflow import Client  # type: ignore[import-untyped]  # noqa: PLC0415
 
     client = Client(host, str(port))
     if ssl:
@@ -215,6 +215,7 @@ def drive(args: argparse.Namespace) -> None:
     config = setup.validate(setup.compose_configs(WORKFLOW, args.platform, [user_config]))
     rundir = Path(config.app.rundir)
     cycle_freq = config.app.cycle_freq
+    assert cycle_freq is not None  # guaranteed by validation when a workflow engine is configured
     user = config.user or {}
     active = int(user.get("active_cycles", DEFAULT_ACTIVE_CYCLES))
     window = int(user.get("window_cycles", DEFAULT_WINDOW_CYCLES))
@@ -228,7 +229,7 @@ def drive(args: argparse.Namespace) -> None:
     render_suite(user_config, args.platform, rundir, cycles)
     if not args.render_only:
         ensure_server(install, args.ecflow_host, rundir, args.port, args.platform)
-        sync_window(args.ecflow_host, args.port, not args.insecure, rundir, cycles)
+        sync_window(args.ecflow_host, args.port, rundir, cycles, ssl=not args.insecure)
     prune_cycle_dirs(rundir, window)
 
 
