@@ -29,6 +29,7 @@ import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from shutil import rmtree
+from time import sleep
 
 from uwtools.api import ecflow as uwecflow
 from uwtools.api.config import YAMLConfig
@@ -49,6 +50,15 @@ DATA_OFFSET = timedelta(hours=3, minutes=35)
 # Defaults mirroring the Rocoto rolling window (active_cycles / window_cycles).
 DEFAULT_ACTIVE_CYCLES = 4
 DEFAULT_WINDOW_CYCLES = 12
+
+# Per-user base offset for the deterministic default ecFlow port (matches the
+# ensure-server script's $(($(id -u) + 1500)) so both agree without configuration).
+PORT_BASE = 1500
+
+
+def default_port() -> int:
+    """Return the per-user default ecFlow port (user id + PORT_BASE)."""
+    return os.getuid() + PORT_BASE
 
 
 # Cycle math (pure)
@@ -126,14 +136,42 @@ def render_suite(
 # Server sync
 
 
+def _client(host: str, port: int):
+    """Return an SSL-enabled ecFlow client for the given host/port."""
+    from ecflow import Client  # type: ignore[import-untyped]  # noqa: PLC0415
+
+    client = Client(host, str(port))
+    client.enable_ssl()
+    return client
+
+
+def wait_until_running(host: str, port: int, *, attempts: int = 60, delay: float = 1.0) -> None:
+    """
+    Wait until the ecFlow server is reachable, then move it to the RUNNING state.
+
+    ensure-server starts the server in the background and returns immediately, so
+    the server may not be accepting connections yet. A freshly started server (or
+    one recovered from a checkpoint) comes up HALTED, so restart it to RUNNING.
+    """
+    client = _client(host, port)
+    for _ in range(attempts):
+        try:
+            client.ping()
+        except RuntimeError:
+            sleep(delay)
+            continue
+        client.restart_server()
+        return
+    msg = "ecFlow server at %s:%s did not become reachable after %d attempts" % (
+        host,
+        port,
+        attempts,
+    )
+    raise RuntimeError(msg)
+
+
 def sync_window(
-    host: str,
-    port: int,
-    rundir: Path,
-    cycles: list[datetime],
-    *,
-    ssl: bool,
-    begin: bool = True,
+    host: str, port: int, rundir: Path, cycles: list[datetime], *, begin: bool = True
 ) -> None:
     """
     Incrementally bring the server's rtaigfs suite into line with `cycles`.
@@ -142,11 +180,7 @@ def sync_window(
     and delete families for cycles that have aged out. Force a checkpoint
     afterward so a hard server crash does not lose the change.
     """
-    from ecflow import Client  # type: ignore[import-untyped]  # noqa: PLC0415
-
-    client = Client(host, str(port))
-    if ssl:
-        client.enable_ssl()
+    client = _client(host, port)
     suite_def = str(rundir / "suite.def")
     wanted = {family_name(c) for c in cycles}
 
@@ -235,8 +269,10 @@ def drive(args: argparse.Namespace) -> None:
 
     render_suite(user_config, args.platform, rundir, cycles)
     if not args.render_only:
-        ensure_server(install, args.ecflow_host, rundir, args.port, args.platform)
-        sync_window(args.ecflow_host, args.port, rundir, cycles, ssl=not args.insecure)
+        port = args.port if args.port is not None else default_port()
+        ensure_server(install, args.ecflow_host, rundir, port, args.platform)
+        wait_until_running(args.ecflow_host, port)
+        sync_window(args.ecflow_host, port, rundir, cycles)
     prune_cycle_dirs(rundir, window)
 
 
@@ -245,9 +281,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--config", required=True, help="path to the real-time user config YAML")
     parser.add_argument("--install", required=True, help="role install directory (contains bin/)")
     parser.add_argument("--ecflow-host", required=True, help="dedicated ecFlow node hostname")
-    parser.add_argument("--port", required=True, type=int, help="ecFlow server port")
+    parser.add_argument(
+        "--port", type=int, help="ecFlow server port (default: per-user, user id + 1500)"
+    )
     parser.add_argument("--platform", default="ursa", help="platform name")
-    parser.add_argument("--insecure", action="store_true", help="connect without SSL")
     parser.add_argument("--render-only", action="store_true", help="render suite.def only")
     parser.add_argument("--verbose", action="store_true", help="enable verbose logging")
     return parser.parse_args(argv)

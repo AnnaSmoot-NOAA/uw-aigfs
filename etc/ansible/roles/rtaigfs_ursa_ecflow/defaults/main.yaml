@@ -9,7 +9,7 @@ rtaigfs_ecflow_install_dir: "{{ playbook_dir }}/../../../app-ecflow"
 rtaigfs_ecflow_model_archive: aigfs-v1.1.tgz
 rtaigfs_ecflow_model_archive_path: "/home/{{ rtaigfs_ecflow_user }}/models/{{ rtaigfs_ecflow_model_archive }}"
 rtaigfs_ecflow_platform: ursa
-rtaigfs_ecflow_port: 31415
+rtaigfs_ecflow_port: ""  # empty => per-user default port (user id + 1500)
 rtaigfs_ecflow_scrontab_minutes: 5
 rtaigfs_ecflow_scrontab_partition: u1-service
 rtaigfs_ecflow_scrontab_path: "{{ rtaigfs_ecflow_install_dir | realpath }}/scrontab"

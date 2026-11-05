@@ -3,7 +3,7 @@
 #SCRON --time=00:10:00
 #SCRON --job-name=rtaigfs-ecflow-drive
 #SCRON --output={{ rtaigfs_ecflow_install_dir | realpath }}/scron-drive.log
-*/{{ rtaigfs_ecflow_scrontab_minutes }} * * * * ECFLOW_HOST={{ rtaigfs_ecflow_host }} ECFLOW_PORT={{ rtaigfs_ecflow_port }} PLATFORM={{ rtaigfs_ecflow_platform }} {{ rtaigfs_ecflow_bin_dir }}/drive
+*/{{ rtaigfs_ecflow_scrontab_minutes }} * * * * ECFLOW_HOST={{ rtaigfs_ecflow_host }} {% if rtaigfs_ecflow_port %}ECFLOW_PORT={{ rtaigfs_ecflow_port }} {% endif %}PLATFORM={{ rtaigfs_ecflow_platform }} {{ rtaigfs_ecflow_bin_dir }}/drive
 
 #SCRON --account={{ rtaigfs_ecflow_account }}
 #SCRON --partition={{ rtaigfs_ecflow_scrontab_partition }}

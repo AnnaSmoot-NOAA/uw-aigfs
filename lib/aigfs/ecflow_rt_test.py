@@ -137,21 +137,21 @@ def test_ecflow_rt_sync_window_loads_and_begins_when_absent(tmp_path, utc):
     client = Mock()
     client.get_defs.return_value = None  # no defs on server yet
     with patch("ecflow.Client", return_value=client):
-        ecflow_rt.sync_window("host", 20, tmp_path, [utc(2026, 9, 13, 0)], ssl=True, begin=True)
+        ecflow_rt.sync_window("host", 20, tmp_path, [utc(2026, 9, 13, 0)], begin=True)
     client.enable_ssl.assert_called_once()
     client.replace.assert_called_once_with("/rtaigfs", str(tmp_path / "suite.def"), True, True)  # noqa: FBT003
     client.begin_suite.assert_called_once_with("rtaigfs", True)  # noqa: FBT003
     client.checkpt.assert_called_once()
 
 
-def test_ecflow_rt_sync_window_loads_without_begin_or_ssl(tmp_path, utc):
+def test_ecflow_rt_sync_window_loads_without_begin(tmp_path, utc):
     client = Mock()
     defs = Mock()
     defs.find_suite.return_value = None
     client.get_defs.return_value = defs
     with patch("ecflow.Client", return_value=client):
-        ecflow_rt.sync_window("host", 20, tmp_path, [utc(2026, 9, 13, 0)], ssl=False, begin=False)
-    client.enable_ssl.assert_not_called()
+        ecflow_rt.sync_window("host", 20, tmp_path, [utc(2026, 9, 13, 0)], begin=False)
+    client.enable_ssl.assert_called_once()
     client.replace.assert_called_once()
     client.begin_suite.assert_not_called()
 
@@ -166,7 +166,7 @@ def test_ecflow_rt_sync_window_adds_and_deletes(tmp_path, utc):
     client.get_defs.return_value = defs
     cycles = [utc(2026, 9, 13, 6), utc(2026, 9, 13, 0)]  # want 06Z (new) + 00Z (keep)
     with patch("ecflow.Client", return_value=client):
-        ecflow_rt.sync_window("host", 20, tmp_path, cycles, ssl=True)
+        ecflow_rt.sync_window("host", 20, tmp_path, cycles)
     suite_def = str(tmp_path / "suite.def")
     client.replace.assert_called_once_with("/rtaigfs/cycle_20260913T060000", suite_def, True, True)  # noqa: FBT003
     client.delete.assert_called_once_with("/rtaigfs/cycle_20260912T180000", True)  # noqa: FBT003
@@ -180,10 +180,50 @@ def test_ecflow_rt_sync_window_noop_when_matching(tmp_path, utc):
     defs.find_suite.return_value = _suite(["cycle_20260913T000000"])
     client.get_defs.return_value = defs
     with patch("ecflow.Client", return_value=client):
-        ecflow_rt.sync_window("host", 20, tmp_path, [utc(2026, 9, 13, 0)], ssl=True)
+        ecflow_rt.sync_window("host", 20, tmp_path, [utc(2026, 9, 13, 0)])
     client.replace.assert_not_called()
     client.delete.assert_not_called()
     client.checkpt.assert_called_once()
+
+
+# default_port / wait_until_running
+
+
+def test_ecflow_rt_default_port():
+    with patch.object(ecflow_rt.os, "getuid", return_value=4242):
+        assert ecflow_rt.default_port() == 4242 + ecflow_rt.PORT_BASE
+
+
+def test_ecflow_rt_wait_until_running_reachable_first_try():
+    client = Mock()
+    with patch("ecflow.Client", return_value=client), patch.object(ecflow_rt, "sleep") as sleep:
+        ecflow_rt.wait_until_running("host", 20)
+    client.enable_ssl.assert_called_once()
+    client.ping.assert_called_once()
+    client.restart_server.assert_called_once()
+    sleep.assert_not_called()
+
+
+def test_ecflow_rt_wait_until_running_retries_then_succeeds():
+    client = Mock()
+    client.ping.side_effect = [RuntimeError("not up"), None]
+    with patch("ecflow.Client", return_value=client), patch.object(ecflow_rt, "sleep") as sleep:
+        ecflow_rt.wait_until_running("host", 20, attempts=5, delay=0.0)
+    assert client.ping.call_count == 2
+    sleep.assert_called_once_with(0.0)
+    client.restart_server.assert_called_once()
+
+
+def test_ecflow_rt_wait_until_running_gives_up():
+    client = Mock()
+    client.ping.side_effect = RuntimeError("never up")
+    with (
+        patch("ecflow.Client", return_value=client),
+        patch.object(ecflow_rt, "sleep"),
+        raises(RuntimeError, match="did not become reachable"),
+    ):
+        ecflow_rt.wait_until_running("host", 20, attempts=3)
+    client.restart_server.assert_not_called()
 
 
 # prune_cycle_dirs
@@ -253,9 +293,8 @@ def _drive_args(**overrides):
         "config": "/c/user.yaml",
         "install": "/i",
         "ecflow_host": "uecflow01",
-        "port": 20,
+        "port": None,
         "platform": "ursa",
-        "insecure": False,
         "render_only": False,
     }
     defaults.update(overrides)
@@ -285,7 +324,7 @@ def test_ecflow_rt_drive_no_cycles_returns_early(utc):
     prune.assert_not_called()
 
 
-def test_ecflow_rt_drive_full_step(utc):
+def test_ecflow_rt_drive_full_step_default_port(utc):
     config = _drive_config({"active_cycles": 2, "window_cycles": 5})
     cyc = [utc(2026, 9, 13, 0)]
     with (
@@ -293,17 +332,43 @@ def test_ecflow_rt_drive_full_step(utc):
         patch.object(ecflow_rt.setup, "validate", return_value=config),
         patch.object(ecflow_rt, "deduce_cycles", return_value=cyc) as deduce,
         patch.object(ecflow_rt, "gated_cycles", return_value=cyc),
+        patch.object(ecflow_rt, "default_port", return_value=1999) as default_port,
         patch.object(ecflow_rt, "render_suite") as render,
         patch.object(ecflow_rt, "ensure_server") as ensure,
+        patch.object(ecflow_rt, "wait_until_running") as wait,
         patch.object(ecflow_rt, "sync_window") as sync,
         patch.object(ecflow_rt, "prune_cycle_dirs") as prune,
     ):
         ecflow_rt.drive(_drive_args())
     assert deduce.call_args.args[1:] == (timedelta(hours=6), 2)
+    default_port.assert_called_once()
     render.assert_called_once_with(Path("/c/user.yaml"), "ursa", Path("/run"), cyc)
-    ensure.assert_called_once_with(Path("/i"), "uecflow01", Path("/run"), 20, "ursa")
-    sync.assert_called_once_with("uecflow01", 20, Path("/run"), cyc, ssl=True)
+    ensure.assert_called_once_with(Path("/i"), "uecflow01", Path("/run"), 1999, "ursa")
+    wait.assert_called_once_with("uecflow01", 1999)
+    sync.assert_called_once_with("uecflow01", 1999, Path("/run"), cyc)
     prune.assert_called_once_with(Path("/run"), 5)
+
+
+def test_ecflow_rt_drive_explicit_port(utc):
+    config = _drive_config({})
+    cyc = [utc(2026, 9, 13, 0)]
+    with (
+        patch.object(ecflow_rt.setup, "compose_configs"),
+        patch.object(ecflow_rt.setup, "validate", return_value=config),
+        patch.object(ecflow_rt, "deduce_cycles", return_value=cyc),
+        patch.object(ecflow_rt, "gated_cycles", return_value=cyc),
+        patch.object(ecflow_rt, "default_port") as default_port,
+        patch.object(ecflow_rt, "render_suite"),
+        patch.object(ecflow_rt, "ensure_server") as ensure,
+        patch.object(ecflow_rt, "wait_until_running") as wait,
+        patch.object(ecflow_rt, "sync_window") as sync,
+        patch.object(ecflow_rt, "prune_cycle_dirs"),
+    ):
+        ecflow_rt.drive(_drive_args(port=31415))
+    default_port.assert_not_called()
+    ensure.assert_called_once_with(Path("/i"), "uecflow01", Path("/run"), 31415, "ursa")
+    wait.assert_called_once_with("uecflow01", 31415)
+    sync.assert_called_once_with("uecflow01", 31415, Path("/run"), cyc)
 
 
 def test_ecflow_rt_drive_render_only(utc):
@@ -316,12 +381,14 @@ def test_ecflow_rt_drive_render_only(utc):
         patch.object(ecflow_rt, "gated_cycles", return_value=cyc),
         patch.object(ecflow_rt, "render_suite") as render,
         patch.object(ecflow_rt, "ensure_server") as ensure,
+        patch.object(ecflow_rt, "wait_until_running") as wait,
         patch.object(ecflow_rt, "sync_window") as sync,
         patch.object(ecflow_rt, "prune_cycle_dirs") as prune,
     ):
         ecflow_rt.drive(_drive_args(render_only=True))
     render.assert_called_once()
     ensure.assert_not_called()
+    wait.assert_not_called()
     sync.assert_not_called()
     prune.assert_called_once_with(Path("/run"), ecflow_rt.DEFAULT_WINDOW_CYCLES)
 
@@ -330,12 +397,9 @@ def test_ecflow_rt_drive_render_only(utc):
 
 
 def test_ecflow_rt_parse_args_defaults():
-    ns = ecflow_rt.parse_args(
-        ["--config", "c", "--install", "i", "--ecflow-host", "h", "--port", "20"]
-    )
+    ns = ecflow_rt.parse_args(["--config", "c", "--install", "i", "--ecflow-host", "h"])
     assert ns.platform == "ursa"
-    assert ns.port == 20
-    assert not ns.insecure
+    assert ns.port is None
     assert not ns.render_only
     assert not ns.verbose
 
@@ -353,13 +417,12 @@ def test_ecflow_rt_parse_args_flags():
             "20",
             "--platform",
             "wcoss2",
-            "--insecure",
             "--render-only",
             "--verbose",
         ]
     )
     assert ns.platform == "wcoss2"
-    assert ns.insecure
+    assert ns.port == 20
     assert ns.render_only
     assert ns.verbose
 

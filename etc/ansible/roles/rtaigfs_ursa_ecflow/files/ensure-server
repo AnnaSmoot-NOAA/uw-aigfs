@@ -1,28 +1,29 @@
 #!/bin/bash
 
 # ensure-server: ensure a persistent ecFlow server is running for the real-time
-# ecFlow AIGFS workflow. Idempotent and safe to call repeatedly. Intended to run
-# ON the dedicated ecFlow node (e.g. uecflow01 on Ursa), typically invoked over
-# ssh by the real-time driver.
+# ecFlow AIGFS workflow. Intended to run ON the dedicated ecFlow node (uecflow01
+# on Ursa), typically invoked over ssh by the real-time driver on a schedule.
 #
-# Behavior:
-#   - If a server already answers on the configured host/port, ensure it is in
-#     the RUNNING state and exit.
-#   - Otherwise start a detached ecFlow server (via "uw ecflow server"), which
-#     recovers prior suite state from the checkpoint in ECF_HOME if present. A
-#     recovered/started server comes up HALTED, so move it to RUNNING.
+# A non-blocking flock is the "is it already running?" mechanism: the ecFlow
+# server (started via "uw ecflow server") inherits and holds the lock for its
+# whole lifetime, so a second invocation while it runs cannot acquire the lock
+# and simply does nothing. If the server has died the lock is free, so this
+# invocation starts it again, recovering prior suite state from the checkpoint in
+# ECF_HOME. This is more robust than probing the server over the network, since
+# it needs no port/SSL round-trip.
 #
-# The server is started with setsid+nohup so it survives the ssh session and
-# logout. Suite state is preserved across restarts by ecFlow's checkpoint file.
+# The server runs in a disowned background job with its streams redirected to
+# files, so it survives this (ssh) session and logout. The script returns
+# promptly; the caller waits until the server is reachable and moves it to the
+# RUNNING state.
 
-set -euo pipefail
+set -aeuo pipefail
 
 usage() {
-  echo "usage: $0 --rundir DIR --config FILE --port PORT [--platform NAME] [--insecure]" >&2
+  echo "usage: $0 --rundir DIR --config FILE [--port PORT] [--platform NAME]" >&2
   exit 2
 }
 
-insecure=0
 platform=ursa
 rundir=
 config=
@@ -46,64 +47,37 @@ while [[ $# -gt 0 ]]; do
     platform=$2
     shift 2
     ;;
-  --insecure)
-    insecure=1
-    shift
-    ;;
   *) usage ;;
   esac
 done
 
-[[ -n $rundir && -n $config && -n $port ]] || usage
+[[ -n $rundir && -n $config ]] || usage
 
-# Derive the repo clone root from this script's location
-# (<clone>/<install>/bin/ensure-server) and activate the AIGFS runtime so that
-# "uw" and "ecflow_client" are on PATH.
+# Default to a per-user port, which avoids collisions with other users' ecFlow
+# servers on the shared ecFlow node and is deterministic: the driver, running as
+# the same user, computes the same value.
+port=${port:-$(($(id -u) + 1500))}
 
+# Resolve the clone root from this script's location (<clone>/<install>/bin/ensure-server).
 self=$(readlink -f "$0")
 install=$(dirname "$(dirname "$self")")
 clone=$(dirname "$install")
-# shellcheck source=/dev/null
-source "$clone/bin/activate-$platform"
-
-ECF_HOST=$(hostname)
-export ECF_HOST
-export ECF_PORT=$port
-if [[ $insecure -eq 1 ]]; then
-  unset ECF_SSL || true
-  ssl_flag=()
-else
-  export ECF_SSL=1
-  ssl_flag=(--ssl)
-fi
 
 mkdir -p "$rundir"
+cd "$rundir"
 
-client() { ecflow_client --host="$ECF_HOST" --port="$ECF_PORT" "${ssl_flag[@]}" "$@"; }
-ping_ok() { client --ping >/dev/null 2>&1; }
+server() {
+  echo "Starting ecFlow server on $(hostname):$port at $(date -u)" >&2
+  # shellcheck source=/dev/null
+  source "$clone/bin/activate-$platform"
+  uw ecflow server --config-file "$config" --port "$port" --report >server.json
+}
 
-if ping_ok; then
-  echo "ensure-server: server already running on $ECF_HOST:$ECF_PORT"
-else
-  echo "ensure-server: starting server on $ECF_HOST:$ECF_PORT"
-  server_cmd=(uw ecflow server --config-file "$config" --port "$port" --report)
-  [[ $insecure -eq 1 ]] && server_cmd+=(--insecure)
-  cd "$rundir"
-  setsid nohup "${server_cmd[@]}" >"$rundir/server.json" 2>>"$rundir/server.log" &
-  for _ in $(seq 1 60); do
-    ping_ok && break
-    sleep 1
-  done
-  if ! ping_ok; then
-    echo "ensure-server: server failed to start on $ECF_HOST:$ECF_PORT (see $rundir/server.log)" >&2
-    exit 1
-  fi
-  echo "ensure-server: server started on $ECF_HOST:$ECF_PORT"
-fi
+run() {
+  # The server inherits the lock fd and holds it until it exits, so a concurrent
+  # invocation's "flock -n" fails and does nothing.
+  flock -n server.lock -c server
+}
 
-# A manually started server (including one recovered from a checkpoint) begins
-# HALTED: no scheduling, no auto-checkpointing. Move it to RUNNING. This is a
-# no-op if the server is already running.
-
-client --restart >/dev/null 2>&1 || true
-echo "ensure-server: server is RUNNING on $ECF_HOST:$ECF_PORT"
+run </dev/null >>server.log 2>&1 &
+disown

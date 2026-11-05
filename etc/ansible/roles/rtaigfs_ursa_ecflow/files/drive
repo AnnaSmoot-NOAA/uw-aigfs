@@ -27,14 +27,17 @@ go() {
   export RUNDIR MODELDIR
 
   # Advance the window: ensure the server, deduce+gate cycles, render the suite,
-  # sync it to the server, and prune aged-out cycle directories.
+  # sync it to the server, and prune aged-out cycle directories. ECFLOW_PORT is
+  # optional; when unset the driver uses the per-user default (user id + 1500).
 
+  port_arg=
+  test -n "$ecflow_port" && port_arg="--port $ecflow_port"
   (set -ex && python -m aigfs.ecflow_rt \
     --config $rtdir/aigfs.yaml \
     --install $rtdir \
     --ecflow-host $ecflow_host \
-    --port $ecflow_port \
-    --platform $platform)
+    --platform $platform \
+    $port_arg)
 
   # Rotate log:
 
@@ -45,7 +48,7 @@ rtdir=$(readlink -f $(dirname $(dirname $0)))
 log=$rtdir/rtaigfs-ecflow.log
 platform=${PLATFORM:-ursa}
 ecflow_host=${ECFLOW_HOST:-uecflow01}
-ecflow_port=${ECFLOW_PORT:-31415}
+ecflow_port=${ECFLOW_PORT:-}
 
 # Only proceed if no other copy of this script is running:
 
