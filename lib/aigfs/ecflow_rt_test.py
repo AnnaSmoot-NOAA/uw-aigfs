@@ -96,7 +96,7 @@ def test_ecflow_rt_render_suite_writes_config_when_absent(tmp_path, utc):
         [Path("/u/user.yaml")],
         app_overrides={STR.rundir: str(tmp_path)},
     )
-    validate.assert_called_once_with(compose.return_value)
+    validate.assert_called_once_with(compose.return_value, ecflow_rt.Config)
     assert yamlconfig.call_args.args[0][STR.app] == {"home": "/h", "rundir": "/r", "n": 1}
     yamlconfig.return_value.dump.assert_called_once_with(tmp_path / STR.aigfs_yaml)
     realize.assert_called_once_with(

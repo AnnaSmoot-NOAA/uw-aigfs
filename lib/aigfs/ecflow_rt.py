@@ -37,6 +37,7 @@ from uwtools.api.logging import use_uwtools_logger
 
 from aigfs import setup
 from aigfs.strings import STR
+from aigfs.validation import Config
 
 SUITE_NAME = "rtaigfs"
 CYCLE_FMT = "%Y%m%dT%H%M%S"
@@ -119,7 +120,7 @@ def render_suite(
     raw = setup.compose_configs(
         WORKFLOW, platform, [user_config], app_overrides={STR.rundir: str(rundir)}
     )
-    config = setup.validate(raw)
+    config = setup.validate(raw, Config)
     # model_dump() yields pathlib.Path objects for app paths; stringify them so the
     # dumped aigfs.yaml is plain YAML that uw ecflow server / uwtools can re-parse.
     data = config.model_dump()
@@ -253,7 +254,7 @@ def drive(args: argparse.Namespace) -> None:
 
     # Compose once (placeholder window) to read rundir and window parameters.
     os.environ[STR_RTCYCLES] = datetime.now(UTC).strftime(CYCLE_FMT)
-    config = setup.validate(setup.compose_configs(WORKFLOW, args.platform, [user_config]))
+    config = setup.validate(setup.compose_configs(WORKFLOW, args.platform, [user_config]), Config)
     rundir = Path(config.app.rundir)
     cycle_freq = config.app.cycle_freq
     assert cycle_freq is not None  # guaranteed by validation when a workflow engine is configured
