@@ -42,7 +42,7 @@ from aigfs.validation import Config
 SUITE_NAME = "rtaigfs"
 CYCLE_FMT = "%Y%m%dT%H%M%S"
 WORKFLOW = "ecflow-realtime"
-STR_RTCYCLES = "RTCYCLES"
+RTCYCLES_ENV = "RTCYCLES"
 
 # GFS data-availability cutoff: a cycle's inputs are not expected until this long
 # after the cycle time (cf. the Rocoto timedep and aigfs.workflow._timegate).
@@ -111,7 +111,7 @@ def render_suite(
     variable. aigfs.yaml (the task config) is written once and left in place on
     subsequent invocations, since its content does not depend on the window.
     """
-    os.environ[STR_RTCYCLES] = ",".join(_utc(c).strftime(CYCLE_FMT) for c in cycles)
+    os.environ[RTCYCLES_ENV] = ",".join(_utc(c).strftime(CYCLE_FMT) for c in cycles)
     # Supply a concrete app.rundir override so nested, cycle-parameterized rundir templates (e.g.
     # "{{ app.rundir }}/{{ app.time.yyyymmdd }}.../prep") resolve their rundir portion at generation
     # time, leaving only the per-cycle part deferred to task execution. Without this, app.rundir's
@@ -253,7 +253,7 @@ def drive(args: argparse.Namespace) -> None:
     user_config = Path(args.config)
 
     # Compose once (placeholder window) to read rundir and window parameters.
-    os.environ[STR_RTCYCLES] = datetime.now(UTC).strftime(CYCLE_FMT)
+    os.environ[RTCYCLES_ENV] = datetime.now(UTC).strftime(CYCLE_FMT)
     config = setup.validate(setup.compose_configs(WORKFLOW, args.platform, [user_config]), Config)
     rundir = Path(config.app.rundir)
     cycle_freq = config.app.cycle_freq

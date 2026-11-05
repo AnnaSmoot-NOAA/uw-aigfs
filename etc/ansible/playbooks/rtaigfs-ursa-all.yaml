@@ -1,0 +1,6 @@
+---
+# Deploy both the Rocoto and ecFlow real-time streams together. Each imported
+# playbook remains usable on its own for single-stream deploys; this umbrella
+# just runs both so they are deployed and updated from the same code at once.
+- import_playbook: rtaigfs-ursa.yaml
+- import_playbook: rtaigfs-ursa-ecflow.yaml

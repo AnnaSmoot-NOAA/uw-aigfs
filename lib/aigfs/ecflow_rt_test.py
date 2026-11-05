@@ -89,7 +89,7 @@ def test_ecflow_rt_render_suite_writes_config_when_absent(tmp_path, utc):
         result = ecflow_rt.render_suite(
             Path("/u/user.yaml"), "ursa", tmp_path, [utc(2026, 9, 13, 0)]
         )
-    assert os.environ[ecflow_rt.STR_RTCYCLES] == "20260913T000000"
+    assert os.environ[ecflow_rt.RTCYCLES_ENV] == "20260913T000000"
     compose.assert_called_once_with(
         ecflow_rt.WORKFLOW,
         "ursa",
