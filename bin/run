@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -aeuo pipefail
 
@@ -7,7 +7,7 @@ set -aeuo pipefail
 # Tools:
 
 bootstrap() {
-  local condadir env rootdir
+  local condadir env installer machine os rootdir version
   condadir=$(condadir)
   env=$(env)
   rootdir=$(rootdir)
@@ -15,40 +15,98 @@ bootstrap() {
     msg Using existing conda: $condadir
   else
     msg Installing conda to $condadir
-    (
-      os=$(uname)
-      test $os == Darwin && os=MacOSX
-      machine=$(uname -m)
-      installer=Miniforge3-$os-$machine.sh
-      version=26.3.2-3
-      curl -sSLO https://github.com/conda-forge/miniforge/releases/download/$version/$installer
-      bash $installer -bfp $condadir
-      rm -v $installer
-      activate base
-      conda install --quiet --yes ansible=14.2.*
-    )
+    os=$(uname)
+    test $os == Darwin && os=MacOSX
+    machine=$(uname -m)
+    installer=Miniforge3-$os-$machine.sh
+    version=26.9.4-1
+    curl -sSLO https://github.com/conda-forge/miniforge/releases/download/$version/$installer
+    bash $installer -bfp $condadir
+    rm -v $installer
+    cmd base conda install --quiet --yes ansible=14.2.*
     msg Installed conda to $condadir
   fi
 }
 
 cmd() {
-  activate $(env)
-  "$@"
-  conda deactivate
+  local env
+  env=$1
+  shift
+  . $(condadir)/etc/profile.d/conda.sh
+  CONDARC=$(rootdir)/.condarc
+  export CONDARC
+  conda run --live-stream --name $env "$@"
 }
 
 deploy() {
   local d playbook
-  test $# -eq 0 && echo "usage: $(basename $0) ${FUNCNAME[0]} <playbook>" && exit 1
+  if [[ $# -eq 0 ]]; then
+    echo "usage: $(basename $0) ${FUNCNAME[0]} <playbook>"
+    exit 1
+  fi
   playbook=$1
   d=$(rootdir)/etc/ansible
   export ANSIBLE_CONFIG=$d/ansible.cfg
-  activate base
-  ansible-playbook $d/playbooks/$playbook.yaml
+  cmd base ansible-playbook $d/playbooks/$playbook.yaml
 }
 
 format() {
-  activate $(env)
+  cmd $(env) format_in_env
+}
+
+lint() {
+  cmd $(env) lint_in_env
+}
+
+make_docs() {
+  local outdir rootdir
+  rootdir=$(rootdir)
+  outdir=$rootdir/docs/api
+  msg Building documentation in $outdir
+  export PYTHONWARNINGS="ignore:Error parsing type annotation"
+  cmd $(env) pdoc --output-dir $outdir $rootdir/lib/aigfs
+  msg Built documentation in $outdir
+}
+
+make_env() {
+  bootstrap
+  cmd base make_env_conda_envs "$@"
+}
+
+rmenv() {
+  local env
+  env=$(env)
+  msg Removing environment $env
+  cmd base conda env remove --name $env --yes
+  msg Removed environment $env
+}
+
+typecheck() {
+  msg Typechecking Python code
+  cmd $(env) mypy $(pyfiles)
+}
+
+unittest() {
+  msg Running Python unit tests
+  cmd $(env) pytest --cov=aigfs --cov-report=term-missing --ignore=conda/ .
+}
+
+# Helpers:
+
+condadir() {
+  echo ${CONDADIR:-$(rootdir)/conda}
+}
+
+env() {
+  sed -n '/^name:.*/ s/^name: *//p' $(envyaml)
+}
+
+envyaml() {
+  echo $(rootdir)/etc/env/aigfs.yaml
+}
+
+format_in_env() {
+  local f
   msg Formatting JSON
   for f in $(jsfiles); do
     jq -S . $f >$f.new || (echo "    in $f" && rm $f.new && false)
@@ -64,38 +122,25 @@ format() {
   ruff format $(pyfiles)
   msg Sorting Python imports
   ruff check --select I --fix $(pyfiles)
-  conda deactivate
 }
 
-lint() {
-  activate $(env)
+jsfiles() {
+  find $(rootdir) -path $(condadir) -prune -o -type f -name "*.json*" -print | sort
+}
+
+lint_in_env() {
   msg Linting YAML
   yamllint --no-warnings $(yamlfiles)
   msg Linting shell code
   shellcheck --format=gcc --severity=info --shell=bash $(shfiles)
   msg Linting Python code
   ruff check $(pyfiles)
-  conda deactivate
 }
 
-makedocs() {
-  local outdir rootdir
-  rootdir=$(rootdir)
-  outdir=$rootdir/docs/api
-  activate $(env)
-  msg Building documentation in $outdir
-  export PYTHONWARNINGS="ignore:Error parsing type annotation"
-  pdoc --output-dir $outdir $rootdir/lib/aigfs
-  conda deactivate
-  msg Built documentation in $outdir
-}
-
-makeenv() {
+make_env_conda_envs() {
   local condadir dir_a dir_d env envdir libdir prefix update
   condadir=$(condadir)
   env=$(env)
-  bootstrap
-  activate base
   PIP_VERBOSE=1
   XDG_CACHE_HOME=$condadir/cache
   export PIP_VERBOSE XDG_CACHE_HOME
@@ -139,61 +184,6 @@ EOF
     conda env update --file $update --name $env --quiet
     msg Updated environment $env with $prefix
   done
-  unset PIP_VERBOSE XDG_CACHE_HOME
-}
-
-rmenv() {
-  local env
-  env=$(env)
-  activate base
-  msg Removing environment $env
-  conda env remove --name $env --yes
-  msg Removed environment $env
-}
-
-typecheck() {
-  activate $(env)
-  msg Typechecking Python code
-  MYPYPATH=$(rootdir)/drivers mypy $(pyfiles)
-  conda deactivate
-}
-
-unittest() {
-  activate $(env)
-  msg Running Python unit tests
-  pytest --cov=aigfs --cov-report=term-missing --ignore=conda/ .
-  conda deactivate
-}
-
-# Helpers:
-
-activate() {
-  local env
-  env=$1
-  . $(condadir)/etc/profile.d/conda.sh
-  CONDARC=$(rootdir)/.condarc
-  export CONDARC
-  conda activate $env
-}
-
-condadir() {
-  echo ${CONDADIR:-$(rootdir)/conda}
-}
-
-env() {
-  sed -n '/^name:.*/ s/^name: *//p' $(envyaml)
-}
-
-envyaml() {
-  echo $(rootdir)/etc/env/aigfs.yaml
-}
-
-fromroot() {
-  printf "$(rootdir)/%s " "$@"
-}
-
-jsfiles() {
-  find $(rootdir) -path $(condadir) -prune -o -type f -name "*.json*" -print | sort
 }
 
 msg() {
@@ -205,7 +195,7 @@ pyfiles() {
 }
 
 rootdir() {
-  readlink -f $(dirname $(dirname $0))
+  readlink -f $(dirname $(dirname ${BASH_SOURCE[0]}))
 }
 
 shfiles() {
@@ -218,9 +208,12 @@ yamlfiles() {
   find $(rootdir) -path $(condadir) -prune -o -type f -name "*.yaml" -print | sort | grep -v "^.*/aigfs.yaml$"
 }
 
-# Main entrypoint:
+# Main entry point:
 
-test $# -eq 0 && echo "usage: $(basename $0) tool [args ...]" && exit 1
+if [[ $# -eq 0 ]]; then
+  echo "usage: $(basename $0) tool [args ...]"
+  exit 1
+fi
 tool=$1
 shift
 $tool "$@"
