@@ -68,6 +68,16 @@
             - rtaigfs_ecflow_run_stat.stat.exists | default(false)
           changed_when: true
 
+        - name: Install scrontab
+          ansible.builtin.command:
+            argv: [scrontab, "-"]
+            stdin: "{{ lookup('ansible.builtin.template', '../roles/rtaigfs_ursa_ecflow/templates/scrontab.j2') }}"
+          changed_when: true
+          when: rtaigfs_ecflow_is_service_user
+
+        # Retain both backups until the new deployment (including scrontab) is in
+        # place, so the rescue block below can always roll back to a complete prior
+        # deployment -- in particular one that still has its run/ directory.
         - name: Remove saved app-ecflow/
           ansible.builtin.file:
             path: "{{ rtaigfs_ecflow_app_save }}"
@@ -80,13 +90,6 @@
             state: absent
           when: rtaigfs_ecflow_is_service_user
 
-        - name: Install scrontab
-          ansible.builtin.command:
-            argv: [scrontab, "-"]
-            stdin: "{{ lookup('ansible.builtin.template', '../roles/rtaigfs_ursa_ecflow/templates/scrontab.j2') }}"
-          changed_when: true
-          when: rtaigfs_ecflow_is_service_user
-
       rescue:
         - name: "ROLLBACK: Initial notice"
           ansible.builtin.debug:
@@ -96,6 +99,30 @@
               Failed task: {{ ansible_failed_task.name | default('unknown') }}
               Error: {{ ansible_failed_result.msg | default(ansible_failed_result) }}
               ============================================================
+
+        # The run/ directory may have been moved into the (broken) new deployment
+        # already; salvage it back into the saved deployment before that is removed,
+        # so the restore below brings back a complete prior deployment.
+        - name: "ROLLBACK: Check for run/ in broken app-ecflow/"
+          ansible.builtin.stat:
+            path: "{{ rtaigfs_ecflow_app }}/run"
+          register: rtaigfs_ecflow_broken_run_stat
+          when: (rtaigfs_ecflow_app_stat.stat.exists | default(false))
+
+        - name: "ROLLBACK: Check for run/ in saved app-ecflow/"
+          ansible.builtin.stat:
+            path: "{{ rtaigfs_ecflow_app_save }}/run"
+          register: rtaigfs_ecflow_saved_run_stat
+          when: (rtaigfs_ecflow_app_stat.stat.exists | default(false))
+
+        - name: "ROLLBACK: Salvage run/ back into saved app-ecflow/"
+          ansible.builtin.command:
+            argv: [mv, "{{ rtaigfs_ecflow_app }}/run", "{{ rtaigfs_ecflow_app_save }}/run"]
+          when:
+            - rtaigfs_ecflow_app_stat.stat.exists | default(false)
+            - rtaigfs_ecflow_broken_run_stat.stat.exists | default(false)
+            - not (rtaigfs_ecflow_saved_run_stat.stat.exists | default(false))
+          changed_when: true
 
         - name: "ROLLBACK: Remove broken app-ecflow/"
           ansible.builtin.file:

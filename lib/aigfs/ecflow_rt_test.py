@@ -35,7 +35,7 @@ def test_ecflow_rt_gated_cycles_withholds_until_cutoff(utc):
     now = utc(2026, 9, 13, 7, 30)
     cycles = ecflow_rt.deduce_cycles(now, timedelta(hours=6), 4)
     gated = ecflow_rt.gated_cycles(cycles, now)
-    # 06Z cutoff is 09:35 (> now) so it is withheld; 00Z cutoff is 03:35 (<= now) so it is included.
+    # 06Z cutoff is 09:45 (> now) so it is withheld; 00Z cutoff is 03:45 (<= now) so it is included.
     assert utc(2026, 9, 13, 6) not in gated
     assert gated[0] == utc(2026, 9, 13, 0)
     assert len(gated) == 3
@@ -390,7 +390,7 @@ def test_ecflow_rt_drive_render_only(utc):
     ensure.assert_not_called()
     wait.assert_not_called()
     sync.assert_not_called()
-    prune.assert_called_once_with(Path("/run"), ecflow_rt.DEFAULT_WINDOW_CYCLES)
+    prune.assert_not_called()
 
 
 # parse_args / main

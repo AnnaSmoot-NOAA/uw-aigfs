@@ -45,8 +45,9 @@ WORKFLOW = "ecflow-realtime"
 RTCYCLES_ENV = "RTCYCLES"
 
 # GFS data-availability cutoff: a cycle's inputs are not expected until this long
-# after the cycle time (cf. the Rocoto timedep and aigfs.workflow._timegate).
-DATA_OFFSET = timedelta(hours=3, minutes=35)
+# after the cycle time. Matches the Rocoto real-time stream's 03:45 cutoff
+# (current-cycle analysis reaches /public at 03:42); cf. rtaigfs_ursa/files/rtaigfs.yaml.
+DATA_OFFSET = timedelta(hours=3, minutes=45)
 
 # Defaults mirroring the Rocoto rolling window (active_cycles / window_cycles).
 DEFAULT_ACTIVE_CYCLES = 4
@@ -274,7 +275,10 @@ def drive(args: argparse.Namespace) -> None:
         ensure_server(install, args.ecflow_host, rundir, port, args.platform)
         wait_until_running(args.ecflow_host, port)
         sync_window(args.ecflow_host, port, rundir, cycles)
-    prune_cycle_dirs(rundir, window)
+        # Prune only when advancing the live server, never in render-only mode:
+        # render-only may target an existing run directory, and pruning there would
+        # delete cycle outputs without a corresponding server-side change.
+        prune_cycle_dirs(rundir, window)
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
