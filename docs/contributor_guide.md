@@ -204,19 +204,19 @@ As user `role.rtaigfs`, `cd` to the appropriate scratch workspace, then:
 git clone https://github.com/NOAA-GSL/uw-aigfs.git rtaigfs
 cd rtaigfs/
 make env
-make deploy playbook=rtaigfs-ursa
+make deploy playbook=rtaigfs-ursa-rocoto
 ```
 
 ### Developer Testing Procedure
 
-The `rtaigfs` Ansible playbook is configured to install the crontab only for the production user, so developers can follow the procedure above to obtain an application directory, after which they can run `app/bin/run` iteratively to execute the workflow. Before iterating the workflow, they should verify that settings in `app/rtaigfs.yaml` are appropriate -- especially e.g. that the `app.platform.scheduler.account` value is correct -- and edit as needed.
+The `rtaigfs-ursa-rocoto` Ansible playbook is configured to install the crontab only for the production user, so developers can follow the procedure above to obtain an application directory, after which they can run `app-rocoto/bin/run` iteratively to execute the workflow. Before iterating the workflow, they should verify that settings in `app-rocoto/rtaigfs.yaml` are appropriate -- especially e.g. that the `app.platform.scheduler.account` value is correct -- and edit as needed.
 
 ### Application Directory Layout
 
-If these commands complete successfully, an `app/` subdirectory should have been created and populated with assets necessary for execution of realtime AIGFS runs:
+If these commands complete successfully, an `app-rocoto/` subdirectory should have been created and populated with assets necessary for execution of realtime AIGFS runs:
 
 ```
-app/
+app-rocoto/
 ├── bin              # Executables
 ├── cycles           # Root of yyyymmdd/hh cycle run directories
 ├── model            # AIGFS model files
@@ -232,7 +232,7 @@ After deployment, *no manual changes* should be made to the contents of the git 
 1. Update the `uw-aigfs` git repo via PR.
 1. Update the git clone on Ursa: `git pull`.
 1. If the conda installation must be updated: `rm -rf conda && make env`.
-1. Update the deployment: `make deploy playbook=rtaigfs-ursa`.
+1. Update the deployment: `make deploy playbook=rtaigfs-ursa-rocoto`.
 
 The structure of a `yyyymmdd/hh` cycle run directory is as follows:
 

@@ -1,0 +1,11 @@
+---
+rtaigfs_rocoto_bb_arch: "{{ {'x86_64': 'amd64', 'aarch64': 'aarch64'}[ansible_facts['architecture']] }}"
+rtaigfs_rocoto_bb_url: https://github.com/babashka/babashka/releases/download/v{{ rtaigfs_rocoto_bb_version }}/babashka-{{ rtaigfs_rocoto_bb_version }}-linux-{{ rtaigfs_rocoto_bb_arch }}-static.tar.gz
+rtaigfs_rocoto_bb_version: 1.13.225
+rtaigfs_rocoto_bin_dir: "{{ rtaigfs_rocoto_install_dir | realpath }}/bin"
+rtaigfs_rocoto_crontab_path: "{{ rtaigfs_rocoto_install_dir | realpath }}/crontab"
+rtaigfs_rocoto_crontab_path_env: "{{ rtaigfs_rocoto_bin_dir }}:/usr/local/bin:/usr/bin:/bin"
+rtaigfs_rocoto_install_dir: "{{ playbook_dir }}/../../../app-rocoto"
+rtaigfs_rocoto_model_archive: aigfs-v1.1.tgz
+rtaigfs_rocoto_model_archive_path: "/home/{{ rtaigfs_rocoto_user }}/models/{{ rtaigfs_rocoto_model_archive }}"
+rtaigfs_rocoto_user: role.rtaigfs

@@ -1,54 +1,54 @@
 ---
 - name: Create install directory
   ansible.builtin.file:
-    path: "{{ rtaigfs_install_dir | realpath }}"
+    path: "{{ rtaigfs_rocoto_install_dir | realpath }}"
     state: directory
     mode: "0755"
 
 - name: Create bin directory
   ansible.builtin.file:
-    path: "{{ rtaigfs_bin_dir }}"
+    path: "{{ rtaigfs_rocoto_bin_dir }}"
     state: directory
     mode: "0755"
 
 - name: Check for bb
   ansible.builtin.stat:
-    path: "{{ rtaigfs_bin_dir }}/bb"
-  register: rtaigfs_bb
+    path: "{{ rtaigfs_rocoto_bin_dir }}/bb"
+  register: rtaigfs_rocoto_bb
 
 - name: Install bb
   ansible.builtin.shell:
-    cmd: set -o pipefail && curl -fsSL {{ rtaigfs_bb_url }} | tar -xzO bb >{{ (rtaigfs_bin_dir ~ '/bb') }}
+    cmd: set -o pipefail && curl -fsSL {{ rtaigfs_rocoto_bb_url }} | tar -xzO bb >{{ (rtaigfs_rocoto_bin_dir ~ '/bb') }}
     executable: /bin/bash
   changed_when: true
-  when: not rtaigfs_bb.stat.exists
+  when: not rtaigfs_rocoto_bb.stat.exists
 
 - name: Make bb executable
   ansible.builtin.file:
-    path: "{{ rtaigfs_bin_dir }}/bb"
+    path: "{{ rtaigfs_rocoto_bin_dir }}/bb"
     mode: "0755"
 
 - name: Install run launcher
   ansible.builtin.copy:
     src: run
-    dest: "{{ rtaigfs_bin_dir }}/run"
+    dest: "{{ rtaigfs_rocoto_bin_dir }}/run"
     mode: "0755"
 
 - name: Install report launcher
   ansible.builtin.copy:
     src: report
-    dest: "{{ rtaigfs_bin_dir }}/report"
+    dest: "{{ rtaigfs_rocoto_bin_dir }}/report"
     mode: "0755"
 
 - name: Install configuration
   ansible.builtin.copy:
     src: rtaigfs.yaml
-    dest: "{{ rtaigfs_install_dir | realpath }}/rtaigfs.yaml"
+    dest: "{{ rtaigfs_rocoto_install_dir | realpath }}/rtaigfs.yaml"
     mode: "0644"
 
 - name: Extract model archive
   ansible.builtin.unarchive:
-    src: "{{ rtaigfs_model_archive_path }}"
-    dest: "{{ rtaigfs_install_dir | realpath }}"
+    src: "{{ rtaigfs_rocoto_model_archive_path }}"
+    dest: "{{ rtaigfs_rocoto_install_dir | realpath }}"
     remote_src: true
-    creates: "{{ rtaigfs_install_dir | realpath }}/model"
+    creates: "{{ rtaigfs_rocoto_install_dir | realpath }}/model"
