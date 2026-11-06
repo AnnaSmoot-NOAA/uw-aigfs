@@ -7,10 +7,11 @@ ecflow:
   suitedef:
     scheduler: '{{ app.platform.scheduler.type }}'
     suite_rtaigfs:
-      # Real-time rolling window. Rather than a bounded repeat_datetime (the prescribed/retrospective
-      # suite in ecflow.yaml), the window is a set of concurrent per-cycle families, one per cycle in
-      # the RTCYCLES environment variable. The RT driver sets RTCYCLES (a comma-separated list of
-      # YYYYmmddTHHMMSS cycle timestamps) and regenerates/advances the suite as the window rolls.
+      # Real-time rolling window. Rather than a bounded repeat_datetime (the retrospective suite in
+      # ecflow.yaml, driven by an explicit first_cycle/last_cycle range), the window is a set of
+      # concurrent per-cycle families, one per cycle in the RTCYCLES environment variable. The RT
+      # driver sets RTCYCLES (a comma-separated list of YYYYmmddTHHMMSS cycle timestamps) and
+      # regenerates/advances the suite as the window rolls.
       families_cycle_{{ ec.cycle }}:
         expand:
           cycle: !list '[{{ "RTCYCLES" | env }}]'

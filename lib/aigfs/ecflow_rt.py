@@ -2,7 +2,7 @@
 Real-time ecFlow rolling-window driver for AIGFS.
 
 Advances an open-ended, real-time ecFlow suite ("rtaigfs") whose window of cycles
-is deduced from the current time rather than prescribed via first_cycle/last_cycle.
+is deduced from the current time rather than specified explicitly via first_cycle/last_cycle.
 Each invocation (typically from a periodic scron job):
 
   1. ensures the ecFlow server is up on the ecFlow node (via the ensure-server

@@ -279,11 +279,11 @@ When you are finished with an experiment, you may close the shell/terminal you u
 
 #### Run in Real Time
 
-The suites above use a bounded `repeat_datetime` -- the *prescribed* path, driven by an explicit `first_cycle`/`last_cycle`/`cycle_freq` range. For an open-ended, operational run, use the *real-time* path instead: cycles are **deduced** from the current time and a rolling window is advanced automatically, mirroring the Rocoto real-time rolling window.
+The suites above use a bounded `repeat_datetime`: an explicit, retrospective cycle range driven by `first_cycle`/`last_cycle`/`cycle_freq`. For an open-ended, operational run, use *real-time cycling* instead: cycles are **deduced** from the current time and a rolling window is advanced automatically, mirroring the Rocoto real-time rolling window.
 
 In real-time mode:
 
-- The cycle-range triplet is optional. Provide only `cycle_freq` (for window spacing) and omit `first_cycle`/`last_cycle`; `setup` then generates `aigfs.yaml` once, with no prescribed range.
+- The cycle-range triplet is optional. Provide only `cycle_freq` (for window spacing) and omit `first_cycle`/`last_cycle`; `setup` then generates `aigfs.yaml` once, with no explicit cycle range.
 - The suite is the `rtaigfs` suite from `etc/workflow/ecflow-realtime.yaml`: one concurrent family per in-window cycle (`cycle_YYYYmmddTHHMMSS`), each running `prep -> forecast -> post`.
 - A driver computes the window and advances the suite on a schedule, rather than you issuing `--load`/`--begin` by hand.
 
