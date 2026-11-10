@@ -11,23 +11,6 @@
     state: directory
     mode: "0755"
 
-- name: Check for bb
-  ansible.builtin.stat:
-    path: "{{ rtaigfs_ecflow_bin_dir }}/bb"
-  register: rtaigfs_ecflow_bb
-
-- name: Install bb
-  ansible.builtin.shell:
-    cmd: set -o pipefail && curl -fsSL {{ rtaigfs_ecflow_bb_url }} | tar -xzO bb >{{ (rtaigfs_ecflow_bin_dir ~ '/bb') }}
-    executable: /bin/bash
-  changed_when: true
-  when: not rtaigfs_ecflow_bb.stat.exists
-
-- name: Make bb executable
-  ansible.builtin.file:
-    path: "{{ rtaigfs_ecflow_bin_dir }}/bb"
-    mode: "0755"
-
 - name: Install drive launcher
   ansible.builtin.copy:
     src: drive
@@ -38,12 +21,6 @@
   ansible.builtin.copy:
     src: ensure-server
     dest: "{{ rtaigfs_ecflow_bin_dir }}/ensure-server"
-    mode: "0755"
-
-- name: Install report launcher
-  ansible.builtin.copy:
-    src: report
-    dest: "{{ rtaigfs_ecflow_bin_dir }}/report"
     mode: "0755"
 
 - name: Install configuration

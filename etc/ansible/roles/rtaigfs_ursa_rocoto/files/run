@@ -31,7 +31,7 @@ go() {
 
   for n in $(seq 0 $((active_cycles - 1))); do
     CYCLE=$(date -ud@$((ts - (21600 * n))) +%Y-%m-%dT%H:%M)
-    RUNDIR=$cyclesdir/$(date -ud $CYCLE +%Y%m%d)/$(date -ud $CYCLE +%H)
+    RUNDIR=$cyclesdir/$(date -ud $CYCLE +%Y%m%d%H)
     export CYCLE RUNDIR
     config_yaml=$RUNDIR/aigfs.yaml
     rocoto_xml=$RUNDIR/rocoto.xml
@@ -43,16 +43,13 @@ go() {
   # Prune window:
 
   if [[ -d $cyclesdir ]]; then
-    find $cyclesdir -maxdepth 2 -mindepth 2 -type d -regextype egrep -regex "^.*/[0-9]{8}/[0-9]{2}$" | sort | while read -r x; do
+    find $cyclesdir -maxdepth 1 -mindepth 1 -type d -regextype egrep -regex "^.*/[0-9]{10}$" | sort | while read -r x; do
       subdir=$(echo $x | sed "s@^$cyclesdir/@@")
       for n in $(seq 0 $((window_cycles - 1))); do
-        ok=$(date -ud@$((ts - (21600 * n))) +%Y%m%d/%H)
+        ok=$(date -ud@$((ts - (21600 * n))) +%Y%m%d%H)
         test $subdir == $ok && break 2
       done
       (set -x && rm -rf $x)
-    done
-    find $cyclesdir -maxdepth 1 -mindepth 1 -type d -empty | sort | while read -r x; do
-      (set -x && rmdir $x)
     done
   fi
 

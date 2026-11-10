@@ -1,0 +1,35 @@
+---
+- name: Create report install directory
+  ansible.builtin.file:
+    path: "{{ rtaigfs_report_install_dir | realpath }}"
+    state: directory
+    mode: "0755"
+
+- name: Create report bin directory
+  ansible.builtin.file:
+    path: "{{ rtaigfs_report_bin_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Check for bb
+  ansible.builtin.stat:
+    path: "{{ rtaigfs_report_bin_dir }}/bb"
+  register: rtaigfs_report_bb
+
+- name: Install bb
+  ansible.builtin.shell:
+    cmd: set -o pipefail && curl -fsSL {{ rtaigfs_report_bb_url }} | tar -xzO bb >{{ (rtaigfs_report_bin_dir ~ '/bb') }}
+    executable: /bin/bash
+  changed_when: true
+  when: not rtaigfs_report_bb.stat.exists
+
+- name: Make bb executable
+  ansible.builtin.file:
+    path: "{{ rtaigfs_report_bin_dir }}/bb"
+    mode: "0755"
+
+- name: Install report launcher
+  ansible.builtin.copy:
+    src: report
+    dest: "{{ rtaigfs_report_bin_dir }}/report"
+    mode: "0755"

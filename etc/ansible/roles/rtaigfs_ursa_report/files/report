@@ -2,8 +2,27 @@
 
 ;; -*- clj -*-
 
+;; Unified AIGFS production report. Emits a single HTML email with one column per
+;; deployed stream (Rocoto, ecFlow). This report is an orthogonal concern shared
+;; by both streams, so it lives in a `report/` directory that is a sibling of the
+;; per-stream `app-rocoto/` and `app-ecflow/` directories, rather than inside
+;; either app. Each stream lays its cycles out identically as
+;; <root>/YYYYMMDDHH/forecast/*.idx; only the root differs per stream.
+
 (def RECIPIENTS "anna.smoot@noaa.gov christina.holt@noaa.gov emily.l.carpenter@noaa.gov paul.madden@noaa.gov")
-(def CYCLESDIR (format "%s/run" (.getParentFile (.getParentFile (io/file (.getCanonicalPath (io/file *file*)))))))
+
+;; Directory holding report/, app-rocoto/, and app-ecflow/ (parent of report/).
+(def BASE
+  (-> (io/file *file*) .getCanonicalPath io/file .getParentFile .getParentFile .getParentFile))
+
+;; Per-stream descriptor: display name plus the cycles root (relative to BASE).
+;; A stream is included only if its app directory exists, so a single-stream
+;; deployment still produces a valid one-column report.
+(def STREAMS
+  (->> [{:name "Rocoto" :app "app-rocoto" :cycles "cycles"}
+        {:name "ecFlow" :app "app-ecflow" :cycles "run"}]
+       (filter (fn [s] (fs/exists? (fs/path BASE (:app s)))))
+       (map (fn [s] (assoc s :root (str (fs/path BASE (:app s) (:cycles s))))))))
 
 (require '[babashka.process :refer [process]] '[hiccup2.core :as h])
 
@@ -38,13 +57,9 @@
   [cycle]
   (format "%02d" (.getHour cycle)))
 
-(defn idxfiles
-  [cycle]
-  (fs/glob
-    (fs/path CYCLESDIR
-             (str (yyyymmdd cycle) (hh cycle))
-             "forecast")
-    "*.idx"))
+(defn idxcount
+  [root cycle]
+  (count (fs/glob (fs/path root (str (yyyymmdd cycle) (hh cycle)) "forecast") "*.idx")))
 
 (defn bgcolor
   [cycle n]
@@ -56,9 +71,10 @@
 
 (def rows
   (for [cycle cycles]
-    (let [cstr (format "%s %sZ" (yyyymmdd cycle) (hh cycle))
-          n (count (idxfiles cycle))]
-      [:tr [:td cstr] [:td {:style (format "background-color: %s;" (bgcolor cycle n))} n]])))
+    (into [:tr [:td (format "%s %sZ" (yyyymmdd cycle) (hh cycle))]]
+          (for [s STREAMS]
+            (let [n (idxcount (:root s) cycle)]
+              [:td {:style (format "background-color: %s;" (bgcolor cycle n))} n])))))
 
 (def report
   (let [block (str/join (repeat 4 "\u00A0"))
@@ -66,12 +82,11 @@
         style "td,th {padding: 2px; white-space: nowrap;}"]
     (h/html
       [:head [:style style]]
-      [:p [:b (format "AIGFS ecFlow Production Report: Latest %s Cycles" CYCLES)]]
+      [:p [:b (format "AIGFS Production Report: Latest %s Cycles" CYCLES)]]
       [:table {:border 1 :style "text-align: center;"}
-       [:thead (into [] [:tr [:th "Cycle"] [:th ".idx files"]])]
+       [:thead (into [:tr [:th "Cycle"]] (for [s STREAMS] [:th (:name s)]))]
        [:tbody rows]]
       [:p (format "Cells show .idx files available per cycle (of %s expected)" EXPECTED)]
-      [:p (format "Run root directory: %s" CYCLESDIR)]
       [:p
        [:span {:style (format fmt READY)} block] " => Complete" [:br]
        [:span {:style (format fmt PARTIAL)} block] " => Partial" [:br]
@@ -80,7 +95,7 @@
 
 (defn send
   [mail]
-  (let [subject "AIGFS ecFlow Production Report"
+  (let [subject "AIGFS Production Report"
         client (process (format "s-nail -M text/html -s '%s' %s" subject RECIPIENTS))
         stdin (io/writer (:in client))]
     (binding [*out* stdin] (println (str mail)))

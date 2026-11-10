@@ -11,33 +11,10 @@
     state: directory
     mode: "0755"
 
-- name: Check for bb
-  ansible.builtin.stat:
-    path: "{{ rtaigfs_rocoto_bin_dir }}/bb"
-  register: rtaigfs_rocoto_bb
-
-- name: Install bb
-  ansible.builtin.shell:
-    cmd: set -o pipefail && curl -fsSL {{ rtaigfs_rocoto_bb_url }} | tar -xzO bb >{{ (rtaigfs_rocoto_bin_dir ~ '/bb') }}
-    executable: /bin/bash
-  changed_when: true
-  when: not rtaigfs_rocoto_bb.stat.exists
-
-- name: Make bb executable
-  ansible.builtin.file:
-    path: "{{ rtaigfs_rocoto_bin_dir }}/bb"
-    mode: "0755"
-
 - name: Install run launcher
   ansible.builtin.copy:
     src: run
     dest: "{{ rtaigfs_rocoto_bin_dir }}/run"
-    mode: "0755"
-
-- name: Install report launcher
-  ansible.builtin.copy:
-    src: report
-    dest: "{{ rtaigfs_rocoto_bin_dir }}/report"
     mode: "0755"
 
 - name: Install configuration

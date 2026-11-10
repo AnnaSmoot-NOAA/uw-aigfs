@@ -1,6 +1,90 @@
 ---
-# Deploy both the Rocoto and ecFlow real-time streams together. Each imported
-# playbook remains usable on its own for single-stream deploys; this umbrella
-# just runs both so they are deployed and updated from the same code at once.
+# Deploy both real-time streams together, plus the shared report and the single
+# unified crontab that schedules both stream drivers and the report. The two
+# imported stream playbooks install only their application directories and do not
+# touch cron; lifting cron up to this umbrella keeps the streams from clobbering
+# one another's crontab and lets both streams be deployed and updated at once.
 - import_playbook: rtaigfs-ursa-rocoto.yaml
 - import_playbook: rtaigfs-ursa-ecflow.yaml
+
+- name: Configure shared report and unified crontab
+  hosts: localhost
+  gather_facts: true
+
+  vars_files:
+    - ../roles/rtaigfs_ursa_rocoto/defaults/main.yaml
+    - ../roles/rtaigfs_ursa_ecflow/defaults/main.yaml
+    - ../roles/rtaigfs_ursa_report/defaults/main.yaml
+
+  vars:
+    rtaigfs_all_crontab_save: "{{ rtaigfs_all_root }}/rtaigfs-crontab.{{ rtaigfs_all_save_ts }}"
+    rtaigfs_all_is_service_user: "{{ ansible_facts['user_id'] == rtaigfs_report_user }}"
+    rtaigfs_all_root: "{{ lookup('ansible.builtin.env', 'PWD') }}"
+    rtaigfs_report_user: role.rtaigfs
+
+  pre_tasks:
+    - name: Set timestamp
+      ansible.builtin.set_fact:
+        rtaigfs_all_save_ts: "{{ lookup('pipe', 'date +%Y%m%dT%H%M%S') }}"
+
+    - name: Save crontab
+      ansible.builtin.shell:
+        cmd: "crontab -l >{{ rtaigfs_all_crontab_save }} 2>/dev/null || : >{{ rtaigfs_all_crontab_save }}"
+        executable: /bin/bash
+      changed_when: false
+      when: rtaigfs_all_is_service_user
+
+  tasks:
+    - name: Configure report and cron
+      block:
+        - name: Install shared report
+          ansible.builtin.include_role:
+            name: rtaigfs_ursa_report
+
+        - name: Install unified crontab
+          ansible.builtin.command:
+            argv: [crontab, "-"]
+            stdin: "{{ lookup('ansible.builtin.template', '../roles/rtaigfs_ursa_report/templates/crontab.j2') }}"
+          changed_when: true
+          when: rtaigfs_all_is_service_user
+
+        - name: Remove saved crontab
+          ansible.builtin.file:
+            path: "{{ rtaigfs_all_crontab_save }}"
+            state: absent
+          when: rtaigfs_all_is_service_user
+
+      rescue:
+        - name: "ROLLBACK: Initial notice"
+          ansible.builtin.debug:
+            msg: |
+              ============================================================
+              SHARED REPORT/CRON DEPLOYMENT FAILED — rolling back crontab.
+              Failed task: {{ ansible_failed_task.name | default('unknown') }}
+              Error: {{ ansible_failed_result.msg | default(ansible_failed_result) }}
+              ============================================================
+
+        - name: "ROLLBACK: Reload saved crontab"
+          ansible.builtin.shell:
+            cmd: >-
+              if [ -s {{ rtaigfs_all_crontab_save }} ]; then
+                crontab {{ rtaigfs_all_crontab_save }};
+              else
+                crontab -r 2>/dev/null || true;
+              fi
+          changed_when: true
+          when: rtaigfs_all_is_service_user
+
+        - name: "ROLLBACK: Remove saved crontab"
+          ansible.builtin.file:
+            path: "{{ rtaigfs_all_crontab_save }}"
+            state: absent
+          when: rtaigfs_all_is_service_user
+
+        - name: "ROLLBACK: Final notice"
+          ansible.builtin.fail:
+            msg: |
+              ============================================================
+              CRON DEPLOYMENT ROLLED BACK.
+              See failure message above for the root cause.
+              ============================================================

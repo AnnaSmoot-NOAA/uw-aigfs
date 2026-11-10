@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # drive: one real-time step of the ecFlow AIGFS rolling window. Intended to be
-# invoked periodically (e.g. from scron). A non-blocking flock ensures that only
+# invoked periodically (e.g. from cron). A non-blocking flock ensures that only
 # one copy runs at a time, so overlapping schedule ticks are harmless.
 
 set -aeuo pipefail
