@@ -19,7 +19,6 @@ Welcome to the `uw-aigfs` User Guide. This guide describes how to install, confi
   - [Run with ecFlow](#run-with-ecflow)
     - [Start the Server](#start-the-server)
     - [Reload a Modified Experiment on the Running Server](#reload-a-modified-experiment-on-the-running-server)
-    - [Run in Real Time](#run-in-real-time)
 - [Reference](#reference)
   - [The Model Directory](#the-model-directory)
   - [Post-Write Hooks](#post-write-hooks)
@@ -67,7 +66,7 @@ make env
 
 This installs [Miniforge](https://github.com/conda-forge/miniforge) and creates the `aigfs` conda environment defined by `etc/env/aigfs.yaml`.
 
-(If you need an environment that includes developer tools (linters, test frameworks, etc.), see the [Developer Guide](contributor_guide.md).)
+(If you need an environment that includes developer tools (linters, test frameworks, etc.), see the [Contributor Guide](contributor_guide.md).)
 
 Once the environment is built, activate it for a given platform by sourcing the module loader from the repository root:
 
@@ -276,39 +275,6 @@ ecflow_client --begin=retro
 The server itself keeps running throughout; only the loaded suite is replaced. You do not need to re-run `uw ecflow server` or re-`eval` `server.json` -- the exported `ECF_HOST`/`ECF_PORT`/`ECF_SSL` in your client shell still point at the same server. If instead you are running `ecflow_client` from a new shell (for example, after closing and reopening your terminal), re-run the `eval "$(jq ...)"` step from [Start the Server](#start-the-server) to re-export those variables against the same running server.
 
 When you are finished with an experiment, you may close the shell/terminal you used for `ecflow_client` commands, return to the shell/terminal in which the ecFlow server is running, and shut down the server by pressing Ctrl-C.
-
-#### Run in Real Time
-
-The suites above use a bounded `repeat_datetime`: an explicit, retrospective cycle range driven by `first_cycle`/`last_cycle`/`cycle_freq`. For an open-ended, operational run, use real-time cycling instead: cycles are deduced from the current time and a rolling window is advanced automatically, mirroring the Rocoto real-time rolling window.
-
-In real-time mode:
-
-- Provide only `cycle_freq` (for window spacing) and omit `first_cycle`/`last_cycle`; `setup` then generates `aigfs.yaml` once, with no explicit cycle range.
-- The suite is the `rtaigfs` suite from `etc/workflow/ecflow-realtime.yaml`: one concurrent family per in-window cycle (`cycle_YYYYmmddTHHMMSS`), each running `prep -> forecast -> post`.
-- A driver computes the window and advances the suite on a schedule, rather than you issuing `--load`/`--begin` by hand.
-
-##### Cycle deduction and the data-availability gate
-
-Each time the driver (`app-ecflow/bin/drive`) runs, it takes the most recent `cycle_freq` boundary at or before the current time and works back `active_cycles` cycles. A cycle is added only once enough time has passed since its cycle time for its GFS inputs to be available, the same wait the Rocoto workflow uses. Per-cycle directories older than `window_cycles` cycles are pruned.
-
-##### Persistent server and the driver
-
-Real-time operation needs a persistent ecFlow server on the ecFlow node (`uecflow01` on Ursa). Because that node has no cron and is not a Slurm-schedulable node, persistence is achieved self-service in three layers:
-
-1. **Survive logout** -- `ensure-server` starts the server (`uw ecflow server`) in a disowned background job with its streams redirected to files, so it survives the ssh session and logout. By default it binds a deterministic per-user port derived from the user id, which avoids collisions with other users' servers on the shared ecFlow node.
-2. **Survive a crash / re-login** -- `ensure-server` uses a non-blocking `flock` as the "is it already running?" test: the server inherits and holds the lock for its whole lifetime, so a second invocation while it runs cannot acquire the lock and does nothing, while an invocation after the server has died re-acquires the lock and restarts it (recovering suite state from the checkpoint in `ECF_HOME`). The lock check needs no network/SSL round-trip, so it is simpler and more robust than probing the server. The driver then waits until the server is reachable, moves it to `RUNNING`, and forces a checkpoint (`ecflow_client --check_pt`) after every window change. Recovery is therefore to the last checkpoint: window edits are checkpointed immediately, while ordinary task-state transitions between checkpoints are preserved only as of the most recent periodic checkpoint (see `ECF_CHECKINTERVAL`). A task whose state is replayed from a slightly stale checkpoint is re-driven by ecFlow's normal zombie handling.
-3. **Auto-heal / survive reboot** -- a periodic `cron` job runs the driver from a scheduled node; it `ssh`es into the ecFlow node to run `ensure-server`, then advances the window. `ecflow_client` works from any node as long as `ECF_HOST`/`ECF_PORT` point at the server.
-
-A reboot of the ecFlow node leaves the server down only until the next cron tick; recovery is automatic and resumes from the last checkpoint. (An optional one-time `loginctl enable-linger` for the role account, or a systemd unit, would close even that gap by restarting the server at boot -- a nice-to-have, not a prerequisite.)
-
-##### Operate and monitor
-
-Real-time AIGFS is deployed and scheduled, together with the Rocoto stream, by the `rtaigfs-ursa-all` Ansible playbook (see the [Contributor Guide](contributor_guide.md#deploying-realtime-aigfs-on-ursa)). Once deployed:
-
-- **Status:** connect `ecflow_ui` to the server (Host/Port/SSL from `server.json`) to watch cycle families advance, or poll `ecflow_client --get_state=/rtaigfs`.
-- **Reports:** a daily email summarizes `.idx` completeness for the latest cycles (complete/partial/late/early), driven from the filesystem. A single shared report covers both the Rocoto and ecFlow streams, one column each.
-- **Drive once by hand:** `app-ecflow/bin/drive` runs the driver once (ensure-server, advance the window, prune). It takes a non-blocking lock, so it is safe to run alongside the scheduled job.
-- **Pause/stop:** suspend scheduling with `ecflow_client --suspend=/rtaigfs` (resume with `--resume=/rtaigfs`), or remove the `cron` entries to stop advancing the window. Stop the server itself with `ecflow_client --halt=yes` then `--terminate=yes` on the ecFlow node.
 
 ## Reference
 

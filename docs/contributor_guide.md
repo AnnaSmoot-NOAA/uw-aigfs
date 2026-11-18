@@ -21,6 +21,7 @@ Welcome to the `uw-aigfs` Contributor Guide. Please familiarize yourself with an
 - [Deploying Realtime AIGFS on Ursa](#deploying-realtime-aigfs-on-ursa)
   - [Production User Deploy Procedure](#production-user-deploy-procedure)
   - [Developer Testing Procedure](#developer-testing-procedure)
+  - [The ecFlow Stream](#the-ecflow-stream)
   - [Application Directory Layout](#application-directory-layout)
 - [Containerized AIGFS](#containerized-aigfs)
 
@@ -196,7 +197,7 @@ When adding a new workflow stage, you will typically need to:
 
 ## Deploying Realtime AIGFS on Ursa
 
-Realtime AIGFS on Ursa runs two workflow streams side by side under the `role.rtaigfs` account: one driven by Rocoto and one driven by ecFlow. They run the same forecast so the two workflow engines can be compared and shown to produce the same results, so a deployment normally includes both. The `rtaigfs-ursa-all` Ansible playbook deploys both streams together, along with the resources they share: a daily production report and a single `crontab` that schedules both streams and the report.
+Realtime AIGFS on Ursa runs two workflow streams side by side under the `role.rtaigfs` account, one driven by Rocoto and one by ecFlow, so that the two workflow engines can be compared. The `rtaigfs-ursa-all` Ansible playbook deploys both, along with a shared daily report and a `crontab` that schedules both streams and the report.
 
 ### Production User Deploy Procedure
 
@@ -209,38 +210,62 @@ make env
 make deploy playbook=rtaigfs-ursa-all
 ```
 
-This creates the `app-rocoto/`, `app-ecflow/`, and `report/` directories described in [Application Directory Layout](#application-directory-layout) and installs the `crontab`. `crontab -l` should show one entry that runs the Rocoto stream (`app-rocoto/bin/run`), one that runs the ecFlow stream (`app-ecflow/bin/drive`), and one that emails the daily production report.
+This creates the `app-rocoto/`, `app-ecflow/`, and `report/` directories described in [Application Directory Layout](#application-directory-layout) and installs the `crontab`. `crontab -l` should show one entry that runs the Rocoto stream (`app-rocoto/bin/run`), one that runs the ecFlow stream (`app-ecflow/bin/run`), and one that emails the daily production report.
 
-The ecFlow stream also needs a persistent ecFlow server on the dedicated ecFlow node (`uecflow01`). No manual setup is needed: on each run, `app-ecflow/bin/drive` `ssh`es to `uecflow01` and runs `app-ecflow/bin/ensure-server`, which starts the server if it is down and recovers its state from the last checkpoint. See [Run in Real Time](user_guide.md#run-in-real-time) for details.
+The ecFlow driver starts the ecFlow server on `uecflow01` when needed, so no manual server setup is required. See [The ecFlow Stream](#the-ecflow-stream) for details.
 
 After deployment, *no manual changes* should be made to the contents of the git clone or any of its subdirectories or files. All updates should be performed via the following recipe:
 
 1. Update the `uw-aigfs` git repo via PR.
 1. Update the git clone on Ursa: `git pull`.
 1. If the conda installation must be updated: `rm -rf conda && make env`.
-1. Stop the ecFlow server (`ecflow_client --halt=yes` then `ecflow_client --terminate=yes` on `uecflow01`) so the deployment can replace `app-ecflow/` cleanly. The next `cron` run restarts it from the preserved checkpoint.
+1. Stop the ecFlow server (`ecflow_client --halt=yes` then `ecflow_client --terminate=yes` on `uecflow01`) so the deployment can replace `app-ecflow/` cleanly. The next `cron` run restarts it.
 1. Update the deployment: `make deploy playbook=rtaigfs-ursa-all`.
 
 ### Developer Testing Procedure
 
-Changes to one stream can affect the other, since both share configuration, library code, and the report. Developers should therefore test both streams before opening a PR or redeploying.
+Both streams share configuration, library code, and the report, so a change to one can break the other. Test both before opening a PR or redeploying.
 
-The `crontab` is installed only for `role.rtaigfs`, so a developer can follow the [Production User Deploy Procedure](#production-user-deploy-procedure) under their own account to get a full deployment with nothing scheduled, then run each stream by hand:
+The `crontab` is installed only for `role.rtaigfs`, so a developer can deploy under their own account and run each stream by hand:
 
 1. Deploy both streams: `make deploy playbook=rtaigfs-ursa-all`.
 1. Check each stream's configuration and edit as needed:
    - `app-rocoto/rtaigfs.yaml`, especially `app.platform.scheduler.account`.
-   - `app-ecflow/aigfs.yaml`, especially `app.platform.scheduler.account`.
+   - `app-ecflow/rtaigfs.yaml`, especially `app.platform.scheduler.account`.
 1. Run each stream's main automation script repeatedly to execute its workflow:
    - Rocoto: `app-rocoto/bin/run`
-   - ecFlow: `app-ecflow/bin/drive`
-1. When finished, stop your ecFlow server on `uecflow01` (`ecflow_client --halt=yes` then `ecflow_client --terminate=yes`). It keeps running after `drive` exits. Each user's server uses its own port, so it does not interfere with the production server.
+   - ecFlow: `app-ecflow/bin/run`
+1. When finished, stop your ecFlow server on `uecflow01` (`ecflow_client --halt=yes` then `ecflow_client --terminate=yes`), which keeps running after `run` exits. It uses its own per-user port, so it does not affect the production server.
 
-`report/bin/bb report/bin/report` runs the report by hand, but note that it emails the production recipient list.
+Running `report/bin/bb report/bin/report` by hand emails the production recipient list.
 
 #### Deploying a Single Stream
 
-Each stream also has its own playbook, `rtaigfs-ursa-rocoto` or `rtaigfs-ursa-ecflow`, which installs only that stream's application directory (no report and no `crontab`). These can speed up iteration on one stream, but test both streams before opening a PR.
+The `rtaigfs-ursa-rocoto` and `rtaigfs-ursa-ecflow` playbooks each install only one stream's application directory, with no report and no `crontab`. They can speed up iteration on one stream, but test both streams before opening a PR.
+
+### The ecFlow Stream
+
+The ecFlow stream runs the `rtaigfs` suite from `etc/workflow/ecflow-realtime.yaml`, with one family per cycle, each running `prep -> forecast -> post`. Its configuration, `app-ecflow/rtaigfs.yaml`, sets `cycle_freq` but omits `first_cycle`/`last_cycle`; the driver, `app-ecflow/bin/run`, chooses the cycles instead.
+
+#### The Driver
+
+Each time it runs, the driver:
+
+1. Starts the ecFlow server on `uecflow01` if it is not already running.
+1. Adds the latest `active_cycles` cycles to the suite, once enough time has passed for each cycle's GFS inputs to be available (the same wait the Rocoto stream uses).
+1. Removes cycles that have left that window from the suite, and keeps run directories for only the latest `window_cycles` cycles.
+
+Only one copy of the driver runs at a time, so it is safe to run it by hand while it is also scheduled.
+
+#### The Server
+
+The driver runs `app-ecflow/bin/ensure-server` on `uecflow01` over `ssh`. It starts the server in the background, so the server keeps running after logout, on a per-user port so it does not collide with other users' servers. If the server stops, for example after a crash or a reboot, the next driver run restarts it from its last checkpoint. The driver checkpoints after every change to the suite; task state changes in between are saved by ecFlow's periodic checkpoint (see `ECF_CHECKINTERVAL`).
+
+#### Operate and Monitor
+
+- **Status:** Connect `ecflow_ui` to the server, using the host, port, and SSL settings in `app-ecflow/run/server.json`, or run `ecflow_client --get_state=/rtaigfs`.
+- **Pause:** Run `ecflow_client --suspend=/rtaigfs`, and `ecflow_client --resume=/rtaigfs` to continue.
+- **Stop:** Run `ecflow_client --halt=yes` then `ecflow_client --terminate=yes` on `uecflow01`. The next scheduled driver run restarts the server, so remove the `cron` entries first to stop it for good.
 
 ### Application Directory Layout
 
@@ -283,12 +308,12 @@ The structure of a `yyyymmddhh` cycle run directory is as follows:
 
 ```
 app-ecflow/
-├── aigfs.yaml              # Realtime config (no first_cycle/last_cycle)
-├── bin                     # drive, ensure-server
-├── model                   # AIGFS model files
-├── run                     # Root of yyyymmddhh cycle run directories + ecFlow server state
-├── rtaigfs-ecflow.log      # Log file from latest run
-└── rtaigfs-ecflow.log.last # Log file from previous run (created after first run)
+├── bin              # Executables
+├── model            # AIGFS model files
+├── rtaigfs.log      # Log file from latest run
+├── rtaigfs.log.last # Log file from previous run (created after first run)
+├── rtaigfs.yaml     # Parameterized configuration (no first_cycle/last_cycle)
+└── run              # Root of yyyymmddhh cycle run directories and ecFlow server state
 ```
 
 The `run/` directory holds the ecFlow `ECF_HOME` (`run/ecf`, with the server log, checkpoint, and generated `suite.def` and ecf scripts), `server.json`, and one `yyyymmddhh/` directory per in-window cycle, containing the prep, forecast, and post task run directories.

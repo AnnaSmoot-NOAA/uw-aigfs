@@ -3,7 +3,7 @@ Real-time ecFlow rolling-window driver for AIGFS.
 
 Advances an open-ended, real-time ecFlow suite ("rtaigfs") whose window of cycles
 is deduced from the current time rather than specified explicitly via first_cycle/last_cycle.
-Each invocation (typically from a periodic scron job):
+Each invocation (typically from a periodic cron job):
 
   1. ensures the ecFlow server is up on the ecFlow node (via the ensure-server
      script, run over ssh),
@@ -46,7 +46,7 @@ RTCYCLES_ENV = "RTCYCLES"
 
 # GFS data-availability cutoff: a cycle's inputs are not expected until this long
 # after the cycle time. Matches the Rocoto real-time stream's 03:45 cutoff
-# (current-cycle analysis reaches /public at 03:42); cf. rtaigfs_ursa/files/rtaigfs.yaml.
+# (current-cycle analysis reaches /public at 03:42); cf. rtaigfs_ursa_rocoto/files/rtaigfs.yaml.
 DATA_OFFSET = timedelta(hours=3, minutes=45)
 
 # Defaults mirroring the Rocoto rolling window (active_cycles / window_cycles).

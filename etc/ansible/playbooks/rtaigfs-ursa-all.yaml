@@ -17,10 +17,11 @@
     - ../roles/rtaigfs_ursa_report/defaults/main.yaml
 
   vars:
+    rtaigfs_all_crontab_path_env: /usr/local/bin:/usr/bin:/bin
     rtaigfs_all_crontab_save: "{{ rtaigfs_all_root }}/rtaigfs-crontab.{{ rtaigfs_all_save_ts }}"
-    rtaigfs_all_is_service_user: "{{ ansible_facts['user_id'] == rtaigfs_report_user }}"
+    rtaigfs_all_is_service_user: "{{ ansible_facts['user_id'] == rtaigfs_all_user }}"
     rtaigfs_all_root: "{{ lookup('ansible.builtin.env', 'PWD') }}"
-    rtaigfs_report_user: role.rtaigfs
+    rtaigfs_all_user: role.rtaigfs
 
   pre_tasks:
     - name: Set timestamp
@@ -44,7 +45,7 @@
         - name: Install unified crontab
           ansible.builtin.command:
             argv: [crontab, "-"]
-            stdin: "{{ lookup('ansible.builtin.template', '../roles/rtaigfs_ursa_report/templates/crontab.j2') }}"
+            stdin: "{{ lookup('ansible.builtin.template', 'templates/crontab.j2') }}"
           changed_when: true
           when: rtaigfs_all_is_service_user
 

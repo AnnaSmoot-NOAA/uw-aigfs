@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# drive: one real-time step of the ecFlow AIGFS rolling window. Intended to be
+# run: advance the ecFlow AIGFS real-time rolling window once. Intended to be
 # invoked periodically (e.g. from cron). A non-blocking flock ensures that only
 # one copy runs at a time, so overlapping schedule ticks are harmless.
 
@@ -33,7 +33,7 @@ go() {
   port_arg=
   test -n "$ecflow_port" && port_arg="--port $ecflow_port"
   (set -ex && python -m aigfs.ecflow_rt \
-    --config $rtdir/aigfs.yaml \
+    --config $rtdir/rtaigfs.yaml \
     --install $rtdir \
     --ecflow-host $ecflow_host \
     --platform $platform \
@@ -45,7 +45,7 @@ go() {
 }
 
 rtdir=$(readlink -f $(dirname $(dirname $0)))
-log=$rtdir/rtaigfs-ecflow.log
+log=$rtdir/rtaigfs.log
 platform=${PLATFORM:-ursa}
 ecflow_host=${ECFLOW_HOST:-uecflow01}
 ecflow_port=${ECFLOW_PORT:-}

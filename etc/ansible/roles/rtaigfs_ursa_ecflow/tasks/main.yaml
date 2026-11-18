@@ -11,10 +11,10 @@
     state: directory
     mode: "0755"
 
-- name: Install drive launcher
+- name: Install run launcher
   ansible.builtin.copy:
-    src: drive
-    dest: "{{ rtaigfs_ecflow_bin_dir }}/drive"
+    src: run
+    dest: "{{ rtaigfs_ecflow_bin_dir }}/run"
     mode: "0755"
 
 - name: Install ensure-server
@@ -25,8 +25,8 @@
 
 - name: Install configuration
   ansible.builtin.copy:
-    src: aigfs.yaml
-    dest: "{{ rtaigfs_ecflow_install_dir | realpath }}/aigfs.yaml"
+    src: rtaigfs.yaml
+    dest: "{{ rtaigfs_ecflow_install_dir | realpath }}/rtaigfs.yaml"
     mode: "0644"
 
 - name: Extract model archive
