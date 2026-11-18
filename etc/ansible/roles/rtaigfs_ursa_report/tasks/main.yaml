@@ -28,8 +28,8 @@
     path: "{{ rtaigfs_report_bin_dir }}/bb"
     mode: "0755"
 
-- name: Install report launcher
+- name: Install report script
   ansible.builtin.copy:
     src: report
-    dest: "{{ rtaigfs_report_bin_dir }}/report"
-    mode: "0755"
+    dest: "{{ rtaigfs_report_install_dir | realpath }}/report"
+    mode: "0644"

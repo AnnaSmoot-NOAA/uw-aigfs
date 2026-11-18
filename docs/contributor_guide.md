@@ -219,7 +219,7 @@ After deployment, *no manual changes* should be made to the contents of the git 
 1. Update the `uw-aigfs` git repo via PR.
 1. Update the git clone on Ursa: `git pull`.
 1. If the conda installation must be updated: `rm -rf conda && make env`.
-1. Stop the ecFlow server (`ecflow_client --halt=yes` then `ecflow_client --terminate=yes` on `uecflow01`) so the deployment can replace `app-ecflow/` cleanly. The next `cron` run restarts it.
+1. [Stop the ecFlow server](#operate-and-monitor) so the deployment can replace `app-ecflow/` cleanly. The next `cron` run restarts it.
 1. Update the deployment: `make deploy playbook=rtaigfs-ursa-all`.
 
 ### Developer Testing Procedure
@@ -235,9 +235,9 @@ The `crontab` is installed only for `role.rtaigfs`, so a developer can deploy un
 1. Run each stream's main automation script repeatedly to execute its workflow:
    - Rocoto: `app-rocoto/bin/run`
    - ecFlow: `app-ecflow/bin/run`
-1. When finished, stop your ecFlow server on `uecflow01` (`ecflow_client --halt=yes` then `ecflow_client --terminate=yes`), which keeps running after `run` exits. It uses its own per-user port, so it does not affect the production server.
+1. When finished, [stop your ecFlow server](#operate-and-monitor), which keeps running after `run` exits. It uses its own per-user port, so it does not affect the production server.
 
-Running `report/bin/bb report/bin/report` by hand emails the production recipient list.
+Running `report/bin/bb report/report` by hand emails the production recipient list.
 
 #### Deploying a Single Stream
 
@@ -322,9 +322,9 @@ The `run/` directory holds the ecFlow `ECF_HOME` (`run/ecf`, with the server log
 
 ```
 report/
-└── bin
-    ├── bb     # Babashka interpreter
-    └── report # Report script (one column per deployed stream)
+├── bin
+│   └── bb # Babashka interpreter
+└── report # Report script, run with bb (one column per deployed stream)
 ```
 
 #### Task Run Directories

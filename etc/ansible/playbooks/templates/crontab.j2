@@ -7,4 +7,4 @@ SHELL=/bin/bash
 
 */5 * * * * {{ rtaigfs_rocoto_bin_dir }}/run
 */5 * * * * ECFLOW_HOST={{ rtaigfs_ecflow_host }} {% if rtaigfs_ecflow_port %}ECFLOW_PORT={{ rtaigfs_ecflow_port }} {% endif %}PLATFORM={{ rtaigfs_ecflow_platform }} {{ rtaigfs_ecflow_bin_dir }}/run
-0 15 * * * {{ rtaigfs_report_bin_dir }}/bb {{ rtaigfs_report_bin_dir }}/report
+0 15 * * * {{ rtaigfs_report_bin_dir }}/bb {{ rtaigfs_report_install_dir | realpath }}/report

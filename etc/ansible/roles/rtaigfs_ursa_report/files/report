@@ -1,5 +1,3 @@
-#!/usr/bin/env bb
-
 ;; -*- clj -*-
 
 ;; Unified AIGFS production report. Emits a single HTML email with one column per
@@ -13,7 +11,7 @@
 
 ;; Directory holding report/, app-rocoto/, and app-ecflow/ (parent of report/).
 (def BASE
-  (-> (io/file *file*) .getCanonicalPath io/file .getParentFile .getParentFile .getParentFile))
+  (-> (io/file *file*) .getCanonicalPath io/file .getParentFile .getParentFile))
 
 ;; Per-stream descriptor: display name plus the cycles root (relative to BASE).
 ;; A stream is included only if its app directory exists, so a single-stream

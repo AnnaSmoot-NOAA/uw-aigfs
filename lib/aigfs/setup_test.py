@@ -84,7 +84,7 @@ def test_setup_compose_configs(logcap, tmp_path, workflow):
     assert (msg in logcap.text) == (workflow is None)
 
 
-def test_setup_compose_configs_app_overrides(tmp_path):
+def test_setup_compose_configs_rundir(tmp_path):
     with (
         patch.object(setup, "compose_to_dict") as compose_to_dict,
         patch.object(setup, "NamedTemporaryFile") as NamedTemporaryFile,
@@ -94,9 +94,7 @@ def test_setup_compose_configs_app_overrides(tmp_path):
         tmp = Mock()
         tmp.name = str(reserved_path)
         NamedTemporaryFile().__enter__.return_value = tmp
-        setup.compose_configs(
-            STR.ecflow, "ursa", [Path("/path/to/a.yaml")], app_overrides={STR.rundir: "/run"}
-        )
+        setup.compose_configs(STR.ecflow, "ursa", [Path("/path/to/a.yaml")], rundir=Path("/run"))
     expected = {
         STR.app: {
             STR.home: str(setup.HOMEDIR),

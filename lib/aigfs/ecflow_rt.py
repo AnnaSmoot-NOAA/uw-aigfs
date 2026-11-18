@@ -113,14 +113,12 @@ def render_suite(
     subsequent invocations, since its content does not depend on the window.
     """
     os.environ[RTCYCLES_ENV] = ",".join(_utc(c).strftime(CYCLE_FMT) for c in cycles)
-    # Supply a concrete app.rundir override so nested, cycle-parameterized rundir templates (e.g.
+    # Supply a concrete app.rundir so nested, cycle-parameterized rundir templates (e.g.
     # "{{ app.rundir }}/{{ app.time.yyyymmdd }}.../prep") resolve their rundir portion at generation
     # time, leaving only the per-cycle part deferred to task execution. Without this, app.rundir's
     # "{{ RUNDIR | env }}" value is held unresolved (alongside the deferred cycle) and then fails in
     # the task's environment, where RUNDIR is not set.
-    raw = setup.compose_configs(
-        WORKFLOW, platform, [user_config], app_overrides={STR.rundir: str(rundir)}
-    )
+    raw = setup.compose_configs(WORKFLOW, platform, [user_config], rundir=rundir)
     config = setup.validate(raw, Config)
     # model_dump() yields pathlib.Path objects for app paths; stringify them so the
     # dumped aigfs.yaml is plain YAML that uw ecflow server / uwtools can re-parse.
