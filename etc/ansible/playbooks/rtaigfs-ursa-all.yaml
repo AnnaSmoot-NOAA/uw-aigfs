@@ -1,9 +1,6 @@
 ---
-# Deploy both real-time streams together, plus the shared report and the single
-# unified crontab that schedules both stream drivers and the report. The two
-# imported stream playbooks install only their application directories and do not
-# touch cron; lifting cron up to this umbrella keeps the streams from clobbering
-# one another's crontab and lets both streams be deployed and updated at once.
+# Deploy both real-time streams, the shared report, and (for the production user only) a single
+# crontab that runs both streams and the report.
 - import_playbook: rtaigfs-ursa-rocoto.yaml
 - import_playbook: rtaigfs-ursa-ecflow.yaml
 

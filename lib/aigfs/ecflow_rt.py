@@ -53,8 +53,7 @@ DATA_OFFSET = timedelta(hours=3, minutes=45)
 DEFAULT_ACTIVE_CYCLES = 4
 DEFAULT_WINDOW_CYCLES = 12
 
-# Per-user base offset for the deterministic default ecFlow port (matches the
-# ensure-server script's $(($(id -u) + 1500)) so both agree without configuration).
+# Offset added to the user id to give each user a distinct default ecFlow port.
 PORT_BASE = 1500
 
 
@@ -285,7 +284,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--install", required=True, help="role install directory (contains bin/)")
     parser.add_argument("--ecflow-host", required=True, help="dedicated ecFlow node hostname")
     parser.add_argument(
-        "--port", type=int, help="ecFlow server port (default: per-user, user id + 1500)"
+        "--port", type=int, help="ecFlow server port (default: user id + %d)" % PORT_BASE
     )
     parser.add_argument("--platform", default="ursa", help="platform name")
     parser.add_argument("--render-only", action="store_true", help="render suite.def only")

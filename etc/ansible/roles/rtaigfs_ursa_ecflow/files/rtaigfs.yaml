@@ -22,3 +22,4 @@ user:
   m1_yyjjjhh: '{{ (cycle - app.time.m6h).strftime("%y%j%H") }}'
   m2_yyjjjhh: '{{ (cycle - 2 * app.time.m6h).strftime("%y%j%H") }}'
   yyjjjhh: '{{ cycle.strftime("%y%j%H") }}'
+workflow: !remove

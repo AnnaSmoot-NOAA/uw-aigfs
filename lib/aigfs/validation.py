@@ -156,10 +156,8 @@ class Config(BaseModel):
 
     @model_validator(mode="after")
     def cycle_range_vs_workflow(self) -> "Config":
-        # Both workflow engines need cycle_freq for cycle spacing. The first_cycle/last_cycle pair
-        # defines an explicit (retrospective) cycle range: ecFlow can instead deduce a real-time
-        # window from the current time, so the pair is optional for it, but Rocoto (the workflow
-        # block) always requires an explicit range, even for a real-time configuration.
+        # Both engines need cycle_freq. Rocoto (the workflow block) also needs first_cycle and
+        # last_cycle, even in real time; ecFlow can choose its cycles from the current time.
         if (self.ecflow is not None or self.workflow is not None) and self.app.cycle_freq is None:
             engine = "ecflow" if self.ecflow is not None else "workflow"
             msg = f"cycle_freq must be defined when {engine} is defined"

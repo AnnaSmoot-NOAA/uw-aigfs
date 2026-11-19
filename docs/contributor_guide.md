@@ -263,9 +263,15 @@ The driver runs `app-ecflow/bin/ensure-server` on `uecflow01` over `ssh`. It sta
 
 #### Operate and Monitor
 
-- **Status:** Connect `ecflow_ui` to the server, using the host, port, and SSL settings in `app-ecflow/run/server.json`, or run `ecflow_client --get_state=/rtaigfs`.
+`ecflow_client` and `ecflow_ui` connect to the server using the settings in `app-ecflow/run/server.json`. To export them:
+
+```
+eval "$(jq -r 'to_entries | .[] | "export \(.key)=\(.value)"' app-ecflow/run/server.json)"
+```
+
+- **Status:** Connect `ecflow_ui` to the server, or run `ecflow_client --get_state=/rtaigfs`.
 - **Pause:** Run `ecflow_client --suspend=/rtaigfs`, and `ecflow_client --resume=/rtaigfs` to continue.
-- **Stop:** Run `ecflow_client --halt=yes` then `ecflow_client --terminate=yes` on `uecflow01`. The next scheduled driver run restarts the server, so remove the `cron` entries first to stop it for good.
+- **Stop:** Run `ecflow_client --halt=yes` then `ecflow_client --terminate=yes`. The next scheduled driver run restarts the server, so remove the `cron` entries first to stop it for good.
 
 ### Application Directory Layout
 
@@ -316,7 +322,7 @@ app-ecflow/
 └── run              # Root of yyyymmddhh cycle run directories and ecFlow server state
 ```
 
-The `run/` directory holds the ecFlow `ECF_HOME` (`run/ecf`, with the server log, checkpoint, and generated `suite.def` and ecf scripts), `server.json`, and one `yyyymmddhh/` directory per in-window cycle, containing the prep, forecast, and post task run directories.
+The `run/` directory holds one `yyyymmddhh/` run directory per cycle, the fully realized config (`aigfs.yaml`), the suite definition (`suite.def`), the server's connection settings (`server.json`) and startup log (`server.log`), and the ecFlow `ECF_HOME` (`ecf/`, with the generated ecf scripts, task output, and the server's checkpoint and log).
 
 #### Report
 

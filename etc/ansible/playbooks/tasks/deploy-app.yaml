@@ -1,0 +1,97 @@
+---
+# Deploy one stream's application directory (rtaigfs_app) with its role (rtaigfs_app_role),
+# carrying its run data subdirectory (rtaigfs_app_keep) over from any prior deployment. On
+# failure, restore the prior deployment, including its run data.
+- name: Set save path
+  ansible.builtin.set_fact:
+    rtaigfs_app_save: "{{ rtaigfs_app }}.{{ lookup('pipe', 'date +%Y%m%dT%H%M%S') }}"
+
+- name: Deploy {{ rtaigfs_app | basename }}/
+  block:
+    - name: Does {{ rtaigfs_app | basename }}/ exist?
+      ansible.builtin.stat:
+        path: "{{ rtaigfs_app }}"
+      register: rtaigfs_app_stat
+
+    - name: Save {{ rtaigfs_app | basename }}/
+      ansible.builtin.command:
+        argv: [mv, "{{ rtaigfs_app }}", "{{ rtaigfs_app_save }}"]
+      when: rtaigfs_app_stat.stat.exists
+      changed_when: true
+
+    - name: Run {{ rtaigfs_app_role }} role
+      ansible.builtin.include_role:
+        name: "{{ rtaigfs_app_role }}"
+
+    - name: Is there a saved {{ rtaigfs_app_keep }}/ directory?
+      ansible.builtin.stat:
+        path: "{{ rtaigfs_app_save }}/{{ rtaigfs_app_keep }}"
+      register: rtaigfs_app_keep_stat
+      when: rtaigfs_app_stat.stat.exists
+
+    - name: Restore saved {{ rtaigfs_app_keep }}/ directory
+      ansible.builtin.command:
+        argv: [mv, "{{ rtaigfs_app_save }}/{{ rtaigfs_app_keep }}", "{{ rtaigfs_app }}/{{ rtaigfs_app_keep }}"]
+      when:
+        - rtaigfs_app_stat.stat.exists
+        - rtaigfs_app_keep_stat.stat.exists | default(false)
+      changed_when: true
+
+    - name: Remove saved {{ rtaigfs_app | basename }}/
+      ansible.builtin.file:
+        path: "{{ rtaigfs_app_save }}"
+        state: absent
+      when: rtaigfs_app_stat.stat.exists
+
+  rescue:
+    - name: "ROLLBACK: Initial notice"
+      ansible.builtin.debug:
+        msg: |
+          ============================================================
+          DEPLOYMENT FAILED — rolling back.
+          Failed task: {{ ansible_failed_task.name | default('unknown') }}
+          Error: {{ ansible_failed_result.msg | default(ansible_failed_result) }}
+          ============================================================
+
+    # The run data may already have been moved into the broken new deployment, so move it back
+    # into the saved deployment before the broken one is removed.
+    - name: "ROLLBACK: Check for {{ rtaigfs_app_keep }}/ in broken deployment"
+      ansible.builtin.stat:
+        path: "{{ rtaigfs_app }}/{{ rtaigfs_app_keep }}"
+      register: rtaigfs_app_broken_keep_stat
+      when: rtaigfs_app_stat.stat.exists | default(false)
+
+    - name: "ROLLBACK: Check for {{ rtaigfs_app_keep }}/ in saved deployment"
+      ansible.builtin.stat:
+        path: "{{ rtaigfs_app_save }}/{{ rtaigfs_app_keep }}"
+      register: rtaigfs_app_saved_keep_stat
+      when: rtaigfs_app_stat.stat.exists | default(false)
+
+    - name: "ROLLBACK: Move {{ rtaigfs_app_keep }}/ back into saved deployment"
+      ansible.builtin.command:
+        argv: [mv, "{{ rtaigfs_app }}/{{ rtaigfs_app_keep }}", "{{ rtaigfs_app_save }}/{{ rtaigfs_app_keep }}"]
+      when:
+        - rtaigfs_app_stat.stat.exists | default(false)
+        - rtaigfs_app_broken_keep_stat.stat.exists | default(false)
+        - not (rtaigfs_app_saved_keep_stat.stat.exists | default(false))
+      changed_when: true
+
+    - name: "ROLLBACK: Remove broken deployment"
+      ansible.builtin.file:
+        path: "{{ rtaigfs_app }}"
+        state: absent
+      when: rtaigfs_app_stat.stat.exists | default(false)
+
+    - name: "ROLLBACK: Restore saved deployment"
+      ansible.builtin.command:
+        argv: [mv, "{{ rtaigfs_app_save }}", "{{ rtaigfs_app }}"]
+      when: rtaigfs_app_stat.stat.exists | default(false)
+      changed_when: true
+
+    - name: "ROLLBACK: Final notice"
+      ansible.builtin.fail:
+        msg: |
+          ============================================================
+          DEPLOYMENT ROLLED BACK.
+          See failure message above for the root cause.
+          ============================================================

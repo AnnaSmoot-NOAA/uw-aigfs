@@ -28,7 +28,7 @@ go() {
 
   # Advance the window: ensure the server, deduce+gate cycles, render the suite,
   # sync it to the server, and prune aged-out cycle directories. ECFLOW_PORT is
-  # optional; when unset the driver uses the per-user default (user id + 1500).
+  # optional; when unset the driver uses the per-user default port.
 
   port_arg=
   test -n "$ecflow_port" && port_arg="--port $ecflow_port"

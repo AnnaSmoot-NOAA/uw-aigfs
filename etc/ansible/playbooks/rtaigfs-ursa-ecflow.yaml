@@ -1,8 +1,7 @@
 ---
-# Deploys the ecFlow real-time application directory (app-ecflow/). Scheduling
-# (cron) and the production report are handled once, for both streams, by the
-# rtaigfs-ursa-all umbrella playbook, so this playbook installs no crontab and is
-# safe to run on its own to (re)deploy just the ecFlow app.
+# Deploys the ecFlow real-time application directory (app-ecflow/). Scheduling (cron) and the
+# production report are handled once, for both streams, by the rtaigfs-ursa-all playbook,
+# so this playbook installs no crontab.
 - name: Configure rtaigfs-ursa-ecflow
   hosts: localhost
   gather_facts: true
@@ -11,103 +10,10 @@
     - ../roles/rtaigfs_ursa_ecflow/defaults/main.yaml
 
   vars:
-    rtaigfs_ecflow_app: "{{ rtaigfs_ecflow_app_parent }}/app-ecflow"
-    rtaigfs_ecflow_app_save: "{{ rtaigfs_ecflow_app_parent }}/app-ecflow.{{ rtaigfs_ecflow_save_ts }}"
-    rtaigfs_ecflow_app_parent: "{{ (playbook_dir + '/../../..') | realpath }}"
-
-  pre_tasks:
-    - name: Set timestamp
-      ansible.builtin.set_fact:
-        rtaigfs_ecflow_save_ts: "{{ lookup('pipe', 'date +%Y%m%dT%H%M%S') }}"
+    rtaigfs_app: "{{ rtaigfs_ecflow_install_dir | realpath }}"
+    rtaigfs_app_keep: run
+    rtaigfs_app_role: rtaigfs_ursa_ecflow
 
   tasks:
-    - name: Deploy RTAIGFS ecFlow
-      block:
-        - name: Does app-ecflow/ exist?
-          ansible.builtin.stat:
-            path: "{{ rtaigfs_ecflow_app }}"
-          register: rtaigfs_ecflow_app_stat
-
-        - name: Save app-ecflow/
-          ansible.builtin.command:
-            argv: [mv, "{{ rtaigfs_ecflow_app }}", "{{ rtaigfs_ecflow_app_save }}"]
-          when: rtaigfs_ecflow_app_stat.stat.exists
-          changed_when: true
-
-        - name: Run rtaigfs_ursa_ecflow role
-          ansible.builtin.include_role:
-            name: rtaigfs_ursa_ecflow
-
-        - name: Is there a saved run directory?
-          ansible.builtin.stat:
-            path: "{{ rtaigfs_ecflow_app_save }}/run"
-          register: rtaigfs_ecflow_run_stat
-          when: rtaigfs_ecflow_app_stat.stat.exists
-
-        - name: Restore saved run directory
-          ansible.builtin.command:
-            argv: [mv, "{{ rtaigfs_ecflow_app_save }}/run", "{{ rtaigfs_ecflow_app }}/run"]
-          when:
-            - rtaigfs_ecflow_app_stat.stat.exists
-            - rtaigfs_ecflow_run_stat.stat.exists | default(false)
-          changed_when: true
-
-        - name: Remove saved app-ecflow/
-          ansible.builtin.file:
-            path: "{{ rtaigfs_ecflow_app_save }}"
-            state: absent
-          when: rtaigfs_ecflow_app_stat.stat.exists
-
-      rescue:
-        - name: "ROLLBACK: Initial notice"
-          ansible.builtin.debug:
-            msg: |
-              ============================================================
-              DEPLOYMENT FAILED — rolling back.
-              Failed task: {{ ansible_failed_task.name | default('unknown') }}
-              Error: {{ ansible_failed_result.msg | default(ansible_failed_result) }}
-              ============================================================
-
-        # The run/ directory may have been moved into the (broken) new deployment
-        # already; salvage it back into the saved deployment before that is removed,
-        # so the restore below brings back a complete prior deployment.
-        - name: "ROLLBACK: Check for run/ in broken app-ecflow/"
-          ansible.builtin.stat:
-            path: "{{ rtaigfs_ecflow_app }}/run"
-          register: rtaigfs_ecflow_broken_run_stat
-          when: (rtaigfs_ecflow_app_stat.stat.exists | default(false))
-
-        - name: "ROLLBACK: Check for run/ in saved app-ecflow/"
-          ansible.builtin.stat:
-            path: "{{ rtaigfs_ecflow_app_save }}/run"
-          register: rtaigfs_ecflow_saved_run_stat
-          when: (rtaigfs_ecflow_app_stat.stat.exists | default(false))
-
-        - name: "ROLLBACK: Salvage run/ back into saved app-ecflow/"
-          ansible.builtin.command:
-            argv: [mv, "{{ rtaigfs_ecflow_app }}/run", "{{ rtaigfs_ecflow_app_save }}/run"]
-          when:
-            - rtaigfs_ecflow_app_stat.stat.exists | default(false)
-            - rtaigfs_ecflow_broken_run_stat.stat.exists | default(false)
-            - not (rtaigfs_ecflow_saved_run_stat.stat.exists | default(false))
-          changed_when: true
-
-        - name: "ROLLBACK: Remove broken app-ecflow/"
-          ansible.builtin.file:
-            path: "{{ rtaigfs_ecflow_app }}"
-            state: absent
-          when: (rtaigfs_ecflow_app_stat.stat.exists | default(false))
-
-        - name: "ROLLBACK: Restore saved app-ecflow/"
-          ansible.builtin.command:
-            argv: [mv, "{{ rtaigfs_ecflow_app_save }}", "{{ rtaigfs_ecflow_app }}"]
-          when: (rtaigfs_ecflow_app_stat.stat.exists | default(false))
-          changed_when: true
-
-        - name: "ROLLBACK: Final notice"
-          ansible.builtin.fail:
-            msg: |
-              ============================================================
-              DEPLOYMENT ROLLED BACK.
-              See failure message above for the root cause.
-              ============================================================
+    - name: Deploy app-ecflow/
+      ansible.builtin.include_tasks: tasks/deploy-app.yaml

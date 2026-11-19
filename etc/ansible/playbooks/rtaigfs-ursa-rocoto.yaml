@@ -1,8 +1,7 @@
 ---
-# Deploys the Rocoto real-time application directory (app-rocoto/). Scheduling
-# (cron) and the production report are handled once, for both streams, by the
-# rtaigfs-ursa-all umbrella playbook, so this playbook installs no crontab and is
-# safe to run on its own to (re)deploy just the Rocoto app.
+# Deploys the Rocoto real-time application directory (app-rocoto/). Scheduling (cron) and the
+# production report are handled once, for both streams, by the rtaigfs-ursa-all playbook,
+# so this playbook installs no crontab.
 - name: Configure rtaigfs-ursa-rocoto
   hosts: localhost
   gather_facts: true
@@ -11,104 +10,10 @@
     - ../roles/rtaigfs_ursa_rocoto/defaults/main.yaml
 
   vars:
-    rtaigfs_rocoto_app: "{{ rtaigfs_rocoto_app_parent }}/app-rocoto"
-    rtaigfs_rocoto_app_save: "{{ rtaigfs_rocoto_app_parent }}/app-rocoto.{{ rtaigfs_rocoto_save_ts }}"
-    rtaigfs_rocoto_app_parent: "{{ (playbook_dir + '/../../..') | realpath }}"
-
-  pre_tasks:
-    - name: Set timestamp
-      ansible.builtin.set_fact:
-        rtaigfs_rocoto_save_ts: "{{ lookup('pipe', 'date +%Y%m%dT%H%M%S') }}"
+    rtaigfs_app: "{{ rtaigfs_rocoto_install_dir | realpath }}"
+    rtaigfs_app_keep: cycles
+    rtaigfs_app_role: rtaigfs_ursa_rocoto
 
   tasks:
-    - name: Deploy RTAIGFS Rocoto
-      block:
-        - name: Does app-rocoto/ exist?
-          ansible.builtin.stat:
-            path: "{{ rtaigfs_rocoto_app }}"
-          register: rtaigfs_rocoto_app_stat
-
-        - name: Save app-rocoto/
-          ansible.builtin.command:
-            argv: [mv, "{{ rtaigfs_rocoto_app }}", "{{ rtaigfs_rocoto_app_save }}"]
-          when: rtaigfs_rocoto_app_stat.stat.exists
-          changed_when: true
-
-        - name: Run rtaigfs_ursa_rocoto role
-          ansible.builtin.include_role:
-            name: rtaigfs_ursa_rocoto
-
-        - name: Are there saved cycles?
-          ansible.builtin.stat:
-            path: "{{ rtaigfs_rocoto_app_save }}/cycles"
-          register: rtaigfs_rocoto_cycles_stat
-          when: rtaigfs_rocoto_app_stat.stat.exists
-
-        - name: Restore saved cycles
-          ansible.builtin.command:
-            argv: [mv, "{{ rtaigfs_rocoto_app_save }}/cycles", "{{ rtaigfs_rocoto_app }}/cycles"]
-          when:
-            - rtaigfs_rocoto_app_stat.stat.exists
-            - rtaigfs_rocoto_cycles_stat.stat.exists | default(false)
-          changed_when: true
-
-        - name: Remove saved app-rocoto/
-          ansible.builtin.file:
-            path: "{{ rtaigfs_rocoto_app_save }}"
-            state: absent
-          when: rtaigfs_rocoto_app_stat.stat.exists
-
-      rescue:
-        - name: "ROLLBACK: Initial notice"
-          ansible.builtin.debug:
-            msg: |
-              ============================================================
-              DEPLOYMENT FAILED — rolling back.
-              Failed task: {{ ansible_failed_task.name | default('unknown') }}
-              Error: {{ ansible_failed_result.msg | default(ansible_failed_result) }}
-              ============================================================
-
-        # The cycles directory may have been moved into the (broken) new
-        # deployment already; salvage it back into the saved deployment before
-        # that is removed, so the restore below brings back a complete prior
-        # deployment.
-        - name: "ROLLBACK: Check for cycles/ in broken app-rocoto/"
-          ansible.builtin.stat:
-            path: "{{ rtaigfs_rocoto_app }}/cycles"
-          register: rtaigfs_rocoto_broken_cycles_stat
-          when: (rtaigfs_rocoto_app_stat.stat.exists | default(false))
-
-        - name: "ROLLBACK: Check for cycles/ in saved app-rocoto/"
-          ansible.builtin.stat:
-            path: "{{ rtaigfs_rocoto_app_save }}/cycles"
-          register: rtaigfs_rocoto_saved_cycles_stat
-          when: (rtaigfs_rocoto_app_stat.stat.exists | default(false))
-
-        - name: "ROLLBACK: Salvage cycles/ back into saved app-rocoto/"
-          ansible.builtin.command:
-            argv: [mv, "{{ rtaigfs_rocoto_app }}/cycles", "{{ rtaigfs_rocoto_app_save }}/cycles"]
-          when:
-            - rtaigfs_rocoto_app_stat.stat.exists | default(false)
-            - rtaigfs_rocoto_broken_cycles_stat.stat.exists | default(false)
-            - not (rtaigfs_rocoto_saved_cycles_stat.stat.exists | default(false))
-          changed_when: true
-
-        - name: "ROLLBACK: Remove broken app-rocoto/"
-          ansible.builtin.file:
-            path: "{{ rtaigfs_rocoto_app }}"
-            state: absent
-          when: (rtaigfs_rocoto_app_stat.stat.exists | default(false))
-
-        - name: "ROLLBACK: Restore saved app-rocoto/"
-          ansible.builtin.command:
-            argv: [mv, "{{ rtaigfs_rocoto_app_save }}", "{{ rtaigfs_rocoto_app }}"]
-          when: (rtaigfs_rocoto_app_stat.stat.exists | default(false))
-          changed_when: true
-
-        - name: "ROLLBACK: Final notice"
-          ansible.builtin.fail:
-            msg: |
-              ============================================================
-              DEPLOYMENT ROLLED BACK.
-              See failure message above for the root cause.
-              ============================================================
+    - name: Deploy app-rocoto/
+      ansible.builtin.include_tasks: tasks/deploy-app.yaml

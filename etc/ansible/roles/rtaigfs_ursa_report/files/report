@@ -1,11 +1,7 @@
 ;; -*- clj -*-
 
-;; Unified AIGFS production report. Emits a single HTML email with one column per
-;; deployed stream (Rocoto, ecFlow). This report is an orthogonal concern shared
-;; by both streams, so it lives in a `report/` directory that is a sibling of the
-;; per-stream `app-rocoto/` and `app-ecflow/` directories, rather than inside
-;; either app. Each stream lays its cycles out identically as
-;; <root>/YYYYMMDDHH/forecast/*.idx; only the root differs per stream.
+;; AIGFS production report: one HTML email with a column per deployed stream (Rocoto,
+;; ecFlow), counting the forecast .idx files in each stream's <root>/YYYYMMDDHH/forecast/.
 
 (def RECIPIENTS "anna.smoot@noaa.gov christina.holt@noaa.gov emily.l.carpenter@noaa.gov paul.madden@noaa.gov")
 

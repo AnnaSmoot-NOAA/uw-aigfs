@@ -1,26 +1,14 @@
 #!/bin/bash
 
-# ensure-server: ensure a persistent ecFlow server is running for the real-time
-# ecFlow AIGFS workflow. Intended to run ON the dedicated ecFlow node (uecflow01
-# on Ursa), typically invoked over ssh by the real-time driver on a schedule.
-#
-# A non-blocking flock is the "is it already running?" mechanism: the ecFlow
-# server (started via "uw ecflow server") inherits and holds the lock for its
-# whole lifetime, so a second invocation while it runs cannot acquire the lock
-# and simply does nothing. If the server has died the lock is free, so this
-# invocation starts it again, recovering prior suite state from the checkpoint in
-# ECF_HOME. This is more robust than probing the server over the network, since
-# it needs no port/SSL round-trip.
-#
-# The server runs in a disowned background job with its streams redirected to
-# files, so it survives this (ssh) session and logout. The script returns
-# promptly; the caller waits until the server is reachable and moves it to the
-# RUNNING state.
+# ensure-server: start the real-time ecFlow server on the ecFlow node if it is not already
+# running. The driver runs this over ssh. The server holds a non-blocking flock for its whole
+# lifetime, so this does nothing while the server runs, and otherwise starts it, recovering
+# suite state from its checkpoint. The server runs in the background, so it survives logout.
 
 set -aeuo pipefail
 
 usage() {
-  echo "usage: $0 --rundir DIR --config FILE [--port PORT] [--platform NAME]" >&2
+  echo "usage: $0 --rundir DIR --config FILE --port PORT [--platform NAME]" >&2
   exit 2
 }
 
@@ -51,12 +39,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-[[ -n $rundir && -n $config ]] || usage
-
-# Default to a per-user port, which avoids collisions with other users' ecFlow
-# servers on the shared ecFlow node and is deterministic: the driver, running as
-# the same user, computes the same value.
-port=${port:-$(($(id -u) + 1500))}
+[[ -n $rundir && -n $config && -n $port ]] || usage
 
 # Resolve the clone root from this script's location (<clone>/<install>/bin/ensure-server).
 self=$(readlink -f "$0")
@@ -74,8 +57,6 @@ server() {
 }
 
 run() {
-  # The server inherits the lock fd and holds it until it exits, so a concurrent
-  # invocation's "flock -n" fails and does nothing.
   flock -n server.lock -c server
 }
 
