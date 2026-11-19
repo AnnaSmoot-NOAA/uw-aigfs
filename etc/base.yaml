@@ -13,6 +13,7 @@ forecast:
     diffs_stddev_path: '{{ app.modeldir }}/stats/diffs_stddev_by_level.nc'
     execution:
       batchargs:
+        account: '{{ app.platform.scheduler.account }}'
         debug: True
         memory: 150GB
         nodes: 1
@@ -34,6 +35,7 @@ post:
   aigfs_post:
     execution:
       batchargs:
+        account: '{{ app.platform.scheduler.account }}'
         cores: 1
         debug: True
         memory: 4GB
@@ -52,6 +54,7 @@ prep:
   aigfs_ics:
     execution:
       batchargs:
+        account: '{{ app.platform.scheduler.account }}'
         cores: 1
         debug: True
         memory: 10GB
