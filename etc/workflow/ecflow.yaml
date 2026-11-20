@@ -22,7 +22,7 @@ ecflow:
                 exit:
                   - <tail.h>
               manual: Prepares AIGFS ICs from GFS.
-              batchargs: !dict '{{ prep.aigfs_ics.execution.batchargs }}'
+              batchargs: !dict '{{ dict(prep.aigfs_ics.execution.batchargs, stdout="%ECF_JOBOUT%") }}'
               body: |
                 source %APPDIR%/bin/activate-%PLATFORM%
                 uw execute \
@@ -38,7 +38,7 @@ ecflow:
             script:
               <<: *script
               manual: Runs AIGFS forecast.
-              batchargs: !dict '{{ forecast.aigfs_inference.execution.batchargs }}'
+              batchargs: !dict '{{ dict(forecast.aigfs_inference.execution.batchargs, stdout="%ECF_JOBOUT%") }}'
               body: |
                 source %APPDIR%/bin/activate-%PLATFORM%
                 uw execute \
@@ -56,7 +56,7 @@ ecflow:
               script:
                 <<: *script
                 manual: Runs AIGFS post for {{ ec.fhr }}.
-                batchargs: !dict '{{ post.aigfs_post.execution.batchargs }}'
+                batchargs: !dict '{{ dict(post.aigfs_post.execution.batchargs, stdout="%ECF_JOBOUT%") }}'
                 body: |
                   source %APPDIR%/bin/activate-%PLATFORM%
                   export FHR=%FHR%
